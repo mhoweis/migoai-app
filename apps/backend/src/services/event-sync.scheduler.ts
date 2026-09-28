@@ -8,18 +8,22 @@ let lastRunAt: Date | undefined;
 let lastSummary: SyncSummary | undefined;
 let nextRunAt: Date | undefined;
 
-const runSync = async (): Promise<void> => {
+const runSync = async (): Promise<SyncSummary> => {
   lastRunAt = new Date();
   try {
     lastSummary = await eventSyncService.syncAll();
     logger.info('Event sync completed', lastSummary);
   } catch (error: any) {
     logger.error('Event sync failed', { error: error.message });
+    lastSummary = { perProvider: {}, durationMs: 0 };
   }
   if (config.EVENT_SYNC_INTERVAL_MINUTES > 0) {
     nextRunAt = new Date(Date.now() + config.EVENT_SYNC_INTERVAL_MINUTES * 60 * 1000);
   }
+  return lastSummary;
 };
+
+export const runNow = async (): Promise<SyncSummary> => runSync();
 
 export const start = (): void => {
   stop();

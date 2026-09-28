@@ -5,6 +5,15 @@ import logger from '../utils/logger';
 import { eventbriteProvider } from './providers/eventbrite.provider';
 import { mockProvider } from './providers/mock.provider';
 import { ticketmasterProvider } from './providers/ticketmaster.provider';
+import { expoCityProvider } from './providers/expo-city.provider';
+import { dwtcProvider } from './providers/dwtc.provider';
+import { visitDubaiProvider } from './providers/visit-dubai.provider';
+import { visitAbuDhabiProvider } from './providers/visit-abu-dhabi.provider';
+import { lumaProvider } from './providers/luma.provider';
+import { abuDhabiFestivalProvider } from './providers/abu-dhabi-festival.provider';
+import { visitSharjahProvider } from './providers/visit-sharjah.provider';
+import { expoCentreSharjahProvider } from './providers/expo-centre-sharjah.provider';
+import { uaeGovProvider } from './providers/uae-gov.provider';
 import { EventProvider, NormalizedEvent } from './providers/types';
 
 export interface ProviderSyncSummary {
@@ -27,6 +36,15 @@ export class EventSyncService {
   readonly providers: EventProvider[] = [
     ticketmasterProvider,
     eventbriteProvider,
+    expoCityProvider,
+    dwtcProvider,
+    visitDubaiProvider,
+    visitAbuDhabiProvider,
+    lumaProvider,
+    abuDhabiFestivalProvider,
+    visitSharjahProvider,
+    expoCentreSharjahProvider,
+    uaeGovProvider,
     mockProvider,
   ];
 

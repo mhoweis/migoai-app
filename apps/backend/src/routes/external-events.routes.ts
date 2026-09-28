@@ -9,7 +9,7 @@ import * as eventSyncScheduler from '../services/event-sync.scheduler';
 const router = express.Router();
 
 router.post('/sync-now', authenticate, requireAdmin, async (_req: Request, res: Response) => {
-  const result = await eventSyncService.syncAll();
+  const result = await eventSyncScheduler.runNow();
   res.json({ success: true, data: result });
 });
 

@@ -65,11 +65,17 @@ const envSchema = z.object({
   EVENTBRITE_API_KEY: z.string().optional(),
   EVENTBRITE_PRIVATE_TOKEN: z.string().optional(),
   EVENTBRITE_ORGANIZATION_IDS: z.string().default(''),
+  DISCOVERY_PROVIDERS_DISABLED: z.string().default(''),
+  EXPO_CITY_CONTENTFUL_TOKEN: z.string().optional(),
+  VISIT_DUBAI_ALGOLIA_APP_ID: z.string().optional(),
+  VISIT_DUBAI_ALGOLIA_API_KEY: z.string().optional(),
+  VISIT_DUBAI_ALGOLIA_INDEX: z.string().default('prod104_vd_en'),
+  UAE_GOV_MONTHS_AHEAD: z.coerce.number().int().min(1).default(6),
   MOCK_EVENTS_PROVIDER: z.preprocess(
     value => typeof value === 'string' ? value.toLowerCase() === 'true' : value,
     z.boolean().default(false),
   ),
-  SYNC_CITIES: z.string().default('Dubai,Abu Dhabi'),
+  SYNC_CITIES: z.string().default('Dubai,Abu Dhabi,Sharjah'),
   EVENT_SYNC_INTERVAL_MINUTES: z.coerce.number().min(0).default(60),
   EVENT_SYNC_ON_BOOT: z.preprocess(
     value => typeof value === 'string' ? value.toLowerCase() === 'true' : value,
@@ -185,6 +191,15 @@ export default {
     .split(',')
     .map(value => value.trim())
     .filter(Boolean),
+  DISCOVERY_PROVIDERS_DISABLED: env.DISCOVERY_PROVIDERS_DISABLED
+    .split(',')
+    .map(value => value.trim())
+    .filter(Boolean),
+  EXPO_CITY_CONTENTFUL_TOKEN: env.EXPO_CITY_CONTENTFUL_TOKEN || '',
+  VISIT_DUBAI_ALGOLIA_APP_ID: env.VISIT_DUBAI_ALGOLIA_APP_ID || '',
+  VISIT_DUBAI_ALGOLIA_API_KEY: env.VISIT_DUBAI_ALGOLIA_API_KEY || '',
+  VISIT_DUBAI_ALGOLIA_INDEX: env.VISIT_DUBAI_ALGOLIA_INDEX,
+  UAE_GOV_MONTHS_AHEAD: env.UAE_GOV_MONTHS_AHEAD,
   MOCK_EVENTS_PROVIDER: env.MOCK_EVENTS_PROVIDER,
   SYNC_CITIES: env.SYNC_CITIES.split(',').map(value => value.trim()).filter(Boolean),
   EVENT_SYNC_INTERVAL_MINUTES: env.EVENT_SYNC_INTERVAL_MINUTES,
