@@ -684,12 +684,24 @@ UAE content policy:
         model: servingModel,
       });
 
-      // Translate short refs (E1, E2…) back to real UUIDs
+      // Translate short refs (E1, E2…) back to real UUIDs. Then drop anything
+      // that didn't resolve to a listed event — hallucinated IDs would render
+      // as empty cards in the app — dedupe, and cap at 12.
       if (aiResponse.recommendations) {
-        aiResponse.recommendations = aiResponse.recommendations.map((rec: any) => ({
-          ...rec,
-          eventId: eventIdMap[rec.eventId] || rec.eventId,
-        }));
+        const seen = new Set<string>();
+        const realIds = new Set(Object.values(eventIdMap));
+        aiResponse.recommendations = aiResponse.recommendations
+          .map((rec: any) => ({
+            ...rec,
+            eventId: eventIdMap[rec.eventId] || rec.eventId,
+          }))
+          .filter((rec: any) => {
+            if (!rec.eventId || !realIds.has(rec.eventId)) return false;
+            if (seen.has(rec.eventId)) return false;
+            seen.add(rec.eventId);
+            return true;
+          })
+          .slice(0, 12);
       }
 
       // Enrich recommendations with real event data (title, coverImage, etc.)
@@ -792,10 +804,18 @@ UAE content policy:
         (error as any)?.message || error
       );
       
-      // Fallback response
+      // Deterministic fallback: the AI provider is down, but the events query
+      // already ran — surface the top events with honest copy rather than a
+      // dead apology, so the user still gets value.
       return {
-        response: "I apologize, but I'm having trouble processing your request right now. Please try again in a moment or try rephrasing your question.",
-        recommendations: [],
+        response: events.length > 0
+          ? `My smart assistant is briefly offline, but I found ${events.length} events for you — tap any to see details. Try your question again in a moment for full details.`
+          : "My smart assistant is briefly offline and I couldn't find matching events — please try again in a moment.",
+        recommendations: events.slice(0, 6).map((e: any) => ({
+          eventId: e.id,
+          reason: 'Matches your request',
+          confidence: 0.5,
+        })),
         suggestions: ["Try searching for events using the search bar", "Check out today's featured events", "Browse events by category"],
         nextQuestions: ["What type of events are you interested in?", "When are you looking for events?", "What's your budget range?"],
       };
@@ -998,7 +1018,7 @@ private extractSearchTerms(message: string): string[] {
         }).join('\n')
       : 'No events found for this period';
 
-    const recentChat = history.slice(-2)
+    const recentChat = history.slice(-6)
       .map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.content}`)
       .join('\n');
 
