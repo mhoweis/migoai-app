@@ -1,0 +1,42 @@
+# Google Maps scraper for Migo's Places feature.
+#
+# Wraps gosom/google-maps-scraper (MIT, by Georgios Komninos) — see
+# docs/PLACES_FEATURE.md for attribution and operating rules.
+#
+# SECURITY: this image has NO authentication of its own. The 127.0.0.1 binding
+# IS the security boundary. Do not publish it on 0.0.0.0 or a public interface
+# without an authenticating proxy in front — anyone who can reach port 8080 can
+# queue scrape jobs that run from your IP.
+#
+#   docker compose -f docker-compose.scraper.yml up -d
+#   curl http://localhost:8080/api/v1/jobs     # should return []
+
+services:
+  google-maps-scraper:
+    image: gosom/google-maps-scraper:v1.15.0
+    # The published image is linux/amd64. On Apple Silicon it runs under
+    # emulation; uncomment if it will not start.
+    # platform: linux/amd64
+    container_name: migo-gmaps-scraper
+    restart: unless-stopped
+    command: ["-web", "-data-folder", "/gmapsdata"]
+    ports:
+      - "127.0.0.1:8080:8080" # localhost only — see warning above
+    volumes:
+      - gmaps_data:/gmapsdata
+      - gmaps_cache:/opt
+    # A headless browser is memory-hungry; cap it so it cannot starve the API.
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/v1/jobs || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  gmaps_data:
+  gmaps_cache:
