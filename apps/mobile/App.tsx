@@ -72,9 +72,8 @@ function MainTabs() {
         tabBarStyle: {
           borderTopWidth: 1,
           borderTopColor: "#e5e7eb",
-          paddingBottom: 8,
-          paddingTop: 8,
-          height: 60,
+          minHeight: 60,
+          maxWidth: '100%',
         },
         headerShown: false,
       })}
@@ -139,9 +138,8 @@ function MainTabsWithProfileStack() {
         tabBarStyle: {
           borderTopWidth: 1,
           borderTopColor: "#e5e7eb",
-          paddingBottom: 8,
-          paddingTop: 8,
-          height: 60,
+          minHeight: 60,
+          maxWidth: '100%',
         },
         headerShown: false,
       })}

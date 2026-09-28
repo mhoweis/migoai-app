@@ -3,6 +3,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { setMainStackNavigation, setTabNavigation } from './navigationRef';
 
@@ -183,9 +184,10 @@ function WalletStackNavigator() {
 function CustomTabBar({ state, descriptors, navigation }: any) {
   // Keep the legacy ref in sync (used by navigateToMainStack elsewhere).
   setTabNavigation(navigation);
+  const insets = useSafeAreaInsets();
 
   return (
-    <View style={styles.tabBar}>
+    <View style={[styles.tabBar, { height: 62 + insets.bottom, paddingBottom: 8 + insets.bottom }]}>
       {state.routes.map((route: any, index: number) => {
         const { options } = descriptors[route.key];
         const label = options.tabBarLabel || options.title || route.name;
@@ -316,7 +318,6 @@ function MainTabNavigator({ navigation }: { navigation: any }) {
 const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
-    height: 70,
     backgroundColor: '#ffffff',
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
