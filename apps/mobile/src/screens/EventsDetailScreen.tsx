@@ -254,17 +254,42 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
 
           {/* Map */}
-          {event.latitude && event.longitude && (
+          {(event.latitude && event.longitude) || event.venueName || event.address ? (
             <View style={styles.mapSection}>
               <Text style={styles.sectionTitle}>Location on Map</Text>
-              <EventMap
-                latitude={event.latitude}
-                longitude={event.longitude}
-                title={event.venueName || event.title}
-                description={event.address}
-              />
+              {event.latitude && event.longitude ? (
+                <EventMap
+                  latitude={event.latitude}
+                  longitude={event.longitude}
+                  title={event.venueName || event.title}
+                  description={event.address}
+                />
+              ) : (
+                <TouchableOpacity
+                  style={styles.mapFallback}
+                  activeOpacity={0.8}
+                  onPress={() =>
+                    Linking.openURL(
+                      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                        [event.venueName, event.address, event.city, event.country]
+                          .filter(Boolean)
+                          .join(', ')
+                      )}`
+                    )
+                  }
+                >
+                  <Ionicons name="map-outline" size={32} color="#3b82f6" />
+                  <Text style={styles.mapFallbackTitle}>{event.venueName || event.address}</Text>
+                  {event.city && (
+                    <Text style={styles.mapFallbackSubtitle}>
+                      {[event.city, event.country].filter(Boolean).join(', ')}
+                    </Text>
+                  )}
+                  <Text style={styles.mapFallbackLink}>Open in Google Maps</Text>
+                </TouchableOpacity>
+              )}
             </View>
-          )}
+          ) : null}
 
           {/* Address */}
           {event.address && (
@@ -475,6 +500,34 @@ const styles = StyleSheet.create({
   price: {
     color: '#3b82f6',
     fontWeight: 'bold',
+  },
+  mapFallback: {
+    height: 220,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    paddingHorizontal: 16,
+  },
+  mapFallbackTitle: {
+    marginTop: 12,
+    color: '#1f2937',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  mapFallbackSubtitle: {
+    marginTop: 4,
+    color: '#6b7280',
+    fontSize: 13,
+  },
+  mapFallbackLink: {
+    marginTop: 12,
+    color: '#2563eb',
+    fontSize: 14,
+    fontWeight: '600',
   },
   mapSection: {
     marginBottom: 32,
