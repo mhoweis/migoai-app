@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { AuthRequest, requireOrganizer } from '../middlewares/auth.middleware';
+import { AuthRequest } from '../middlewares/auth.middleware';
 import { asyncHandler } from '../middlewares/error.middleware';
 import ticketsService from '../services/tickets.service';
 
@@ -24,13 +24,13 @@ router.get('/me', asyncHandler(async (req: AuthRequest, res: Response) => {
   res.json({ success: true, data: tickets });
 }));
 
-router.post('/check-in', requireOrganizer, asyncHandler(async (req: AuthRequest, res: Response) => {
+router.post('/check-in', asyncHandler(async (req: AuthRequest, res: Response) => {
   const input = z.object({ code: z.string().min(1) }).parse(req.body);
   const result = await ticketsService.checkIn(input.code, req.userId!);
   res.json({ success: true, data: result });
 }));
 
-router.get('/events/:eventId/attendance', requireOrganizer, asyncHandler(async (
+router.get('/events/:eventId/attendance', asyncHandler(async (
   req: AuthRequest,
   res: Response,
 ) => {

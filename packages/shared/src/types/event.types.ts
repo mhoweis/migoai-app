@@ -103,6 +103,14 @@ export interface Event {
     status: string;
     ticketCount: number;
   };
+  myBooking?: {
+    id: string;
+    status: string;
+    ticketCount: number;
+    qrCode?: string;
+  };
+  myBookingId?: string | null;
+  canRsvp?: boolean;
 
   // Timestamps
   createdAt: string;

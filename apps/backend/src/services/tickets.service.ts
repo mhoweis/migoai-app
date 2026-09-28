@@ -202,12 +202,18 @@ class TicketsService {
     }
     const [booking, staff] = await Promise.all([
       prisma.booking.findUnique({ where: { id: bookingId }, include: { event: true } }),
-      prisma.user.findUnique({ where: { id: staffUserId }, select: { role: true } }),
+      prisma.user.findUnique({
+        where: { id: staffUserId },
+        select: { role: true, isOrganizer: true },
+      }),
     ]);
     if (!booking) {
       throw serviceError('Booking not found', 404, 'BOOKING_NOT_FOUND');
     }
-    if (!staff || (staff.role !== 'ADMIN' && booking.event.organizerId !== staffUserId)) {
+    if (!staff || (
+      staff.role !== 'ADMIN'
+      && !(booking.event.organizerId === staffUserId && staff.isOrganizer)
+    )) {
       throw serviceError('You are not authorized to check in attendees', 403, 'FORBIDDEN');
     }
     if (booking.status === BookingStatus.CHECKED_IN) {
@@ -238,12 +244,18 @@ class TicketsService {
   async eventAttendance(eventId: string, staffUserId: string): Promise<any> {
     const [event, staff] = await Promise.all([
       prisma.event.findUnique({ where: { id: eventId }, select: { organizerId: true, capacity: true } }),
-      prisma.user.findUnique({ where: { id: staffUserId }, select: { role: true } }),
+      prisma.user.findUnique({
+        where: { id: staffUserId },
+        select: { role: true, isOrganizer: true },
+      }),
     ]);
     if (!event) {
       throw serviceError('Event not found', 404, 'EVENT_NOT_FOUND');
     }
-    if (!staff || (staff.role !== 'ADMIN' && event.organizerId !== staffUserId)) {
+    if (!staff || (
+      staff.role !== 'ADMIN'
+      && !(event.organizerId === staffUserId && staff.isOrganizer)
+    )) {
       throw serviceError('You are not authorized to view attendance', 403, 'FORBIDDEN');
     }
     const [confirmed, checkedIn] = await Promise.all([

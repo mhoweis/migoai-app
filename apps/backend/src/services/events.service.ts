@@ -1,5 +1,5 @@
 import prisma from '../config/database';
-import { Prisma } from '@prisma/client';
+import { BookingType, EventStatus, EventVisibility, Prisma } from '@prisma/client';
 import config from '../config/env';
 
 export interface EventFilters {
@@ -357,6 +357,33 @@ export class EventService {
       // Return mock event for development
       return this.getMockEvent(eventId, userId);
     }
+  }
+
+  async getMyEvents(userId: string): Promise<any[]> {
+    const events = await prisma.event.findMany({
+      where: {
+        organizerId: userId,
+        status: { not: 'DELETED' },
+      },
+      orderBy: { startDate: 'desc' },
+      select: this.getEventSelectFields(),
+    });
+
+    return Promise.all(events.map(async event => {
+      const [confirmed, checkedIn] = await Promise.all([
+        prisma.booking.count({
+          where: { eventId: event.id, status: 'CONFIRMED' },
+        }),
+        prisma.booking.count({
+          where: { eventId: event.id, status: 'CHECKED_IN' },
+        }),
+      ]);
+      return {
+        ...this.formatEventResponse(event),
+        confirmed,
+        checkedIn,
+      };
+    }));
   }
   
   private async getSimilarEvents(event: any): Promise<any[]> {
@@ -923,7 +950,10 @@ export class EventService {
         select: { id: true },
       };
       baseSelect.bookings = {
-        where: { userId },
+        where: {
+          userId,
+          status: { in: ['CONFIRMED', 'CHECKED_IN'] },
+        },
         select: { id: true, status: true, ticketCount: true, qrCode: true },
       };
     }
@@ -1027,7 +1057,14 @@ export class EventService {
       createdAt: eventAny.createdAt,
       updatedAt: eventAny.updatedAt,
       publishedAt: eventAny.publishedAt,
-        featuredUntil: eventAny.featuredUntil,
+      featuredUntil: eventAny.featuredUntil,
+      canRsvp: (
+        eventAny.status === 'ACTIVE'
+        && eventAny.startDate > new Date()
+        && !(eventAny.externalUrl && eventAny.bookingType === 'PAID' && !eventAny.isFree)
+        && ((eventAny.capacity || 0) === 0 || (eventAny.ticketsSold || 0) < eventAny.capacity)
+      ),
+      myBookingId: null,
     };
 
     // Add user-specific fields matching shared Event type
@@ -1046,6 +1083,7 @@ export class EventService {
           ticketCount: booking.ticketCount || 1,
           qrCode: booking.qrCode,
         };
+        formatted.myBookingId = booking.id;
       }
     }
 
@@ -1058,20 +1096,50 @@ export class EventService {
         where: { id: userId },
         select: { isOrganizer: true },
       });
-      
-      if (!user?.isOrganizer) {
-        throw new Error('User is not an organizer');
-      }
-      
+
       const slug = this.generateSlug(eventData.title);
-      
+
+      const isFree = eventData.isFree === true;
+      const capacity = eventData.capacity ?? 0;
       const eventDataWithDates = {
-        ...eventData,
+        title: eventData.title,
+        description: eventData.description || eventData.title,
+        category: eventData.category,
+        subcategory: eventData.subcategory,
+        tags: eventData.tags || [],
         startDate: new Date(eventData.startDate),
         endDate: eventData.endDate ? new Date(eventData.endDate) : null,
+        venueName: eventData.venueName,
+        address: eventData.address,
+        city: eventData.city,
+        country: eventData.country,
+        latitude: eventData.latitude,
+        longitude: eventData.longitude,
+        priceFrom: eventData.priceFrom,
+        priceTo: eventData.priceTo,
+        currency: eventData.currency || 'AED',
+        isFree,
+        bookingType: isFree ? BookingType.FREE : BookingType.PAID,
+        ticketUrl: eventData.ticketUrl,
+        capacity,
+        ticketsSold: 0,
+        ticketsAvailable: capacity,
+        coverImage: eventData.coverImage,
+        images: eventData.images || (eventData.coverImage ? [eventData.coverImage] : []),
+        facilities: eventData.facilities || [],
+        isPetFriendly: eventData.isPetFriendly || false,
+        isWheelchairAccessible: eventData.isWheelchairAccessible || false,
+        hasParking: eventData.hasParking || false,
+        hasFood: eventData.hasFood || false,
+        hasDrinks: eventData.hasDrinks || false,
+        hasWiFi: eventData.hasWiFi || false,
+        ageRestriction: eventData.ageRestriction,
+        dressCode: eventData.dressCode,
+        visibility: EventVisibility.PUBLIC,
+        source: 'migo',
         slug,
         organizerId: userId,
-        status: 'PENDING',
+        status: EventStatus.ACTIVE,
         publishedAt: new Date(),
       };
       
@@ -1082,7 +1150,7 @@ export class EventService {
       
       await prisma.user.update({
         where: { id: userId },
-        data: { eventCount: { increment: 1 } }
+        data: { eventCount: { increment: 1 }, isOrganizer: true },
       });
       
       await prisma.organizerProfile.upsert({
@@ -1107,7 +1175,7 @@ export class EventService {
     try {
       const event = await prisma.event.findUnique({
         where: { id: eventId },
-        select: { organizerId: true, status: true },
+        select: { organizerId: true, status: true, ticketsSold: true },
       });
       
       if (!event) {
@@ -1118,16 +1186,40 @@ export class EventService {
         throw new Error('Not authorized to update this event');
       }
       
-      const updatedData: any = { ...updateData };
+      const updatedData: any = {
+        ...(updateData.title !== undefined && { title: updateData.title }),
+        ...(updateData.description !== undefined && { description: updateData.description }),
+        ...(updateData.category !== undefined && { category: updateData.category }),
+        ...(updateData.subcategory !== undefined && { subcategory: updateData.subcategory }),
+        ...(updateData.startDate !== undefined && { startDate: new Date(updateData.startDate) }),
+        ...(updateData.endDate !== undefined && { endDate: updateData.endDate ? new Date(updateData.endDate) : null }),
+        ...(updateData.venueName !== undefined && { venueName: updateData.venueName }),
+        ...(updateData.address !== undefined && { address: updateData.address }),
+        ...(updateData.city !== undefined && { city: updateData.city }),
+        ...(updateData.country !== undefined && { country: updateData.country }),
+        ...(updateData.latitude !== undefined && { latitude: updateData.latitude }),
+        ...(updateData.longitude !== undefined && { longitude: updateData.longitude }),
+        ...(updateData.priceFrom !== undefined && { priceFrom: updateData.priceFrom }),
+        ...(updateData.priceTo !== undefined && { priceTo: updateData.priceTo }),
+        ...(updateData.currency !== undefined && { currency: updateData.currency }),
+        ...(updateData.isFree !== undefined && {
+          isFree: updateData.isFree,
+          bookingType: updateData.isFree ? 'FREE' : 'PAID',
+        }),
+        ...(updateData.ticketUrl !== undefined && { ticketUrl: updateData.ticketUrl }),
+        ...(updateData.capacity !== undefined && {
+          capacity: updateData.capacity,
+          ticketsAvailable: updateData.capacity > 0
+            ? updateData.capacity - (event as any).ticketsSold
+            : null,
+        }),
+        ...(updateData.coverImage !== undefined && { coverImage: updateData.coverImage }),
+        ...(updateData.images !== undefined && { images: updateData.images }),
+        ...(updateData.facilities !== undefined && { facilities: updateData.facilities }),
+        ...(updateData.tags !== undefined && { tags: updateData.tags }),
+      };
       if (updateData.title) {
         updatedData.slug = this.generateSlug(updateData.title);
-      }
-      
-      if (updateData.startDate) {
-        updatedData.startDate = new Date(updateData.startDate);
-      }
-      if (updateData.endDate) {
-        updatedData.endDate = new Date(updateData.endDate);
       }
       
       const updatedEvent = await prisma.event.update({

@@ -109,6 +109,11 @@ router.get("/weekend", asyncHandler(async (req: Request, res: Response) => {
   res.json({ success: true, data: result });
 }));
 
+router.get("/mine", authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const result = await eventService.getMyEvents(req.userId!);
+  res.json({ success: true, data: result });
+}));
+
 // Get event by ID
 router.get("/:id", optionalAuthenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
@@ -144,22 +149,24 @@ router.post("/", authenticate, asyncHandler(async (req: AuthRequest, res: Respon
   // Validation schema for event creation
   const eventSchema = z.object({
     title: z.string().min(3).max(200),
-    description: z.string().min(10).max(5000),
+    description: z.string().max(5000).optional(),
     category: z.string(),
     subcategory: z.string().optional(),
     startDate: z.string(),
     endDate: z.string().optional(),
     venueName: z.string(),
-    address: z.string(),
+    address: z.string().optional(),
     city: z.string(),
-    country: z.string(),
-    locationLat: z.number(),
-    locationLng: z.number(),
+    country: z.string().default('United Arab Emirates'),
+    locationLat: z.number().optional(),
+    locationLng: z.number().optional(),
     priceFrom: z.number().optional(),
     priceTo: z.number().optional(),
-    currency: z.string().default("USD"),
+    currency: z.string().default("AED"),
     isFree: z.boolean().default(false),
-    ticketUrl: z.string().url(),
+    ticketUrl: z.string().url().optional(),
+    capacity: z.number().int().min(0).optional(),
+    coverImage: z.string().url().optional(),
     images: z.array(z.string().url()).optional().default([]),
     ageRestriction: z.number().optional(),
     dressCode: z.string().optional(),
@@ -168,7 +175,12 @@ router.post("/", authenticate, asyncHandler(async (req: AuthRequest, res: Respon
     tags: z.array(z.string()).optional().default([]),
   });
 
-  const validatedData = eventSchema.parse(req.body);
+  const validatedInput = eventSchema.parse(req.body);
+  const validatedData = {
+    ...validatedInput,
+    latitude: validatedInput.locationLat,
+    longitude: validatedInput.locationLng,
+  };
   const userId = req.userId!;
   
   const result = await eventService.createEvent(userId, validatedData);
@@ -200,6 +212,8 @@ router.put("/:id", authenticate, asyncHandler(async (req: AuthRequest, res: Resp
     currency: z.string().optional(),
     isFree: z.boolean().optional(),
     ticketUrl: z.string().url().optional(),
+    capacity: z.number().int().min(0).optional(),
+    coverImage: z.string().url().optional(),
     images: z.array(z.string().url()).optional(),
     ageRestriction: z.number().optional(),
     dressCode: z.string().optional(),
@@ -208,7 +222,12 @@ router.put("/:id", authenticate, asyncHandler(async (req: AuthRequest, res: Resp
     tags: z.array(z.string()).optional(),
   }).partial();
 
-  const validatedData = updateSchema.parse(updateData);
+  const validatedInput = updateSchema.parse(updateData);
+  const validatedData = {
+    ...validatedInput,
+    ...(validatedInput.locationLat !== undefined && { latitude: validatedInput.locationLat }),
+    ...(validatedInput.locationLng !== undefined && { longitude: validatedInput.locationLng }),
+  };
   
   const result = await eventService.updateEvent(id, userId, validatedData);
   res.json({ success: true, data: result });
