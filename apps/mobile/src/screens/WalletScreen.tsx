@@ -4,6 +4,7 @@ import {
   Alert,
   FlatList,
   Image,
+  Linking,
   RefreshControl,
   StyleSheet,
   Text,
@@ -16,6 +17,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { useFocusEffect } from '@react-navigation/native';
 import { navigateToTab } from '../navigation/navigationRef';
 import { Ticket, ticketsService } from '../services/tickets.service';
+import { socialService } from '../services/social.service';
 
 const categoryColors: Record<string, string> = {
   Music: '#6d28d9',
@@ -44,6 +46,15 @@ const formatDate = (value: string) => {
 
 function TicketCard({ ticket, onCancel }: { ticket: Ticket; onCancel: (ticket: Ticket) => void }) {
   const color = ticketColor(ticket.event.category || undefined);
+  const sendToWhatsApp = async () => {
+    try {
+      const invite = await socialService.invite(ticket.event.id);
+      const text = `My ticket for ${ticket.event.title} — ${formatDate(ticket.event.startDate)}. Get yours: ${invite.shareUrl}`;
+      await Linking.openURL(`https://wa.me/?text=${encodeURIComponent(text)}`);
+    } catch {
+      Alert.alert('Unable to share', 'Please try again.');
+    }
+  };
   return (
     <View style={styles.card}>
       {ticket.event.coverImage ? (
@@ -77,6 +88,12 @@ function TicketCard({ ticket, onCancel }: { ticket: Ticket; onCancel: (ticket: T
             <Text style={styles.code}>{ticket.qrCode}</Text>
           </View>
         ) : null}
+        {ticket.status === 'CONFIRMED' && (
+          <TouchableOpacity style={styles.shareTicketButton} onPress={sendToWhatsApp}>
+            <Ionicons name="logo-whatsapp" size={16} color="#16a34a" />
+            <Text style={styles.shareTicketText}>Send to WhatsApp</Text>
+          </TouchableOpacity>
+        )}
         {ticket.status === 'CONFIRMED' && (
           <TouchableOpacity style={styles.cancelButton} onPress={() => onCancel(ticket)}>
             <Ionicons name="close-circle-outline" size={16} color="#dc2626" />
@@ -206,6 +223,8 @@ const styles = StyleSheet.create({
   code: { maxWidth: '100%', color: '#6b7280', fontSize: 11, textAlign: 'center' },
   cancelButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: 14 },
   cancelText: { color: '#dc2626', fontSize: 14, fontWeight: '600' },
+  shareTicketButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: 14 },
+  shareTicketText: { color: '#16a34a', fontSize: 14, fontWeight: '600' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 120 },
   emptyTitle: { marginTop: 16, fontSize: 20, fontWeight: '700', color: '#374151' },
   emptyText: { marginTop: 6, color: '#6b7280', textAlign: 'center' },

@@ -26,6 +26,8 @@ import WalletScreen from "./src/screens/WalletScreen";
 import CreateEventScreen from "./src/screens/CreateEventScreen";
 import MyEventsScreen from "./src/screens/MyEventsScreen";
 import CheckInScreen from "./src/screens/CheckInScreen";
+import FindFriendsScreen from "./src/screens/FindFriendsScreen";
+import { inviteRef } from "./src/utils/inviteRef";
 import { ticketsService } from "./src/services/tickets.service";
 import { navigateToTab } from "./src/navigation/navigationRef";
 
@@ -164,6 +166,11 @@ export function ProfileStack() {
         component={CheckInScreen}
         options={{ title: "Check in", headerBackTitle: "Back" }}
       />
+      <Stack.Screen
+        name="FindFriends"
+        component={FindFriendsScreen}
+        options={{ title: "Find friends", headerBackTitle: "Back" }}
+      />
     </Stack.Navigator>
   );
 }
@@ -233,6 +240,24 @@ export default function App() {
     const processCheckoutUrl = async (url: string) => {
       try {
         const parsed = new URL(url);
+        const eventId = parsed.searchParams.get('event')
+          || (parsed.protocol === 'migo:' && parsed.hostname === 'event' ? parsed.pathname.slice(1) : null);
+        const ref = parsed.searchParams.get('ref');
+        const tab = parsed.searchParams.get('tab');
+        if (eventId) {
+          inviteRef.set(ref);
+          if (Platform.OS === 'web' && typeof window !== 'undefined') {
+            window.history.replaceState({}, '', `${parsed.pathname}${parsed.hash}`);
+          }
+          navigationRef.current?.navigate('EventDetail', { eventId });
+          return;
+        }
+        if (tab?.toLowerCase() === 'wallet') {
+          if (Platform.OS === 'web' && typeof window !== 'undefined') {
+            window.history.replaceState({}, '', `${parsed.pathname}${parsed.hash}`);
+          }
+          navigateToTab('Wallet');
+        }
         const checkout = parsed.searchParams.get('checkout');
         const bookingId = parsed.searchParams.get('bookingId');
         if (!checkout) return;

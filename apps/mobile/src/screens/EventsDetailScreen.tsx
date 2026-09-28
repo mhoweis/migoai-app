@@ -25,6 +25,8 @@ import { useSavedEventsStore } from '../store/savedEventsStore';
 import { getBookingUrl, supplierLabel } from '../config/affiliates';
 import { ticketsService } from '../services/tickets.service';
 import { navigateToTab } from '../navigation/navigationRef';
+import { socialService, EventSocial, InviteLinks } from '../services/social.service';
+import { inviteRef } from '../utils/inviteRef';
 
 const { width } = Dimensions.get('window');
 
@@ -41,11 +43,15 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [ticketCount, setTicketCount] = useState(1);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [social, setSocial] = useState<EventSocial | null>(null);
+  const [inviteLinks, setInviteLinks] = useState<InviteLinks | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const { user } = useUserStore();
   const { savedIds, toggleSaved, loadSavedEvents } = useSavedEventsStore();
 
   useEffect(() => {
     fetchEvent();
+    void socialService.social(eventId).then(setSocial).catch(() => setSocial(null));
     loadSavedEvents();
   }, [eventId]);
 
@@ -74,17 +80,51 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const handleShare = async () => {
     if (!event) return;
+    setShareOpen(true);
+  };
 
-    const eventDate = new Date(event.startDate);
-    const dateStr = eventDate.toLocaleDateString();
-    const timeStr = eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const ensureInvite = async () => {
+    if (inviteLinks) return inviteLinks;
+    const returnUrl = Platform.OS === 'web' && typeof window !== 'undefined'
+      ? window.location.origin
+      : undefined;
+    const links = await socialService.invite(event!.id, returnUrl);
+    setInviteLinks(links);
+    return links;
+  };
 
+  const shareWhatsApp = async () => {
     try {
-      await Share.share({
-        message: `Check out this event: ${event.title}\n\n${event.description || 'No description'}\n\nDate: ${dateStr} at ${timeStr}\nLocation: ${event.venueName || event.city || 'TBA'}`,
-      });
-    } catch (error) {
-      Alert.alert('Error', 'Unable to share event');
+      const links = await ensureInvite();
+      await Linking.openURL(links.whatsappUrl);
+      setShareOpen(false);
+    } catch {
+      Alert.alert('Unable to share', 'Please try again.');
+    }
+  };
+
+  const copyShareLink = async () => {
+    try {
+      const links = await ensureInvite();
+      if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(links.shareUrl);
+        Alert.alert('Link copied', 'The event link is ready to share.');
+      } else {
+        Alert.alert('Copy link', links.shareUrl);
+      }
+      setShareOpen(false);
+    } catch {
+      Alert.alert('Unable to share', 'Please try again.');
+    }
+  };
+
+  const shareMore = async () => {
+    try {
+      const links = await ensureInvite();
+      await Share.share({ message: `${event!.title} — Join me on Migo: ${links.shareUrl}`, url: links.shareUrl });
+      setShareOpen(false);
+    } catch {
+      Alert.alert('Unable to share', 'Please try again.');
     }
   };
 
@@ -100,10 +140,11 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const handleRsvp = async () => {
     if (!event) return;
     try {
-      await ticketsService.rsvp(event.id);
+      await ticketsService.rsvp(event.id, 1, inviteRef.consume());
       await fetchEvent();
       Alert.alert('You’re in!', 'Your ticket is ready in Wallet.', [
         { text: 'View Ticket', onPress: () => navigateToTab('Wallet') },
+        { text: 'Invite friends', onPress: () => { void shareWhatsApp(); } },
       ]);
     } catch (error) {
       const responseError = error as {
@@ -127,7 +168,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       const returnUrl = Platform.OS === 'web' && typeof window !== 'undefined'
         ? window.location.origin
         : 'migo://checkout';
-      const result = await ticketsService.checkout(event.id, ticketCount, returnUrl);
+      const result = await ticketsService.checkout(event.id, ticketCount, returnUrl, inviteRef.consume());
       setCheckoutOpen(false);
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
         window.location.assign(result.checkoutUrl);
@@ -303,6 +344,20 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </View>
               </View>
             </View>
+            {social && social.goingCount > 0 && (
+              <View style={styles.socialRow}>
+                <View style={styles.socialAvatars}>
+                  {social.attendeesPreview.slice(0, 4).map((person, index) => (
+                    person.avatar
+                      ? <Image key={person.id} source={{ uri: person.avatar }} style={[styles.socialAvatar, { marginLeft: index ? -8 : 0 }]} />
+                      : <View key={person.id} style={[styles.socialAvatar, styles.socialAvatarFallback, { marginLeft: index ? -8 : 0 }]}><Text style={styles.socialInitial}>{(person.name || '?')[0]}</Text></View>
+                  ))}
+                </View>
+                <Text style={styles.socialText}>
+                  {social.goingCount} going{social.friendsGoing.length ? ` · ${social.friendsGoing[0].name || 'A friend'}${social.friendsGoing.length > 1 ? ` and ${social.friendsGoing.length - 1} friends` : ''} going` : ''}
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Map */}
@@ -406,6 +461,24 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </Text>
         </TouchableOpacity>
       </View>
+      <Modal
+        visible={shareOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShareOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.checkoutSheet}>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Share event</Text>
+              <TouchableOpacity onPress={() => setShareOpen(false)}><Ionicons name="close" size={24} color="#6b7280" /></TouchableOpacity>
+            </View>
+            <TouchableOpacity style={styles.shareAction} onPress={shareWhatsApp}><Ionicons name="logo-whatsapp" size={22} color="#16a34a" /><Text style={styles.shareActionText}>Share on WhatsApp</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.shareAction} onPress={copyShareLink}><Ionicons name="copy-outline" size={22} color="#2563eb" /><Text style={styles.shareActionText}>Copy link</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.shareAction} onPress={shareMore}><Ionicons name="share-social-outline" size={22} color="#6b7280" /><Text style={styles.shareActionText}>More…</Text></TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
       <Modal
         visible={checkoutOpen}
         transparent
@@ -597,6 +670,12 @@ const styles = StyleSheet.create({
   detailsGrid: {
     gap: 16,
   },
+  socialRow: { flexDirection: 'row', alignItems: 'center', marginTop: 18 },
+  socialAvatars: { flexDirection: 'row', alignItems: 'center', minWidth: 48 },
+  socialAvatar: { width: 30, height: 30, borderRadius: 15, borderWidth: 2, borderColor: '#fff' },
+  socialAvatarFallback: { backgroundColor: '#dbeafe', alignItems: 'center', justifyContent: 'center' },
+  socialInitial: { color: '#1d4ed8', fontSize: 12, fontWeight: '700' },
+  socialText: { marginLeft: 10, color: '#4b5563', fontSize: 14, fontWeight: '600' },
   detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -825,6 +904,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
+  shareAction: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
+  shareActionText: { fontSize: 16, color: '#1f2937', fontWeight: '600' },
 });
 
 export default EventDetailScreen;

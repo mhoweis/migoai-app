@@ -50,6 +50,7 @@ export type ProfileStackParamList = {
   CreateEvent: undefined;
   MyEvents: undefined;
   CheckIn: { eventId?: string };
+  FindFriends: undefined;
 };
 
 export type WalletStackParamList = {

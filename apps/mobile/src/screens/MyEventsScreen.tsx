@@ -3,7 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Share,
+  Linking,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HostedEvent, ticketsService } from '../services/tickets.service';
+import { socialService } from '../services/social.service';
 import type { ProfileStackParamList } from '../navigation/MainTabNavigator';
 
 type Navigation = NativeStackNavigationProp<ProfileStackParamList, 'MyEvents'>;
@@ -39,7 +40,9 @@ export default function MyEventsScreen({ navigation }: { navigation: Navigation 
 
   const shareEvent = async (event: HostedEvent) => {
     try {
-      await Share.share({ message: `${event.title} — ${new Date(event.startDate).toLocaleString()}` });
+      const invite = await socialService.invite(event.id);
+      const text = `${event.title} — ${new Date(event.startDate).toLocaleString()}. Join me on Migo: ${invite.shareUrl}`;
+      await Linking.openURL(invite.whatsappUrl || `https://wa.me/?text=${encodeURIComponent(text)}`);
     } catch {
       Alert.alert('Unable to share', 'Please try again.');
     }
@@ -63,6 +66,7 @@ export default function MyEventsScreen({ navigation }: { navigation: Navigation 
             <Text style={styles.date}>{new Date(item.startDate).toLocaleString()} · {item.city || 'UAE'}</Text>
             <Text style={styles.attendance}>
               {item.confirmed} confirmed · {item.checkedIn} checked in
+              {` · ${item.invited} invited`}
               {item.capacity ? ` · ${item.capacity} capacity` : ' · Unlimited'}
             </Text>
             <View style={styles.actions}>

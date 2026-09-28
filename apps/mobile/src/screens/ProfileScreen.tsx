@@ -106,6 +106,10 @@ const ProfileScreen = () => {
     navigation.navigate('MyEvents');
   };
 
+  const handleNavigateToFindFriends = () => {
+    navigation.navigate('FindFriends');
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView>
@@ -182,6 +186,13 @@ const ProfileScreen = () => {
             <View style={styles.menuItemLeft}>
               <Ionicons name="calendar-outline" size={24} color="#2563eb" />
               <Text style={styles.menuItemText}>My events</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToFindFriends}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="people-outline" size={24} color="#2563eb" />
+              <Text style={styles.menuItemText}>Find friends</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
           </TouchableOpacity>

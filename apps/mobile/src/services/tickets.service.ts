@@ -54,13 +54,15 @@ export interface HostedEvent {
   capacity?: number;
   confirmed: number;
   checkedIn: number;
+  invited: number;
 }
 
 export const ticketsService = {
-  async rsvp(eventId: string, ticketCount = 1): Promise<Ticket> {
+  async rsvp(eventId: string, ticketCount = 1, inviteCode?: string): Promise<Ticket> {
     const response = await api.post<{ success: boolean; data: Ticket }>('/bookings', {
       eventId,
       ticketCount,
+      inviteCode,
     });
     return response.data.data;
   },
@@ -69,11 +71,12 @@ export const ticketsService = {
     eventId: string,
     ticketCount: number,
     returnUrl: string,
+    inviteCode?: string,
   ): Promise<{ bookingId: string; checkoutUrl: string; provider: string }> {
     const response = await api.post<{
       success: boolean;
       data: { bookingId: string; checkoutUrl: string; provider: string };
-    }>('/bookings/checkout', { eventId, ticketCount, returnUrl });
+    }>('/bookings/checkout', { eventId, ticketCount, returnUrl, inviteCode });
     return response.data.data;
   },
 
