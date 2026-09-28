@@ -21,6 +21,8 @@ import { Event } from '@migo/shared';
 import { useUserStore } from '../store/userStore';
 import { useSavedEventsStore } from '../store/savedEventsStore';
 import { getBookingUrl, supplierLabel } from '../config/affiliates';
+import { ticketsService } from '../services/tickets.service';
+import { navigateToTab } from '../navigation/navigationRef';
 
 const { width } = Dimensions.get('window');
 
@@ -88,6 +90,29 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     Linking.openURL(bookingUrl).catch(() =>
       Alert.alert('Error', 'Unable to open booking page. Please try again.')
     );
+  };
+
+  const handleRsvp = async () => {
+    if (!event) return;
+    try {
+      await ticketsService.rsvp(event.id);
+      await fetchEvent();
+      Alert.alert('You’re in!', 'Your ticket is ready in Wallet.', [
+        { text: 'View Ticket', onPress: () => navigateToTab('Wallet') },
+      ]);
+    } catch (error) {
+      const responseError = error as {
+        response?: { status?: number; data?: { code?: string; error?: { code?: string } } };
+      };
+      const code = responseError.response?.data?.code || responseError.response?.data?.error?.code;
+      if (responseError.response?.status === 409 && code === 'ALREADY_BOOKED') {
+        navigateToTab('Wallet');
+      } else if (responseError.response?.status === 409 && code === 'SOLD_OUT') {
+        Alert.alert('Sold out', 'This event no longer has available tickets.');
+      } else {
+        Alert.alert('Unable to RSVP', 'Please try again.');
+      }
+    }
   };
 
   if (loading) {
@@ -331,10 +356,16 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         </View>
         <TouchableOpacity
           style={styles.bookButton}
-          onPress={handleBookTicket}
+          onPress={event.myBookingId ? () => navigateToTab('Wallet') : event.canRsvp ? handleRsvp : handleBookTicket}
         >
           <Text style={styles.bookButtonText}>
-            {event.externalUrl ? `Book on ${supplierLabel(event)}` : 'Book Now'}
+            {event.myBookingId
+              ? 'View Ticket'
+              : event.canRsvp
+                ? 'Get Free Ticket'
+                : event.externalUrl
+                  ? `Book on ${supplierLabel(event)}`
+                  : 'Book Now'}
           </Text>
         </TouchableOpacity>
       </View>

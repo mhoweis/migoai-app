@@ -73,14 +73,13 @@ export function navigateToMainStack(screenName: string, params?: Record<string, 
  */
 // The mounted navigator in App.tsx names its tab routes HomeTab/EventsTab/
 // ChatTab/ProfileTab, while screens call navigateToTab with short names.
-// Map both, and treat 'Wallet' as the Profile tab (the web-mounted navigator
-// has no Wallet screen).
+// Map short names to the mounted tab route names.
 const TAB_ROUTE_MAP: Record<string, string> = {
   Home: 'HomeTab',
   Events: 'EventsTab',
   Chat: 'ChatTab',
   Profile: 'ProfileTab',
-  Wallet: 'ProfileTab',
+  Wallet: 'Wallet',
 };
 
 export function navigateToTab(
