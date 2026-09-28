@@ -584,11 +584,18 @@ const ChatScreen: React.FC = () => {
               returnKeyType="send"
               textContentType="none"
               blurOnSubmit={false}
-              onSubmitEditing={handleSendMessage}
+              onSubmitEditing={() => void handleSendMessage()}
+              onKeyPress={(e) => {
+                const native = e.nativeEvent as { key: string; shiftKey?: boolean };
+                if (Platform.OS === 'web' && native.key === 'Enter' && !native.shiftKey) {
+                  e.preventDefault();
+                  void handleSendMessage();
+                }
+              }}
             />
             <TouchableOpacity
               style={[styles.sendButton, (!inputText.trim() || isLoading) && styles.sendButtonDisabled]}
-              onPress={handleSendMessage}
+              onPress={() => void handleSendMessage()}
               disabled={!inputText.trim() || isLoading}
             >
               {isLoading ? (
