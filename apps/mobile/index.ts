@@ -18,6 +18,14 @@ if (typeof document !== 'undefined') {
       html, body, #root { height: 100dvh; }
     }
     body { overscroll-behavior: none; }
+    /* Suppress the browser's blue focus ring / tap flash on inputs. */
+    * { -webkit-tap-highlight-color: transparent; }
+    input, textarea, [contenteditable="true"], select {
+      outline: none !important;
+      caret-color: auto;
+    }
+    *:focus { outline: none; }
+    input:focus-visible, textarea:focus-visible { outline: none; }
   `;
   document.head.appendChild(style);
 }
