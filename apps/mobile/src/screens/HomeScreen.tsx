@@ -609,7 +609,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Your Tickets</Text>
-              <TouchableOpacity onPress={() => (navigationRef.current as any)?.navigate('Main', { screen: 'Tabs', params: { screen: 'Wallet' } })}>
+              <TouchableOpacity onPress={() => navigateToTab('Wallet')}>
                 <Text style={styles.seeAll}>View Wallet</Text>
               </TouchableOpacity>
             </View>
@@ -618,7 +618,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
                 <TouchableOpacity
                   key={ticket.id}
                   style={styles.ticketPreviewCard}
-                  onPress={() => (navigationRef.current as any)?.navigate('Main', { screen: 'Tabs', params: { screen: 'Wallet' } })}
+                  onPress={() => navigateToTab('Wallet')}
                 >
                   <View style={[styles.ticketPreviewTop, { backgroundColor: ticket.category === 'Music' ? '#6d28d9' : ticket.category === 'Sports' ? '#065f46' : '#3b82f6' }]}>
                     <Text style={styles.ticketPreviewCategory}>{ticket.category || 'Event'}</Text>

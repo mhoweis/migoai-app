@@ -71,6 +71,18 @@ export function navigateToMainStack(screenName: string, params?: Record<string, 
  * Navigate to a tab, optionally to a nested screen inside that tab's stack.
  * e.g. navigateToTab('Events', 'EventsMain', { venueFilter: 'Dubai Expo' })
  */
+// The mounted navigator in App.tsx names its tab routes HomeTab/EventsTab/
+// ChatTab/ProfileTab, while screens call navigateToTab with short names.
+// Map both, and treat 'Wallet' as the Profile tab (the web-mounted navigator
+// has no Wallet screen).
+const TAB_ROUTE_MAP: Record<string, string> = {
+  Home: 'HomeTab',
+  Events: 'EventsTab',
+  Chat: 'ChatTab',
+  Profile: 'ProfileTab',
+  Wallet: 'ProfileTab',
+};
+
 export function navigateToTab(
   tabName: string,
   nestedScreen?: string,
@@ -82,6 +94,14 @@ export function navigateToTab(
     } else {
       _tabNav.navigate(tabName);
     }
+    return;
+  }
+  // Fallback: the default Expo tab navigator never registers _tabNav (it has
+  // no CustomTabBar). Navigate from the root container instead, using the
+  // mounted route names and passing nested params directly to the tab screen.
+  const route = TAB_ROUTE_MAP[tabName] || tabName;
+  if (navigationRef.current?.navigate) {
+    navigationRef.current.navigate('Main', { screen: route, params: nestedParams });
   } else {
     console.warn('[navigationRef] Tab navigation not ready');
   }
