@@ -1,3 +1,4 @@
+import { colors } from '../theme';
 // src/components/LoadingScreen.tsx
 import React from 'react';
 import {
@@ -16,7 +17,7 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
 }) => {
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="large" color="#3b82f6" />
+      <ActivityIndicator size="large" color={colors.primary} />
       <Text style={styles.message}>{message}</Text>
     </View>
   );
@@ -27,12 +28,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
   },
   message: {
     marginTop: 16,
     fontSize: 16,
-    color: '#6b7280',
+    color: colors.textMuted,
   },
 });
 

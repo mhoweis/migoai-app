@@ -1,3 +1,4 @@
+import { colors } from '../theme';
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -25,16 +26,16 @@ import { socialService } from '../services/social.service';
 import { formatEventDate, useLocale, categoryLabel } from '../i18n';
 
 const categoryColors: Record<string, string> = {
-  Music: '#6d28d9',
-  Sports: '#065f46',
-  Art: '#b45309',
-  Food: '#dc2626',
-  Tech: '#1d4ed8',
-  Business: '#374151',
-  Health: '#0f766e',
-  Theater: '#7c3aed',
-  Comedy: '#d97706',
-  Other: '#3b82f6',
+  Music: colors.primaryDark,
+  Sports: colors.success,
+  Art: colors.warning,
+  Food: colors.danger,
+  Tech: colors.primaryDark,
+  Business: colors.textSecondary,
+  Health: colors.success,
+  Theater: colors.primary,
+  Comedy: colors.warning,
+  Other: colors.primary,
 };
 
 const ticketColor = (category?: string) => categoryColors[category || ''] || categoryColors.Other;
@@ -84,7 +85,7 @@ function TicketCard({
         <Image source={{ uri: ticket.event.coverImage }} style={styles.coverImage} />
       ) : (
         <View style={[styles.coverImage, { backgroundColor: color }]}>
-          <Ionicons name="ticket-outline" size={42} color="#fff" />
+          <Ionicons name="ticket-outline" size={42} color={colors.textInverse} />
         </View>
       )}
       <View style={styles.cardBody}>
@@ -139,13 +140,13 @@ function TicketCard({
         )}
         {ticket.status === 'CONFIRMED' && (
           <TouchableOpacity style={styles.shareTicketButton} onPress={sendToWhatsApp}>
-            <Ionicons name="logo-whatsapp" size={16} color="#16a34a" />
+            <Ionicons name="logo-whatsapp" size={16} color={colors.success} />
             <Text style={styles.shareTicketText}>{t('send_to_whatsapp')}</Text>
           </TouchableOpacity>
         )}
         {ticket.status === 'CONFIRMED' && (
           <TouchableOpacity style={styles.cancelButton} onPress={() => onCancel(ticket)}>
-            <Ionicons name="close-circle-outline" size={16} color="#dc2626" />
+            <Ionicons name="close-circle-outline" size={16} color={colors.danger} />
             <Text style={styles.cancelText}>{t('cancel_ticket')}</Text>
           </TouchableOpacity>
         )}
@@ -288,7 +289,7 @@ export default function WalletScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator size="large" color="#2563eb" style={styles.loader} />
+        <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
       </SafeAreaView>
     );
   }
@@ -297,7 +298,7 @@ export default function WalletScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{t('wallet')}</Text>
-        <Ionicons name="wallet-outline" size={25} color="#2563eb" />
+        <Ionicons name="wallet-outline" size={25} color={colors.primary} />
       </View>
       {offline ? <Text style={styles.offline}>{t('offline_saved_tickets')}</Text> : null}
       <FlatList<Ticket>
@@ -319,7 +320,7 @@ export default function WalletScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadTickets(true)} />}
         ListEmptyComponent={(
           <View style={styles.empty}>
-            <Ionicons name="ticket-outline" size={58} color="#9ca3af" />
+            <Ionicons name="ticket-outline" size={58} color={colors.textMuted} />
             <Text style={styles.emptyTitle}>{t('no_tickets')}</Text>
             <Text style={styles.emptyText}>{t('no_tickets_help')}</Text>
             <TouchableOpacity style={styles.eventsButton} onPress={() => navigateToTab('Events')}>
@@ -352,7 +353,7 @@ export default function WalletScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafb' },
+  container: { flex: 1, backgroundColor: colors.bg },
   loader: { flex: 1 },
   header: {
     flexDirection: 'row',
@@ -360,19 +361,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 18,
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: colors.border,
   },
-  headerTitle: { fontSize: 28, fontWeight: '700', color: '#111827' },
+  headerTitle: { fontSize: 28, fontWeight: '700', color: colors.text },
   list: { padding: 16, gap: 16 },
   emptyList: { flexGrow: 1, padding: 24 },
   card: {
     overflow: 'hidden',
     borderRadius: 16,
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
   },
   coverImage: {
     width: '100%',
@@ -382,34 +383,34 @@ const styles = StyleSheet.create({
   },
   cardBody: { padding: 16 },
   cardHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  category: { color: '#2563eb', fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: '#dcfce7' },
-  usedBadge: { backgroundColor: '#e5e7eb' },
-  statusText: { color: '#166534', fontSize: 12, fontWeight: '700' },
-  title: { marginTop: 8, fontSize: 20, fontWeight: '700', color: '#111827' },
-  meta: { marginTop: 5, color: '#4b5563', fontSize: 14 },
-  quantity: { marginTop: 12, color: '#111827', fontSize: 14, fontWeight: '600' },
-  price: { marginTop: 6, color: '#2563eb', fontSize: 14, fontWeight: '700' },
-  qrSection: { alignItems: 'center', gap: 8, paddingVertical: 18, borderTopWidth: 1, borderTopColor: '#f3f4f6', marginTop: 16 },
-  code: { maxWidth: '100%', color: '#6b7280', fontSize: 11, textAlign: 'center' },
+  category: { color: colors.primary, fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: colors.successSoft },
+  usedBadge: { backgroundColor: colors.border },
+  statusText: { color: colors.success, fontSize: 12, fontWeight: '700' },
+  title: { marginTop: 8, fontSize: 20, fontWeight: '700', color: colors.text },
+  meta: { marginTop: 5, color: colors.textSecondary, fontSize: 14 },
+  quantity: { marginTop: 12, color: colors.text, fontSize: 14, fontWeight: '600' },
+  price: { marginTop: 6, color: colors.primary, fontSize: 14, fontWeight: '700' },
+  qrSection: { alignItems: 'center', gap: 8, paddingVertical: 18, borderTopWidth: 1, borderTopColor: colors.surfaceAlt, marginTop: 16 },
+  code: { maxWidth: '100%', color: colors.textMuted, fontSize: 11, textAlign: 'center' },
   cancelButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: 14 },
-  cancelText: { color: '#dc2626', fontSize: 14, fontWeight: '600' },
+  cancelText: { color: colors.danger, fontSize: 14, fontWeight: '600' },
   shareTicketButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: 14 },
-  shareTicketText: { color: '#16a34a', fontSize: 14, fontWeight: '600' },
+  shareTicketText: { color: colors.success, fontSize: 14, fontWeight: '600' },
   actions: { gap: 10, marginTop: 14 },
-  actionButton: { paddingVertical: 10, borderRadius: 8, backgroundColor: '#eff6ff', alignItems: 'center' },
-  actionText: { color: '#2563eb', fontSize: 14, fontWeight: '700' },
-  pendingText: { color: '#92400e', fontSize: 13, textAlign: 'center' },
+  actionButton: { paddingVertical: 10, borderRadius: 8, backgroundColor: colors.primarySoft, alignItems: 'center' },
+  actionText: { color: colors.primary, fontSize: 14, fontWeight: '700' },
+  pendingText: { color: colors.warning, fontSize: 13, textAlign: 'center' },
   cancelTransferButton: { alignItems: 'center' },
-  offline: { paddingHorizontal: 16, paddingVertical: 8, color: '#92400e', backgroundColor: '#fef3c7', textAlign: 'center' },
+  offline: { paddingHorizontal: 16, paddingVertical: 8, color: colors.warning, backgroundColor: colors.warningSoft, textAlign: 'center' },
   modalBackdrop: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: 'rgba(0,0,0,0.4)' },
-  modalCard: { padding: 20, borderRadius: 16, backgroundColor: '#fff' },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: '#111827' },
-  input: { marginTop: 16, padding: 12, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8 },
+  modalCard: { padding: 20, borderRadius: 16, backgroundColor: colors.textInverse },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: colors.text },
+  input: { marginTop: 16, padding: 12, borderWidth: 1, borderColor: colors.border, borderRadius: 8 },
   modalActions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 18 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 120 },
-  emptyTitle: { marginTop: 16, fontSize: 20, fontWeight: '700', color: '#374151' },
-  emptyText: { marginTop: 6, color: '#6b7280', textAlign: 'center' },
-  eventsButton: { marginTop: 20, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10, backgroundColor: '#2563eb' },
-  eventsButtonText: { color: '#fff', fontWeight: '700' },
+  emptyTitle: { marginTop: 16, fontSize: 20, fontWeight: '700', color: colors.textSecondary },
+  emptyText: { marginTop: 6, color: colors.textMuted, textAlign: 'center' },
+  eventsButton: { marginTop: 20, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10, backgroundColor: colors.primary },
+  eventsButtonText: { color: colors.textInverse, fontWeight: '700' },
 });

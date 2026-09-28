@@ -1,3 +1,4 @@
+import { colors } from '../theme';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -106,7 +107,7 @@ export default function CheckInScreen({ route }: { route?: CheckInRoute }) {
           )}
         </View>
       )}
-      {submitting && <ActivityIndicator color="#2563eb" style={styles.spinner} />}
+      {submitting && <ActivityIndicator color={colors.primary} style={styles.spinner} />}
       {result && <Text style={[styles.result, result.kind === 'admitted' ? styles.success : styles.failure]}>{result.message}</Text>}
       {attendance && (
         <Text style={styles.attendance}>{t('checked_in')}: {attendance.checkedIn} / {attendance.confirmed + attendance.checkedIn}</Text>
@@ -116,15 +117,15 @@ export default function CheckInScreen({ route }: { route?: CheckInRoute }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafb', padding: 20 },
-  heading: { fontSize: 28, fontWeight: '700', color: '#111827', marginBottom: 20 },
+  container: { flex: 1, backgroundColor: colors.bg, padding: 20 },
+  heading: { fontSize: 28, fontWeight: '700', color: colors.text, marginBottom: 20 },
   manual: { gap: 12 },
-  input: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, backgroundColor: '#fff', padding: 14, fontSize: 16 },
-  cameraWrap: { height: 340, overflow: 'hidden', borderRadius: 16, backgroundColor: '#111827', alignItems: 'center', justifyContent: 'center' },
+  input: { borderWidth: 1, borderColor: colors.border, borderRadius: 10, backgroundColor: colors.textInverse, padding: 14, fontSize: 16 },
+  cameraWrap: { height: 340, overflow: 'hidden', borderRadius: 16, backgroundColor: colors.text, alignItems: 'center', justifyContent: 'center' },
   camera: { width: '100%', height: '100%' },
   spinner: { marginTop: 18 },
   result: { marginTop: 24, padding: 20, borderRadius: 12, fontSize: 20, fontWeight: '700', textAlign: 'center' },
-  success: { color: '#166534', backgroundColor: '#dcfce7' },
-  failure: { color: '#991b1b', backgroundColor: '#fee2e2' },
-  attendance: { marginTop: 20, color: '#374151', fontSize: 16, textAlign: 'center' },
+  success: { color: colors.success, backgroundColor: colors.successSoft },
+  failure: { color: colors.danger, backgroundColor: colors.dangerSoft },
+  attendance: { marginTop: 20, color: colors.textSecondary, fontSize: 16, textAlign: 'center' },
 });

@@ -1,3 +1,4 @@
+import { colors } from '../theme';
 // migo-mobile/src/screens/EventsScreen.tsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import DateRangePickerModal from '../components/DateRangePickerModal';
@@ -539,7 +540,7 @@ const EventsScreen = () => {
             />
           ) : (
             <View style={[styles.eventCardImage, styles.placeholderImageList]}>
-              <Ionicons name="image-outline" size={48} color="#d1d5db" />
+              <Ionicons name="image-outline" size={48} color={colors.border} />
             </View>
           )}
           {/* Save & Share overlay */}
@@ -551,14 +552,14 @@ const EventsScreen = () => {
               <Ionicons
                 name={savedIds.has(item.id) ? 'bookmark' : 'bookmark-outline'}
                 size={20}
-                color="#fff"
+                color={colors.textInverse}
               />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.imageActionBtn}
               onPress={() => handleShare(item)}
             >
-              <Ionicons name="share-social-outline" size={20} color="#fff" />
+              <Ionicons name="share-social-outline" size={20} color={colors.textInverse} />
             </TouchableOpacity>
           </View>
         </View>
@@ -566,12 +567,12 @@ const EventsScreen = () => {
         <View style={styles.eventCardContent}>
           <View style={styles.eventHeader}>
             <View style={styles.categoryBadge}>
-              <Ionicons name={getCategoryIcon(item.category || '')} size={14} color="#3b82f6" />
+              <Ionicons name={getCategoryIcon(item.category || '')} size={14} color={colors.primary} />
               <Text style={styles.categoryText}>{categoryLabel(item.category)}</Text>
             </View>
             {sourceBadge((item as any).trust, 'en')?.kind && ['official', 'venue'].includes(sourceBadge((item as any).trust, 'en')?.kind || '') && (
               <View style={styles.trustPill}>
-                <Ionicons name="shield-checkmark" size={12} color="#166534" />
+                <Ionicons name="shield-checkmark" size={12} color={colors.success} />
                 <Text style={styles.trustPillText}>{t('official')}</Text>
               </View>
             )}
@@ -589,19 +590,19 @@ const EventsScreen = () => {
 
           <View style={styles.eventDetails}>
             <View style={styles.detailItem}>
-              <Ionicons name="calendar-outline" size={16} color="#6b7280" />
+              <Ionicons name="calendar-outline" size={16} color={colors.textMuted} />
               <Text style={styles.detailText}>
                 {formatEventDate(item.startDate, { withTime: true })}
               </Text>
             </View>
 
             <View style={styles.detailItem}>
-              <Ionicons name="location-outline" size={16} color="#6b7280" />
+              <Ionicons name="location-outline" size={16} color={colors.textMuted} />
               <Text style={styles.detailText}>{item.city || item.venueName || t('location_tba')}</Text>
             </View>
 
             <View style={styles.detailItem}>
-              <Ionicons name="people-outline" size={16} color="#6b7280" />
+              <Ionicons name="people-outline" size={16} color={colors.textMuted} />
               <Text style={styles.detailText}>{item.capacity ? `${item.capacity} ${t('capacity')}` : t('venue')}</Text>
             </View>
           </View>
@@ -755,7 +756,7 @@ const EventsScreen = () => {
               <Ionicons
                 name={getCategoryIcon(item)}
                 size={14}
-                color={isSelected ? '#fff' : isDisabled ? '#d1d5db' : '#3b82f6'}
+                color={isSelected ? colors.textInverse : isDisabled ? colors.border : colors.primary}
               />
               <Text
                 style={[
@@ -803,7 +804,7 @@ const EventsScreen = () => {
                 <Ionicons
                   name={item.key === 'custom' ? 'options-outline' : 'calendar-outline'}
                   size={13}
-                  color={active ? '#fff' : '#6b7280'}
+                  color={active ? colors.textInverse : colors.textMuted}
                 />
                 <Text style={[styles.dateChipText, active && styles.dateChipTextActive]}>
                   {item.label}
@@ -814,7 +815,7 @@ const EventsScreen = () => {
         />
         {(dateFrom || dateTo) && (
           <TouchableOpacity style={styles.dateChipClear} onPress={() => applyDatePreset('clear')}>
-            <Ionicons name="close-circle" size={15} color="#ef4444" />
+            <Ionicons name="close-circle" size={15} color={colors.danger} />
             <Text style={styles.dateChipClearText}>{t('clear')}</Text>
           </TouchableOpacity>
         )}
@@ -864,7 +865,7 @@ const EventsScreen = () => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3b82f6" />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>{t('loading')}</Text>
         </View>
       </SafeAreaView>
@@ -892,7 +893,7 @@ const EventsScreen = () => {
                 : "options-outline"
             }
             size={24}
-            color="#3b82f6"
+            color={colors.primary}
           />
         </TouchableOpacity>
       </View>
@@ -900,12 +901,12 @@ const EventsScreen = () => {
       {/* Venue filter banner — shown when navigated from Top Venues */}
       {!!venueFilter && (
         <View style={styles.venueBanner}>
-          <Ionicons name="location" size={16} color="#1d4ed8" />
+          <Ionicons name="location" size={16} color={colors.primaryDark} />
           <Text style={styles.venueBannerText} numberOfLines={1}>
             {t('showing_events_at', { venue: venueFilter })}
           </Text>
           <TouchableOpacity onPress={() => setVenueFilter('')}>
-            <Ionicons name="close-circle" size={18} color="#1d4ed8" />
+            <Ionicons name="close-circle" size={18} color={colors.primaryDark} />
           </TouchableOpacity>
         </View>
       )}
@@ -913,19 +914,19 @@ const EventsScreen = () => {
       {/* Date filter banner — shown when a date/range filter is active */}
       {!!(dateFrom || dateTo) && (
         <View style={styles.dateBanner}>
-          <Ionicons name="calendar" size={16} color="#7c3aed" />
+          <Ionicons name="calendar" size={16} color={colors.primary} />
           <Text style={styles.dateBannerText} numberOfLines={1}>
             {t('events_range', { range: getActiveDateLabel() })}
           </Text>
           <TouchableOpacity onPress={() => { setDateFrom(''); setDateTo(''); }}>
-            <Ionicons name="close-circle" size={18} color="#7c3aed" />
+            <Ionicons name="close-circle" size={18} color={colors.primary} />
           </TouchableOpacity>
         </View>
       )}
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#9ca3af" style={styles.searchIcon} />
+        <Ionicons name="search" size={20} color={colors.textMuted} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
           placeholder={t('search_events')}
@@ -939,7 +940,7 @@ const EventsScreen = () => {
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <Ionicons name="close-circle" size={20} color="#9ca3af" />
+            <Ionicons name="close-circle" size={20} color={colors.textMuted} />
           </TouchableOpacity>
         )}
       </View>
@@ -978,12 +979,12 @@ const EventsScreen = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#3b82f6']}
+            colors={[colors.primary]}
           />
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="calendar-outline" size={64} color="#d1d5db" />
+            <Ionicons name="calendar-outline" size={64} color={colors.border} />
             <Text style={styles.emptyTitle}>{t('no_events_found')}</Text>
             <Text style={styles.emptyText}>
               {(dateFrom || dateTo)
@@ -1015,7 +1016,7 @@ const EventsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.bg,
   },
   loadingContainer: {
     flex: 1,
@@ -1025,7 +1026,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#6b7280',
+    color: colors.textMuted,
   },
   venueBanner: {
     flexDirection: 'row',
@@ -1035,15 +1036,15 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primarySoft,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#bfdbfe',
+    borderColor: colors.primarySoft,
   },
   venueBannerText: {
     flex: 1,
     fontSize: 13,
-    color: '#1d4ed8',
+    color: colors.primaryDark,
   },
   venueBannerName: {
     fontWeight: '700',
@@ -1059,31 +1060,31 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: colors.text,
   },
   filterButton: {
     padding: 8,
   },
   filtersSection: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     marginHorizontal: 20,
     marginBottom: 12,
     paddingVertical: 12,
     paddingHorizontal: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     marginHorizontal: 20,
     marginBottom: 16,
     paddingHorizontal: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
   },
   searchIcon: {
     marginRight: 12,
@@ -1106,7 +1107,7 @@ const styles = StyleSheet.create({
   cityFilterLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: colors.textSecondary,
     marginLeft: 6,
   },
   cityChipsContainer: {
@@ -1115,23 +1116,23 @@ const styles = StyleSheet.create({
   cityChip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#e0f2fe',
+    backgroundColor: colors.primarySoft,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#0ea5e9',
+    borderColor: colors.primary,
     marginRight: 8,
   },
   cityChipSelected: {
-    backgroundColor: '#0ea5e9',
-    borderColor: '#0ea5e9',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   cityChipText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#0369a1',
+    color: colors.primaryDark,
   },
   cityChipTextSelected: {
-    color: '#fff',
+    color: colors.textInverse,
   },
   cityChipCount: {
     fontSize: 12,
@@ -1140,11 +1141,11 @@ const styles = StyleSheet.create({
   },
   cityChipDisabled: {
     opacity: 0.4,
-    backgroundColor: '#f3f4f6',
-    borderColor: '#e5e7eb',
+    backgroundColor: colors.surfaceAlt,
+    borderColor: colors.border,
   },
   cityChipTextDisabled: {
-    color: '#9ca3af',
+    color: colors.textMuted,
   },
   venueFilterContainer: {
     paddingHorizontal: 8,
@@ -1157,23 +1158,23 @@ const styles = StyleSheet.create({
   venueChip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#fef3c7',
+    backgroundColor: colors.warningSoft,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#f59e0b',
+    borderColor: colors.warning,
     marginRight: 8,
   },
   venueChipSelected: {
-    backgroundColor: '#f59e0b',
-    borderColor: '#f59e0b',
+    backgroundColor: colors.warning,
+    borderColor: colors.warning,
   },
   venueChipText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#b45309',
+    color: colors.warning,
   },
   venueChipTextSelected: {
-    color: '#fff',
+    color: colors.textInverse,
   },
   venueChipCount: {
     fontSize: 12,
@@ -1182,11 +1183,11 @@ const styles = StyleSheet.create({
   },
   venueChipDisabled: {
     opacity: 0.4,
-    backgroundColor: '#fef9e7',
-    borderColor: '#fde68a',
+    backgroundColor: colors.warningSoft,
+    borderColor: colors.warningSoft,
   },
   venueChipTextDisabled: {
-    color: '#d97706',
+    color: colors.warning,
   },
   categoryFilterList: {
     marginBottom: 4,
@@ -1200,33 +1201,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 9,
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     marginRight: 8,
     height: 36,
     gap: 5,
   },
   categoryChipSelected: {
-    backgroundColor: '#3b82f6',
-    borderColor: '#3b82f6',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   categoryChipText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#374151',
+    color: colors.textSecondary,
   },
   categoryChipTextSelected: {
-    color: '#fff',
+    color: colors.textInverse,
   },
   categoryChipDisabled: {
     opacity: 0.4,
-    backgroundColor: '#f9fafb',
-    borderColor: '#e5e7eb',
+    backgroundColor: colors.bg,
+    borderColor: colors.border,
   },
   categoryChipTextDisabled: {
-    color: '#9ca3af',
+    color: colors.textMuted,
   },
   categoryChipCount: {
     fontSize: 11,
@@ -1241,39 +1242,39 @@ const styles = StyleSheet.create({
   },
   sortLabel: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.textMuted,
     marginRight: 12,
   },
   sortButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     marginRight: 8,
   },
   sortButtonActive: {
-    backgroundColor: '#3b82f6',
-    borderColor: '#3b82f6',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   sortButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: colors.textSecondary,
   },
   sortButtonTextActive: {
-    color: '#fff',
+    color: colors.textInverse,
   },
   eventsList: {
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
   eventCard: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     borderRadius: 12,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: colors.text,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -1300,7 +1301,7 @@ const styles = StyleSheet.create({
     padding: 7,
   },
   placeholderImageList: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceAlt,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1315,7 +1316,7 @@ const styles = StyleSheet.create({
   categoryBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#e0f2fe',
+    backgroundColor: colors.primarySoft,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
@@ -1325,10 +1326,10 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#0369a1',
+    color: colors.primaryDark,
   },
   onlineBadge: {
-    backgroundColor: '#dcfce7',
+    backgroundColor: colors.successSoft,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -1336,19 +1337,19 @@ const styles = StyleSheet.create({
   onlineText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#166534',
+    color: colors.success,
   },
-  trustPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#dcfce7', paddingHorizontal: 7, paddingVertical: 4, borderRadius: 10 },
-  trustPillText: { color: '#166534', fontSize: 11, fontWeight: '700' },
+  trustPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.successSoft, paddingHorizontal: 7, paddingVertical: 4, borderRadius: 10 },
+  trustPillText: { color: colors.success, fontSize: 11, fontWeight: '700' },
   eventTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: colors.text,
     marginBottom: 8,
   },
   eventDescription: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.textMuted,
     marginBottom: 16,
     lineHeight: 20,
   },
@@ -1362,7 +1363,7 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.textMuted,
     marginLeft: 8,
   },
   eventFooter: {
@@ -1376,22 +1377,22 @@ const styles = StyleSheet.create({
   },
   priceStartingList: {
     fontSize: 11,
-    color: '#6b7280',
+    color: colors.textMuted,
     fontWeight: '400',
   },
   eventPrice: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#3b82f6',
+    color: colors.primary,
   },
   rsvpButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
   },
   rsvpButtonText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -1403,12 +1404,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#374151',
+    color: colors.textSecondary,
     marginTop: 16,
   },
   emptyText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.textMuted,
     marginTop: 8,
     textAlign: 'center',
   },
@@ -1421,15 +1422,15 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    backgroundColor: '#f5f3ff',
+    backgroundColor: colors.primarySoft,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#ddd6fe',
+    borderColor: colors.primarySoft,
   },
   dateBannerText: {
     flex: 1,
     fontSize: 13,
-    color: '#7c3aed',
+    color: colors.primary,
   },
   dateBannerRange: {
     fontWeight: '700',
@@ -1451,22 +1452,22 @@ const styles = StyleSheet.create({
     gap: 5,
     paddingHorizontal: 12,
     paddingVertical: 7,
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: colors.border,
   },
   dateChipActive: {
-    backgroundColor: '#7c3aed',
-    borderColor: '#7c3aed',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   dateChipText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#374151',
+    color: colors.textSecondary,
   },
   dateChipTextActive: {
-    color: '#fff',
+    color: colors.textInverse,
   },
   dateChipClear: {
     flexDirection: 'row',
@@ -1478,7 +1479,7 @@ const styles = StyleSheet.create({
   dateChipClearText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#ef4444',
+    color: colors.danger,
   },
 });
 

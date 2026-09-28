@@ -1,3 +1,4 @@
+import { colors } from '../theme';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -39,7 +40,7 @@ export default function ClaimTicketScreen({ route }: Props) {
     }
   };
 
-  if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#2563eb" /></View>;
+  if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /></View>;
   if (!preview) return <View style={styles.center}><Text>{t('transfer_unavailable')}</Text></View>;
 
   return (
@@ -57,21 +58,21 @@ export default function ClaimTicketScreen({ route }: Props) {
         disabled={!preview.canAccept || accepting}
         onPress={accept}
       >
-        {accepting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>{t('accept_ticket')}</Text>}
+        {accepting ? <ActivityIndicator color={colors.textInverse} /> : <Text style={styles.buttonText}>{t('accept_ticket')}</Text>}
       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, backgroundColor: '#f9fafb' },
+  container: { flex: 1, padding: 24, backgroundColor: colors.bg },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  title: { fontSize: 28, fontWeight: '700', color: '#111827' },
-  subtitle: { marginTop: 8, color: '#4b5563' },
-  card: { marginTop: 24, padding: 20, borderRadius: 16, backgroundColor: '#fff', borderWidth: 1, borderColor: '#e5e7eb' },
-  eventTitle: { fontSize: 20, fontWeight: '700', color: '#111827' },
-  meta: { marginTop: 10, color: '#4b5563' },
-  button: { marginTop: 24, padding: 15, borderRadius: 10, backgroundColor: '#2563eb', alignItems: 'center' },
+  title: { fontSize: 28, fontWeight: '700', color: colors.text },
+  subtitle: { marginTop: 8, color: colors.textSecondary },
+  card: { marginTop: 24, padding: 20, borderRadius: 16, backgroundColor: colors.textInverse, borderWidth: 1, borderColor: colors.border },
+  eventTitle: { fontSize: 20, fontWeight: '700', color: colors.text },
+  meta: { marginTop: 10, color: colors.textSecondary },
+  button: { marginTop: 24, padding: 15, borderRadius: 10, backgroundColor: colors.primary, alignItems: 'center' },
   disabled: { opacity: 0.5 },
-  buttonText: { color: '#fff', fontWeight: '700' },
+  buttonText: { color: colors.textInverse, fontWeight: '700' },
 });

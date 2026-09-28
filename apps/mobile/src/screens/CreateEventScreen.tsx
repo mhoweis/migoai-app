@@ -1,3 +1,4 @@
+import { colors } from '../theme';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -140,20 +141,20 @@ export default function CreateEventScreen({ navigation }: { navigation: Navigati
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafb' },
+  container: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 20, gap: 12 },
-  heading: { fontSize: 28, fontWeight: '700', color: '#111827', marginBottom: 6 },
-  label: { color: '#374151', fontSize: 14, fontWeight: '700', marginTop: 4 },
-  input: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, backgroundColor: '#fff', paddingHorizontal: 14, paddingVertical: 12, fontSize: 15 },
+  heading: { fontSize: 28, fontWeight: '700', color: colors.text, marginBottom: 6 },
+  label: { color: colors.textSecondary, fontSize: 14, fontWeight: '700', marginTop: 4 },
+  input: { borderWidth: 1, borderColor: colors.border, borderRadius: 10, backgroundColor: colors.textInverse, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15 },
   multiline: { minHeight: 90, textAlignVertical: 'top' },
   row: { flexDirection: 'row', gap: 10 },
   half: { flex: 1 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: '#e5e7eb' },
-  selectedChip: { backgroundColor: '#2563eb' },
-  chipText: { color: '#374151', fontSize: 13 },
-  selectedChipText: { color: '#fff', fontWeight: '700' },
+  chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: colors.border },
+  selectedChip: { backgroundColor: colors.primary },
+  chipText: { color: colors.textSecondary, fontSize: 13 },
+  selectedChipText: { color: colors.textInverse, fontWeight: '700' },
   toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  submit: { marginTop: 10, paddingVertical: 15, borderRadius: 10, backgroundColor: '#2563eb', alignItems: 'center' },
-  submitText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  submit: { marginTop: 10, paddingVertical: 15, borderRadius: 10, backgroundColor: colors.primary, alignItems: 'center' },
+  submitText: { color: colors.textInverse, fontWeight: '700', fontSize: 16 },
 });

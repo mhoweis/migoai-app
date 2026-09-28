@@ -1,3 +1,4 @@
+import { colors } from '../theme';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -59,7 +60,7 @@ export default function WeekendDigestScreen({ navigation }: { navigation: any })
     }
   };
 
-  if (loading) return <SafeAreaView style={styles.container}><ActivityIndicator size="large" color="#2563eb" /></SafeAreaView>;
+  if (loading) return <SafeAreaView style={styles.container}><ActivityIndicator size="large" color={colors.primary} /></SafeAreaView>;
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -69,7 +70,7 @@ export default function WeekendDigestScreen({ navigation }: { navigation: any })
             <Text style={styles.heading}>{section.heading}</Text>
             {section.events.map(event => (
               <TouchableOpacity key={event.id} style={styles.card} onPress={() => navigation.navigate('EventDetail', { eventId: event.id })}>
-                {event.coverImage ? <Image source={{ uri: event.coverImage }} style={styles.image} /> : <View style={[styles.image, styles.placeholder]}><Ionicons name="calendar-outline" size={28} color="#9ca3af" /></View>}
+                {event.coverImage ? <Image source={{ uri: event.coverImage }} style={styles.image} /> : <View style={[styles.image, styles.placeholder]}><Ionicons name="calendar-outline" size={28} color={colors.textMuted} /></View>}
                 <View style={styles.cardCopy}>
                   <Text style={styles.eventTitle} numberOfLines={2}>{event.title}</Text>
                   <Text style={styles.meta}>{new Date(event.startDate).toLocaleString()} · {event.venueName || event.city || ''}</Text>
@@ -81,7 +82,7 @@ export default function WeekendDigestScreen({ navigation }: { navigation: any })
         ))}
         {!digest?.sections.length && <Text style={styles.empty}>{t('no_events_help')}</Text>}
         <TouchableOpacity style={styles.shareButton} onPress={() => { void share(); }}>
-          <Ionicons name="logo-whatsapp" size={20} color="#fff" />
+          <Ionicons name="logo-whatsapp" size={20} color={colors.textInverse} />
           <Text style={styles.shareText}>{t('share_this_weekend')}</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -90,19 +91,19 @@ export default function WeekendDigestScreen({ navigation }: { navigation: any })
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafb' },
+  container: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 20, gap: 18 },
-  title: { fontSize: 28, fontWeight: '800', color: '#111827' },
+  title: { fontSize: 28, fontWeight: '800', color: colors.text },
   section: { gap: 10 },
-  heading: { fontSize: 20, fontWeight: '700', color: '#1f2937' },
-  card: { backgroundColor: '#fff', borderRadius: 14, padding: 10, flexDirection: 'row', gap: 12, borderWidth: 1, borderColor: '#e5e7eb' },
+  heading: { fontSize: 20, fontWeight: '700', color: colors.text },
+  card: { backgroundColor: colors.textInverse, borderRadius: 14, padding: 10, flexDirection: 'row', gap: 12, borderWidth: 1, borderColor: colors.border },
   image: { width: 88, height: 88, borderRadius: 10 },
-  placeholder: { backgroundColor: '#e5e7eb', justifyContent: 'center', alignItems: 'center' },
+  placeholder: { backgroundColor: colors.border, justifyContent: 'center', alignItems: 'center' },
   cardCopy: { flex: 1, gap: 5 },
-  eventTitle: { fontSize: 16, fontWeight: '700', color: '#111827' },
-  meta: { color: '#6b7280', fontSize: 12 },
-  source: { color: '#2563eb', fontSize: 12, fontWeight: '600' },
-  empty: { color: '#6b7280', textAlign: 'center' },
-  shareButton: { backgroundColor: '#16a34a', borderRadius: 12, padding: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 },
-  shareText: { color: '#fff', fontWeight: '700' },
+  eventTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
+  meta: { color: colors.textMuted, fontSize: 12 },
+  source: { color: colors.primary, fontSize: 12, fontWeight: '600' },
+  empty: { color: colors.textMuted, textAlign: 'center' },
+  shareButton: { backgroundColor: colors.success, borderRadius: 12, padding: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 },
+  shareText: { color: colors.textInverse, fontWeight: '700' },
 });

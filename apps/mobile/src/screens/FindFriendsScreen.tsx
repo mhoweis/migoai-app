@@ -1,3 +1,4 @@
+import { colors } from '../theme';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -65,11 +66,11 @@ export default function FindFriendsScreen() {
         value={query}
         onChangeText={setQuery}
         placeholder={t('search_people')}
-        placeholderTextColor="#9ca3af"
+        placeholderTextColor={colors.textMuted}
         style={styles.search}
         autoCapitalize="none"
       />
-      {loading ? <ActivityIndicator color="#2563eb" style={styles.loader} /> : null}
+      {loading ? <ActivityIndicator color={colors.primary} style={styles.loader} /> : null}
       <FlatList
         data={people}
         keyExtractor={(person: SocialUser) => person.id}
@@ -90,19 +91,19 @@ export default function FindFriendsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafb' },
-  search: { margin: 16, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 10, backgroundColor: '#fff', borderWidth: 1, borderColor: '#d1d5db', color: '#111827' },
+  container: { flex: 1, backgroundColor: colors.bg },
+  search: { margin: 16, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 10, backgroundColor: colors.textInverse, borderWidth: 1, borderColor: colors.border, color: colors.text },
   loader: { marginBottom: 8 },
   list: { paddingHorizontal: 16 },
   emptyList: { flexGrow: 1, padding: 24 },
-  empty: { textAlign: 'center', color: '#6b7280', marginTop: 24 },
+  empty: { textAlign: 'center', color: colors.textMuted, marginTop: 24 },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 10 },
   avatar: { width: 42, height: 42, borderRadius: 21 },
-  avatarFallback: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#dbeafe', alignItems: 'center', justifyContent: 'center' },
-  initial: { color: '#1d4ed8', fontWeight: '700' },
-  name: { flex: 1, color: '#111827', fontWeight: '600' },
-  button: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: '#2563eb' },
-  following: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#93c5fd' },
-  buttonText: { color: '#fff', fontWeight: '700' },
-  followingText: { color: '#2563eb' },
+  avatarFallback: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  initial: { color: colors.primaryDark, fontWeight: '700' },
+  name: { flex: 1, color: colors.text, fontWeight: '600' },
+  button: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: colors.primary },
+  following: { backgroundColor: colors.textInverse, borderWidth: 1, borderColor: colors.primarySoft },
+  buttonText: { color: colors.textInverse, fontWeight: '700' },
+  followingText: { color: colors.primary },
 });

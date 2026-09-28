@@ -1,3 +1,4 @@
+import { colors } from '../theme';
 // src/navigation/MainTabNavigator.tsx - CUSTOM TAB BAR SOLUTION
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -228,7 +229,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
         };
 
         // Get icon based on route name
-        const iconColor = isFocused ? '#3b82f6' : '#6b7280';
+        const iconColor = isFocused ? colors.primary : colors.textMuted;
         let iconSource: any = null;
         let walletIcon = false;
         // Tabs without a bundled PNG fall back to an Ionicon.
@@ -340,9 +341,9 @@ function MainTabNavigator({ navigation }: { navigation: any }) {
 const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.textInversefff,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: colors.border,
     paddingBottom: 8,
     paddingTop: 8,
   },

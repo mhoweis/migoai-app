@@ -1,3 +1,4 @@
+import { colors } from '../theme';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -42,7 +43,7 @@ export default function VerifyOrganizersScreen() {
   };
 
   if (loading) {
-    return <SafeAreaView style={styles.container}><ActivityIndicator size="large" color="#2563eb" /></SafeAreaView>;
+    return <SafeAreaView style={styles.container}><ActivityIndicator size="large" color={colors.primary} /></SafeAreaView>;
   }
   return (
     <SafeAreaView style={styles.container}>
@@ -66,11 +67,11 @@ export default function VerifyOrganizersScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafb' },
+  container: { flex: 1, backgroundColor: colors.bg },
   list: { padding: 20, gap: 12 },
-  card: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', padding: 16, flexDirection: 'row', alignItems: 'center' },
+  card: { backgroundColor: colors.textInverse, borderRadius: 12, borderWidth: 1, borderColor: colors.border, padding: 16, flexDirection: 'row', alignItems: 'center' },
   copy: { flex: 1 },
-  name: { fontSize: 16, fontWeight: '700', color: '#111827' },
-  meta: { marginTop: 5, color: '#6b7280' },
-  empty: { textAlign: 'center', color: '#6b7280', marginTop: 24 },
+  name: { fontSize: 16, fontWeight: '700', color: colors.text },
+  meta: { marginTop: 5, color: colors.textMuted },
+  empty: { textAlign: 'center', color: colors.textMuted, marginTop: 24 },
 });

@@ -1,3 +1,4 @@
+import { colors } from '../theme';
 // src/screens/EventDetailScreen.tsx
 import React, { useState, useEffect } from 'react';
 import {
@@ -190,7 +191,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3b82f6" />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>{t('loading')}</Text>
         </View>
       </SafeAreaView>
@@ -201,7 +202,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Ionicons name="alert-circle-outline" size={64} color="#ef4444" />
+          <Ionicons name="alert-circle-outline" size={64} color={colors.danger} />
           <Text style={styles.errorText}>{error || t('no_events_found')}</Text>
           <TouchableOpacity
             style={styles.retryButton}
@@ -223,7 +224,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <Image source={{ uri: event.coverImage }} style={styles.eventImage} />
           ) : (
             <View style={[styles.eventImage, styles.placeholderImage]}>
-              <Ionicons name="image-outline" size={64} color="#d1d5db" />
+              <Ionicons name="image-outline" size={64} color={colors.border} />
             </View>
           )}
           <View style={styles.imageOverlay}>
@@ -235,14 +236,14 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 <Ionicons
                   name={event && savedIds.has(event.id) ? 'bookmark' : 'bookmark-outline'}
                   size={24}
-                  color="#fff"
+                  color={colors.textInverse}
                 />
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={handleShare}
               >
-                <Ionicons name="share-outline" size={24} color="#fff" />
+                <Ionicons name="share-outline" size={24} color={colors.textInverse} />
               </TouchableOpacity>
             </View>
           </View>
@@ -273,9 +274,9 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <View style={styles.trustOrganizer}>
                 {(event as any).trust.organizer.avatar ? (
                   <Image source={{ uri: (event as any).trust.organizer.avatar }} style={styles.organizerAvatar} />
-                ) : <Ionicons name="person-circle-outline" size={32} color="#9ca3af" />}
+                ) : <Ionicons name="person-circle-outline" size={32} color={colors.textMuted} />}
                 <Text style={styles.organizerName}>{(event as any).trust.organizer.name}</Text>
-                {(event as any).trust.organizer.isVerified && <Ionicons name="checkmark-circle" size={18} color="#2563eb" />}
+                {(event as any).trust.organizer.isVerified && <Ionicons name="checkmark-circle" size={18} color={colors.primary} />}
                 <Text style={styles.hostedCount}>{(event as any).trust.organizer.eventsHosted} {t('events_hosted')}</Text>
               </View>
             )}
@@ -288,7 +289,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   />
                 ) : (
                   <View style={styles.organizerAvatar}>
-                    <Ionicons name="person-circle-outline" size={32} color="#9ca3af" />
+                    <Ionicons name="person-circle-outline" size={32} color={colors.textMuted} />
                   </View>
                 )}
                 <Text style={styles.organizerName}>
@@ -307,7 +308,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
             <View style={styles.detailsGrid}>
               <View style={styles.detailItem}>
-                <Ionicons name="calendar-outline" size={20} color="#3b82f6" />
+                <Ionicons name="calendar-outline" size={20} color={colors.primary} />
                 <View style={styles.detailText}>
                     <Text style={styles.detailLabel}>{t('events')}</Text>
                   <Text style={styles.detailValue}>
@@ -322,7 +323,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </View>
 
               <View style={styles.detailItem}>
-                <Ionicons name="location-outline" size={20} color="#3b82f6" />
+                <Ionicons name="location-outline" size={20} color={colors.primary} />
                 <View style={styles.detailText}>
                     <Text style={styles.detailLabel}>{t('venue')}</Text>
                   <Text style={styles.detailValue}>
@@ -338,7 +339,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
               {event.capacity && (
                 <View style={styles.detailItem}>
-                  <Ionicons name="people-outline" size={20} color="#3b82f6" />
+                  <Ionicons name="people-outline" size={20} color={colors.primary} />
                   <View style={styles.detailText}>
                     <Text style={styles.detailLabel}>{t('capacity')}</Text>
                     <Text style={styles.detailValue}>
@@ -349,7 +350,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               )}
 
               <View style={styles.detailItem}>
-                <Ionicons name="cash-outline" size={20} color="#3b82f6" />
+                <Ionicons name="cash-outline" size={20} color={colors.primary} />
                 <View style={styles.detailText}>
                     <Text style={styles.detailLabel}>{t('sort_price')}</Text>
                   <Text style={[styles.detailValue, styles.price]}>
@@ -406,7 +407,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     )
                   }
                 >
-                  <Ionicons name="map-outline" size={32} color="#3b82f6" />
+                  <Ionicons name="map-outline" size={32} color={colors.primary} />
                   <Text style={styles.mapFallbackTitle}>{event.venueName || event.address}</Text>
                   {event.city && (
                     <Text style={styles.mapFallbackSubtitle}>
@@ -435,11 +436,11 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 Alert.alert(t('error'), t('please_try_again'))
               )}
             >
-              <Ionicons name="link-outline" size={20} color="#3b82f6" />
+              <Ionicons name="link-outline" size={20} color={colors.primary} />
               <Text style={styles.externalLinkText}>
                 {t('book_on', { supplier: supplierLabel(event) })}
               </Text>
-              <Ionicons name="chevron-forward" size={20} color="#3b82f6" />
+              <Ionicons name="chevron-forward" size={20} color={colors.primary} />
             </TouchableOpacity>
           )}
         </View>
@@ -493,11 +494,11 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           <View style={styles.checkoutSheet}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>{t('share')}</Text>
-              <TouchableOpacity onPress={() => setShareOpen(false)}><Ionicons name="close" size={24} color="#6b7280" /></TouchableOpacity>
+              <TouchableOpacity onPress={() => setShareOpen(false)}><Ionicons name="close" size={24} color={colors.textMuted} /></TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.shareAction} onPress={shareWhatsApp}><Ionicons name="logo-whatsapp" size={22} color="#16a34a" /><Text style={styles.shareActionText}>{t('share_on_whatsapp')}</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.shareAction} onPress={copyShareLink}><Ionicons name="copy-outline" size={22} color="#2563eb" /><Text style={styles.shareActionText}>{t('copy_link')}</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.shareAction} onPress={shareMore}><Ionicons name="share-social-outline" size={22} color="#6b7280" /><Text style={styles.shareActionText}>{t('more')}</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.shareAction} onPress={shareWhatsApp}><Ionicons name="logo-whatsapp" size={22} color={colors.success} /><Text style={styles.shareActionText}>{t('share_on_whatsapp')}</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.shareAction} onPress={copyShareLink}><Ionicons name="copy-outline" size={22} color={colors.primary} /><Text style={styles.shareActionText}>{t('copy_link')}</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.shareAction} onPress={shareMore}><Ionicons name="share-social-outline" size={22} color={colors.textMuted} /><Text style={styles.shareActionText}>{t('more')}</Text></TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -512,7 +513,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>{t('buy_tickets')}</Text>
               <TouchableOpacity onPress={() => setCheckoutOpen(false)} disabled={checkoutLoading}>
-                <Ionicons name="close" size={24} color="#6b7280" />
+                <Ionicons name="close" size={24} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
             <Text style={styles.sheetEventTitle}>{event.title}</Text>
@@ -524,7 +525,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   onPress={() => setTicketCount(value => Math.max(1, value - 1))}
                   disabled={checkoutLoading || ticketCount === 1}
                 >
-                  <Ionicons name="remove" size={20} color="#2563eb" />
+                  <Ionicons name="remove" size={20} color={colors.primary} />
                 </TouchableOpacity>
                 <Text style={styles.stepperValue}>{ticketCount}</Text>
                 <TouchableOpacity
@@ -532,7 +533,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   onPress={() => setTicketCount(value => Math.min(4, value + 1))}
                   disabled={checkoutLoading || ticketCount === 4}
                 >
-                  <Ionicons name="add" size={20} color="#2563eb" />
+                  <Ionicons name="add" size={20} color={colors.primary} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -548,7 +549,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               disabled={checkoutLoading}
             >
               {checkoutLoading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={colors.textInverse} />
               ) : (
                 <Text style={styles.payButtonText}>{t('pay')}</Text>
               )}
@@ -563,7 +564,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
   },
   loadingContainer: {
     flex: 1,
@@ -574,23 +575,23 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#6b7280',
+    color: colors.textMuted,
   },
   errorText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#ef4444',
+    color: colors.danger,
     textAlign: 'center',
   },
   retryButton: {
     marginTop: 16,
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
   },
   retryButtonText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -602,7 +603,7 @@ const styles = StyleSheet.create({
     height: 380,
   },
   placeholderImage: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceAlt,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -638,32 +639,32 @@ const styles = StyleSheet.create({
   },
   eventCategory: {
     fontSize: 14,
-    color: '#3b82f6',
+    color: colors.primary,
     fontWeight: '600',
     textTransform: 'uppercase',
   },
   featuredBadge: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
     marginLeft: 8,
   },
   featuredBadgeText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 10,
     fontWeight: 'bold',
   },
   eventTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: colors.text,
     marginBottom: 16,
   },
   sourceChip: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, marginBottom: 12 },
   sourceChipText: { fontSize: 13, fontWeight: '700' },
   trustOrganizer: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
-  hostedCount: { color: '#6b7280', fontSize: 12 },
+  hostedCount: { color: colors.textMuted, fontSize: 12 },
   eventOrganizer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -676,7 +677,7 @@ const styles = StyleSheet.create({
   },
   organizerName: {
     fontSize: 16,
-    color: '#6b7280',
+    color: colors.textMuted,
   },
   detailsSection: {
     marginBottom: 32,
@@ -684,12 +685,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: colors.text,
     marginBottom: 16,
   },
   description: {
     fontSize: 16,
-    color: '#4b5563',
+    color: colors.textSecondary,
     lineHeight: 24,
     marginBottom: 24,
   },
@@ -698,10 +699,10 @@ const styles = StyleSheet.create({
   },
   socialRow: { flexDirection: 'row', alignItems: 'center', marginTop: 18 },
   socialAvatars: { flexDirection: 'row', alignItems: 'center', minWidth: 48 },
-  socialAvatar: { width: 30, height: 30, borderRadius: 15, borderWidth: 2, borderColor: '#fff' },
-  socialAvatarFallback: { backgroundColor: '#dbeafe', alignItems: 'center', justifyContent: 'center' },
-  socialInitial: { color: '#1d4ed8', fontSize: 12, fontWeight: '700' },
-  socialText: { marginLeft: 10, color: '#4b5563', fontSize: 14, fontWeight: '600' },
+  socialAvatar: { width: 30, height: 30, borderRadius: 15, borderWidth: 2, borderColor: colors.textInverse },
+  socialAvatarFallback: { backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  socialInitial: { color: colors.primaryDark, fontSize: 12, fontWeight: '700' },
+  socialText: { marginLeft: 10, color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
   detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -711,22 +712,22 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textMuted,
     textTransform: 'uppercase',
     marginBottom: 2,
   },
   detailValue: {
     fontSize: 16,
-    color: '#1f2937',
+    color: colors.text,
     fontWeight: '500',
   },
   detailValueSecondary: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.textMuted,
     marginTop: 2,
   },
   price: {
-    color: '#3b82f6',
+    color: colors.primary,
     fontWeight: 'bold',
   },
   mapFallback: {
@@ -734,26 +735,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 12,
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primarySoft,
     borderWidth: 1,
-    borderColor: '#bfdbfe',
+    borderColor: colors.primarySoft,
     paddingHorizontal: 16,
   },
   mapFallbackTitle: {
     marginTop: 12,
-    color: '#1f2937',
+    color: colors.text,
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
   },
   mapFallbackSubtitle: {
     marginTop: 4,
-    color: '#6b7280',
+    color: colors.textMuted,
     fontSize: 13,
   },
   mapFallbackLink: {
     marginTop: 12,
-    color: '#2563eb',
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -770,14 +771,14 @@ const styles = StyleSheet.create({
   },
   addressText: {
     fontSize: 16,
-    color: '#4b5563',
+    color: colors.textSecondary,
     lineHeight: 24,
   },
   externalLinkButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#f0f9ff',
+    backgroundColor: colors.primarySoft,
     padding: 16,
     borderRadius: 12,
     marginBottom: 100,
@@ -786,7 +787,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 12,
     fontSize: 16,
-    color: '#3b82f6',
+    color: colors.primary,
     fontWeight: '600',
   },
   tagsSection: {
@@ -798,14 +799,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tag: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceAlt,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
   },
   tagText: {
     fontSize: 14,
-    color: '#4b5563',
+    color: colors.textSecondary,
   },
   similarEventsSection: {
     marginBottom: 100,
@@ -815,10 +816,10 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: colors.border,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -826,21 +827,21 @@ const styles = StyleSheet.create({
   bottomBarPrice: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#3b82f6',
+    color: colors.primary,
   },
-  refundNote: { color: '#6b7280', fontSize: 11, maxWidth: 150, marginBottom: 4 },
+  refundNote: { color: colors.textMuted, fontSize: 11, maxWidth: 150, marginBottom: 4 },
   bottomBarTickets: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textMuted,
   },
   bookButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     paddingHorizontal: 32,
     paddingVertical: 16,
     borderRadius: 12,
   },
   bookButtonText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -853,7 +854,7 @@ const styles = StyleSheet.create({
     padding: 24,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
   },
   sheetHeader: {
     flexDirection: 'row',
@@ -861,13 +862,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   sheetTitle: {
-    color: '#111827',
+    color: colors.text,
     fontSize: 22,
     fontWeight: '700',
   },
   sheetEventTitle: {
     marginTop: 12,
-    color: '#4b5563',
+    color: colors.textSecondary,
     fontSize: 15,
   },
   quantityRow: {
@@ -877,7 +878,7 @@ const styles = StyleSheet.create({
     marginTop: 28,
   },
   quantityLabel: {
-    color: '#374151',
+    color: colors.textSecondary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -892,11 +893,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 18,
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primarySoft,
   },
   stepperValue: {
     minWidth: 18,
-    color: '#111827',
+    color: colors.text,
     fontSize: 18,
     fontWeight: '700',
     textAlign: 'center',
@@ -907,14 +908,14 @@ const styles = StyleSheet.create({
     marginTop: 28,
     paddingTop: 18,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: colors.border,
   },
   totalLabel: {
-    color: '#4b5563',
+    color: colors.textSecondary,
     fontSize: 16,
   },
   totalValue: {
-    color: '#111827',
+    color: colors.text,
     fontSize: 18,
     fontWeight: '700',
   },
@@ -924,15 +925,15 @@ const styles = StyleSheet.create({
     minHeight: 50,
     marginTop: 24,
     borderRadius: 12,
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
   },
   payButtonText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 16,
     fontWeight: '700',
   },
-  shareAction: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
-  shareActionText: { fontSize: 16, color: '#1f2937', fontWeight: '600' },
+  shareAction: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: colors.surfaceAlt },
+  shareActionText: { fontSize: 16, color: colors.text, fontWeight: '600' },
 });
 
 export default EventDetailScreen;

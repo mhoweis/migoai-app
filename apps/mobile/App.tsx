@@ -1,3 +1,4 @@
+import { colors } from './src/theme';
 import React, { useEffect, useState } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { navigationRef } from "./src/navigation/navigationRef";
@@ -48,7 +49,7 @@ const CustomTabIcon = ({ routeName, focused }: { routeName: string, focused: boo
         <Ionicons
           name={focused ? "wallet" : "wallet-outline"}
           size={24}
-          color={focused ? "#3b82f6" : "#9ca3af"}
+          color={focused ? colors.primary : colors.textMuted}
         />
       </View>
     );
@@ -79,7 +80,7 @@ const CustomTabIcon = ({ routeName, focused }: { routeName: string, focused: boo
         source={iconSource} 
         style={[
           styles.tabIcon,
-          { tintColor: focused ? "#3b82f6" : "#9ca3af" }
+          { tintColor: focused ? colors.primary : colors.textMuted }
         ]}
         resizeMode="contain"
       />
@@ -96,12 +97,12 @@ function MainTabs() {
         tabBarIcon: ({ focused, color, size }) => (
           <CustomTabIcon routeName={route.name} focused={focused} />
         ),
-        tabBarActiveTintColor: "#3b82f6",
-        tabBarInactiveTintColor: "#9ca3af",
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: { fontSize: 11 },
         tabBarStyle: {
           borderTopWidth: 1,
-          borderTopColor: "#e5e7eb",
+          borderTopColor: colors.border,
           minHeight: 60,
           maxWidth: '100%',
         },
@@ -195,12 +196,12 @@ function MainTabsWithProfileStack() {
         tabBarIcon: ({ focused, color, size }) => (
           <CustomTabIcon routeName={route.name} focused={focused} />
         ),
-        tabBarActiveTintColor: "#3b82f6",
-        tabBarInactiveTintColor: "#9ca3af",
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: { fontSize: 11 },
         tabBarStyle: {
           borderTopWidth: 1,
-          borderTopColor: "#e5e7eb",
+          borderTopColor: colors.border,
           minHeight: 60,
           maxWidth: '100%',
         },

@@ -1,3 +1,4 @@
+import { colors } from '../theme';
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -54,7 +55,7 @@ export default function MyEventsScreen({ navigation }: { navigation: Navigation 
   };
 
   if (loading) {
-    return <SafeAreaView style={styles.container}><ActivityIndicator size="large" color="#2563eb" style={styles.loader} /></SafeAreaView>;
+    return <SafeAreaView style={styles.container}><ActivityIndicator size="large" color={colors.primary} style={styles.loader} /></SafeAreaView>;
   }
 
   return (
@@ -68,7 +69,7 @@ export default function MyEventsScreen({ navigation }: { navigation: Navigation 
             <View style={styles.headingRow}>
               <Text style={styles.heading}>{t('my_events')}</Text>
               {organizerVerified ? (
-                <Ionicons name="checkmark-circle" size={24} color="#2563eb" />
+                <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
               ) : (
                 <Text style={styles.verificationHint}>{t('verification_hint')}</Text>
               )}
@@ -87,11 +88,11 @@ export default function MyEventsScreen({ navigation }: { navigation: Navigation 
             </Text>
             <View style={styles.actions}>
               <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('CheckIn', { eventId: item.id })}>
-                <Ionicons name="qr-code-outline" size={17} color="#fff" />
+                <Ionicons name="qr-code-outline" size={17} color={colors.textInverse} />
                 <Text style={styles.actionText}>{t('check_in')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.shareButton} onPress={() => shareEvent(item)}>
-                <Ionicons name="share-outline" size={17} color="#2563eb" />
+                <Ionicons name="share-outline" size={17} color={colors.primary} />
                 <Text style={styles.shareText}>{t('share')}</Text>
               </TouchableOpacity>
             </View>
@@ -103,21 +104,21 @@ export default function MyEventsScreen({ navigation }: { navigation: Navigation 
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafb' },
+  container: { flex: 1, backgroundColor: colors.bg },
   loader: { flex: 1 },
   list: { padding: 20, gap: 14 },
   emptyList: { flexGrow: 1, padding: 20 },
-  heading: { fontSize: 28, fontWeight: '700', color: '#111827', marginBottom: 4 },
+  heading: { fontSize: 28, fontWeight: '700', color: colors.text, marginBottom: 4 },
   headingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  verificationHint: { flex: 1, color: '#6b7280', fontSize: 12 },
-  empty: { marginTop: 24, color: '#6b7280', textAlign: 'center' },
-  card: { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: '#e5e7eb', padding: 16 },
-  title: { fontSize: 18, fontWeight: '700', color: '#111827' },
-  date: { marginTop: 7, color: '#4b5563' },
-  attendance: { marginTop: 7, color: '#6b7280' },
+  verificationHint: { flex: 1, color: colors.textMuted, fontSize: 12 },
+  empty: { marginTop: 24, color: colors.textMuted, textAlign: 'center' },
+  card: { backgroundColor: colors.textInverse, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 16 },
+  title: { fontSize: 18, fontWeight: '700', color: colors.text },
+  date: { marginTop: 7, color: colors.textSecondary },
+  attendance: { marginTop: 7, color: colors.textMuted },
   actions: { flexDirection: 'row', gap: 10, marginTop: 15 },
-  actionButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 9, backgroundColor: '#2563eb' },
-  actionText: { color: '#fff', fontWeight: '700' },
-  shareButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 9, borderWidth: 1, borderColor: '#93c5fd' },
-  shareText: { color: '#2563eb', fontWeight: '700' },
+  actionButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 9, backgroundColor: colors.primary },
+  actionText: { color: colors.textInverse, fontWeight: '700' },
+  shareButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 9, borderWidth: 1, borderColor: colors.primarySoft },
+  shareText: { color: colors.primary, fontWeight: '700' },
 });

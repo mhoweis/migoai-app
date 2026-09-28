@@ -1,3 +1,4 @@
+import { colors } from '../theme';
 // src/screens/ProfileScreen.tsx
 import React, { useState } from 'react';
 import {
@@ -141,11 +142,11 @@ const ProfileScreen = () => {
                 <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
               ) : (
                 <View style={styles.avatarPlaceholder}>
-                  <Ionicons name="person" size={44} color="#9ca3af" />
+                  <Ionicons name="person" size={44} color={colors.textMuted} />
                 </View>
               )}
               <View style={styles.cameraOverlay}>
-                <Ionicons name="camera" size={14} color="#fff" />
+                <Ionicons name="camera" size={14} color={colors.textInverse} />
               </View>
             </TouchableOpacity>
 
@@ -153,7 +154,7 @@ const ProfileScreen = () => {
               {/* Tappable name */}
               <TouchableOpacity onPress={openNameModal} style={styles.nameRow}>
                 <Text style={styles.userName}>{user?.name || 'User'}</Text>
-                <Ionicons name="pencil" size={14} color="#9ca3af" style={{ marginLeft: 6 }} />
+                <Ionicons name="pencil" size={14} color={colors.textMuted} style={{ marginLeft: 6 }} />
               </TouchableOpacity>
               <Text style={styles.userEmail}>{user?.email || 'user@example.com'}</Text>
             </View>
@@ -164,26 +165,26 @@ const ProfileScreen = () => {
         <View style={styles.section}>
           <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToWallet}>
             <View style={styles.menuItemLeft}>
-              <Ionicons name="wallet-outline" size={24} color="#3b82f6" />
+              <Ionicons name="wallet-outline" size={24} color={colors.primary} />
               <Text style={styles.menuItemText}>{t('my_wallet')}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToInterests}>
             <View style={styles.menuItemLeft}>
-              <Ionicons name="heart-outline" size={24} color="#4b5563" />
+              <Ionicons name="heart-outline" size={24} color={colors.textSecondary} />
               <Text style={styles.menuItemText}>{t('update_interests')}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToConnectionTest}>
             <View style={styles.menuItemLeft}>
-              <Ionicons name="wifi-outline" size={24} color="#4b5563" />
+              <Ionicons name="wifi-outline" size={24} color={colors.textSecondary} />
               <Text style={styles.menuItemText}>{t('connection_test')}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
 
@@ -191,32 +192,32 @@ const ProfileScreen = () => {
           <Text style={styles.sectionTitle}>{t('host')}</Text>
           <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToCreateEvent}>
             <View style={styles.menuItemLeft}>
-              <Ionicons name="add-circle-outline" size={24} color="#2563eb" />
+              <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
               <Text style={styles.menuItemText}>{t('create_event')}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToMyEvents}>
             <View style={styles.menuItemLeft}>
-              <Ionicons name="calendar-outline" size={24} color="#2563eb" />
+              <Ionicons name="calendar-outline" size={24} color={colors.primary} />
               <Text style={styles.menuItemText}>{t('my_events')}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToFindFriends}>
             <View style={styles.menuItemLeft}>
-              <Ionicons name="people-outline" size={24} color="#2563eb" />
+              <Ionicons name="people-outline" size={24} color={colors.primary} />
               <Text style={styles.menuItemText}>{t('find_friends')}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
           {(user as any)?.role === 'ADMIN' || (user as any)?.isAdmin ? (
             <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToVerifyOrganizers}>
               <View style={styles.menuItemLeft}>
-                <Ionicons name="shield-checkmark-outline" size={24} color="#2563eb" />
+                <Ionicons name="shield-checkmark-outline" size={24} color={colors.primary} />
                 <Text style={styles.menuItemText}>{t('verify_organizers')}</Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
             </TouchableOpacity>
           ) : null}
         </View>
@@ -224,8 +225,8 @@ const ProfileScreen = () => {
         <View style={styles.section}>
           <TouchableOpacity style={styles.menuItem} onPress={logout}>
             <View style={styles.menuItemLeft}>
-              <Ionicons name="log-out-outline" size={24} color="#ef4444" />
-              <Text style={[styles.menuItemText, { color: '#ef4444' }]}>{t('log_out')}</Text>
+              <Ionicons name="log-out-outline" size={24} color={colors.danger} />
+              <Text style={[styles.menuItemText, { color: colors.danger }]}>{t('log_out')}</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -264,7 +265,7 @@ const ProfileScreen = () => {
               value={editName}
               onChangeText={setEditName}
               placeholder={t('enter_name')}
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={colors.textMuted}
               autoFocus
               returnKeyType="done"
               onSubmitEditing={handleSaveName}
@@ -282,7 +283,7 @@ const ProfileScreen = () => {
                 disabled={isSaving}
               >
                 {isSaving ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color={colors.textInverse} />
                 ) : (
                   <Text style={styles.saveBtnText}>{t('save')}</Text>
                 )}
@@ -298,7 +299,7 @@ const ProfileScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.bg,
   },
   header: {
     paddingHorizontal: 20,
@@ -308,15 +309,15 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: colors.text,
   },
   section: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.textInversefff,
     marginHorizontal: 20,
     marginTop: 20,
     borderRadius: 12,
     paddingVertical: 10,
-    shadowColor: '#000',
+    shadowColor: colors.text,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
@@ -325,7 +326,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     paddingHorizontal: 20,
     paddingBottom: 4,
-    color: '#6b7280',
+    color: colors.textMuted,
     fontSize: 12,
     fontWeight: '700',
     textTransform: 'uppercase',
@@ -335,7 +336,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 8,
     borderRadius: 8,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceAlt,
     overflow: 'hidden',
   },
   languageOption: {
@@ -344,14 +345,14 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   languageOptionActive: {
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
   },
   languageOptionText: {
-    color: '#374151',
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   languageOptionTextActive: {
-    color: '#fff',
+    color: colors.textInverse,
   },
   userInfo: {
     flexDirection: 'row',
@@ -372,7 +373,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -383,11 +384,11 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: colors.textInverse,
   },
   userDetails: {
     marginLeft: 16,
@@ -400,11 +401,11 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#1f2937',
+    color: colors.text,
   },
   userEmail: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.textMuted,
     marginTop: 4,
   },
   menuItem: {
@@ -414,7 +415,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: colors.surfaceAlt,
   },
   menuItemLeft: {
     flexDirection: 'row',
@@ -423,7 +424,7 @@ const styles = StyleSheet.create({
   },
   menuItemText: {
     fontSize: 16,
-    color: '#374151',
+    color: colors.textSecondary,
   },
   // Modal
   modalOverlay: {
@@ -435,25 +436,25 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: '100%',
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     borderRadius: 16,
     padding: 24,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1f2937',
+    color: colors.text,
     marginBottom: 16,
   },
   nameInput: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#1f2937',
-    backgroundColor: '#f9fafb',
+    color: colors.text,
+    backgroundColor: colors.bg,
     marginBottom: 20,
   },
   modalButtons: {
@@ -464,25 +465,25 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceAlt,
     alignItems: 'center',
   },
   cancelBtnText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#6b7280',
+    color: colors.textMuted,
   },
   saveBtn: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     alignItems: 'center',
   },
   saveBtnText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#fff',
+    color: colors.textInverse,
   },
 });
 

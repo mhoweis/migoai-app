@@ -1,3 +1,4 @@
+import { colors } from '../theme';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -202,7 +203,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 disabled={loading}
               >
                 {loading ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color={colors.textInverse} />
                 ) : (
                   <Text style={styles.primaryButtonText}>
                     {otpSent ? t('create_account') : t('send_code')}
@@ -263,7 +264,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 disabled={loading}
               >
                 {loading ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color={colors.textInverse} />
                 ) : (
                     <Text style={styles.primaryButtonText}>{t('create_account')}</Text>
                 )}
@@ -289,53 +290,53 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: colors.textInverse },
   keyboardView: { flex: 1 },
   scrollContent: { flexGrow: 1, padding: 24, paddingBottom: 36 },
   header: { marginTop: 24, marginBottom: 28, alignItems: 'center' },
   logo: { width: 64, height: 64, marginBottom: 14 },
-  title: { fontSize: 30, fontWeight: 'bold', color: '#1f2937', marginBottom: 8 },
-  subtitle: { fontSize: 15, color: '#6b7280', textAlign: 'center' },
+  title: { fontSize: 30, fontWeight: 'bold', color: colors.text, marginBottom: 8 },
+  subtitle: { fontSize: 15, color: colors.textMuted, textAlign: 'center' },
   modeSelector: {
     flexDirection: 'row',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceAlt,
     borderRadius: 12,
     padding: 4,
     marginBottom: 20,
   },
   modeButton: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 9 },
-  modeButtonActive: { backgroundColor: '#fff' },
-  modeText: { color: '#6b7280', fontWeight: '600' },
-  modeTextActive: { color: '#2563eb' },
+  modeButtonActive: { backgroundColor: colors.textInverse },
+  modeText: { color: colors.textMuted, fontWeight: '600' },
+  modeTextActive: { color: colors.primary },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.bg,
     borderRadius: 12,
     paddingHorizontal: 16,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
   },
-  input: { flex: 1, height: 56, fontSize: 16, color: '#111827' },
+  input: { flex: 1, height: 56, fontSize: 16, color: colors.text },
   showPassword: { width: 20, height: 20 },
-  hint: { color: '#6b7280', fontSize: 12, marginBottom: 18 },
+  hint: { color: colors.textMuted, fontSize: 12, marginBottom: 18 },
   primaryButton: {
     height: 56,
     borderRadius: 12,
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
   },
-  buttonDisabled: { backgroundColor: '#93c5fd' },
-  primaryButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  resendText: { color: '#2563eb', textAlign: 'center', fontWeight: '600', marginBottom: 18 },
-  errorMessage: { color: '#dc2626', fontSize: 14, textAlign: 'center', marginBottom: 16 },
-  termsText: { color: '#6b7280', fontSize: 12, textAlign: 'center', lineHeight: 18 },
-  link: { color: '#2563eb', fontWeight: '600' },
+  buttonDisabled: { backgroundColor: colors.primarySoft },
+  primaryButtonText: { color: colors.textInverse, fontSize: 16, fontWeight: 'bold' },
+  resendText: { color: colors.primary, textAlign: 'center', fontWeight: '600', marginBottom: 18 },
+  errorMessage: { color: colors.danger, fontSize: 14, textAlign: 'center', marginBottom: 16 },
+  termsText: { color: colors.textMuted, fontSize: 12, textAlign: 'center', lineHeight: 18 },
+  link: { color: colors.primary, fontWeight: '600' },
   loginRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 28 },
-  secondaryText: { color: '#6b7280', fontSize: 14 },
+  secondaryText: { color: colors.textMuted, fontSize: 14 },
 });
 
 export default RegisterScreen;

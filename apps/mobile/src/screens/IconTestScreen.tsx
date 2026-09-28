@@ -1,3 +1,4 @@
+import { colors } from '../theme';
 // Create at: migo-mobile/src/screens/IconTestScreen.tsx
 import React from 'react';
 import { View, Image, Text, StyleSheet, ScrollView } from 'react-native';
@@ -37,7 +38,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     marginBottom: 15,
     padding: 10,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.surfaceAlt,
     borderRadius: 8,
   },
   iconName: { width: 80, fontSize: 16 },

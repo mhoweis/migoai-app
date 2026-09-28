@@ -1,3 +1,4 @@
+import { colors } from '../theme';
 export type TrustSource = {
   label: string;
   labelAr?: string;
@@ -37,12 +38,12 @@ export function sourceBadge(trust?: EventTrust, locale: 'en' | 'ar' = 'en'): {
     ? kindText.organizer
     : `${kindText[kind] || kind} · ${locale === 'ar' ? (trust.source.labelAr || trust.source.label) : trust.source.label}`;
   const colors: Record<string, [string, string]> = {
-    official: ['#166534', '#dcfce7'],
-    venue: ['#166534', '#dcfce7'],
-    ticketing: ['#1d4ed8', '#dbeafe'],
-    community: ['#4b5563', '#f3f4f6'],
-    organizer: ['#2563eb', '#dbeafe'],
-    demo: ['#6b7280', '#f3f4f6'],
+    official: [colors.success, colors.successSoft],
+    venue: [colors.success, colors.successSoft],
+    ticketing: [colors.primaryDark, colors.primarySoft],
+    community: [colors.textSecondary, colors.surfaceAlt],
+    organizer: [colors.primary, colors.primarySoft],
+    demo: [colors.textMuted, colors.surfaceAlt],
   };
   const [color, backgroundColor] = colors[kind] || colors.community;
   return { text, kind, color, backgroundColor };

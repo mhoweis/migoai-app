@@ -1,3 +1,4 @@
+import { colors } from '../theme';
 // src/screens/HomeScreen.tsx
 import React, { useState, useEffect } from 'react';
 import {
@@ -261,7 +262,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         <Image source={{ uri: item.image }} style={styles.venueImage} />
       ) : (
         <View style={[styles.venueImage, styles.venuePlaceholder]}>
-          <Ionicons name="business-outline" size={32} color="#d1d5db" />
+          <Ionicons name="business-outline" size={32} color={colors.border} />
         </View>
       )}
       <View style={styles.venueOverlay}>
@@ -316,7 +317,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           <Image source={{ uri: item.coverImage }} style={styles.topEventImage} />
         ) : (
           <View style={[styles.topEventImage, styles.placeholderImageTop]}>
-            <Ionicons name="image-outline" size={48} color="#d1d5db" />
+            <Ionicons name="image-outline" size={48} color={colors.border} />
           </View>
         )}
         <View style={styles.topEventOverlay}>
@@ -326,7 +327,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
               <Text style={styles.topEventBadgeText}>{t('featured')}</Text>
             </View>
             {sourceBadge((item as any).trust, locale)?.kind && ['official', 'venue'].includes(sourceBadge((item as any).trust, locale)?.kind || '') && (
-              <View style={styles.topTrustPill}><Ionicons name="shield-checkmark" size={11} color="#fff" /><Text style={styles.topTrustPillText}>{t('official')}</Text></View>
+              <View style={styles.topTrustPill}><Ionicons name="shield-checkmark" size={11} color={colors.textInverse} /><Text style={styles.topTrustPillText}>{t('official')}</Text></View>
             )}
             <View style={styles.topEventActions}>
               <TouchableOpacity
@@ -336,14 +337,14 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
                 <Ionicons
                   name={saved ? 'bookmark' : 'bookmark-outline'}
                   size={18}
-                  color={saved ? '#facc15' : '#fff'}
+                  color={saved ? colors.accent : colors.textInverse}
                 />
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.topEventActionBtn}
                 onPress={() => handleShare(item)}
               >
-                <Ionicons name="share-outline" size={18} color="#fff" />
+                <Ionicons name="share-outline" size={18} color={colors.textInverse} />
               </TouchableOpacity>
             </View>
           </View>
@@ -353,13 +354,13 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
               {item.title}
             </Text>
             <View style={styles.topEventMeta}>
-              <Ionicons name="calendar-outline" size={12} color="#fff" />
+              <Ionicons name="calendar-outline" size={12} color={colors.textInverse} />
               <Text style={styles.topEventMetaText}>
                 {formattedDate}
               </Text>
             </View>
             <View style={styles.topEventMeta}>
-              <Ionicons name="location-outline" size={12} color="#fff" />
+              <Ionicons name="location-outline" size={12} color={colors.textInverse} />
               <Text style={styles.topEventMetaText}>
                 {item.city}
               </Text>
@@ -397,14 +398,14 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           <Image source={{ uri: item.coverImage || item.thumbnail }} style={styles.eventImage} />
         ) : (
           <View style={[styles.eventImage, styles.placeholderImageSmall]}>
-            <Ionicons name="image-outline" size={32} color="#d1d5db" />
+            <Ionicons name="image-outline" size={32} color={colors.border} />
           </View>
         )}
         <View style={styles.eventContent}>
           <View style={styles.eventHeader}>
           <Text style={styles.eventCategory}>{categoryLabel(item.category)}</Text>
           {sourceBadge((item as any).trust, locale)?.kind && ['official', 'venue'].includes(sourceBadge((item as any).trust, locale)?.kind || '') && (
-            <View style={styles.trustPill}><Ionicons name="shield-checkmark" size={11} color="#166534" /><Text style={styles.trustPillText}>{t('official')}</Text></View>
+            <View style={styles.trustPill}><Ionicons name="shield-checkmark" size={11} color={colors.success} /><Text style={styles.trustPillText}>{t('official')}</Text></View>
           )}
           </View>
           <Text style={styles.eventTitle} numberOfLines={2}>
@@ -412,11 +413,11 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           </Text>
           <View style={styles.eventMeta}>
             <View style={styles.eventMetaItem}>
-              <Ionicons name="calendar-outline" size={14} color="#6b7280" />
+              <Ionicons name="calendar-outline" size={14} color={colors.textMuted} />
               <Text style={styles.eventMetaText}>{formattedDate}</Text>
             </View>
             <View style={styles.eventMetaItem}>
-              <Ionicons name="location-outline" size={14} color="#6b7280" />
+              <Ionicons name="location-outline" size={14} color={colors.textMuted} />
               <Text style={styles.eventMetaText}>{item.city}</Text>
             </View>
           </View>
@@ -424,7 +425,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             {priceDisplay}
             {!!item.capacity && (
               <View style={styles.eventTickets}>
-                <Ionicons name="people-outline" size={14} color="#10b981" />
+                <Ionicons name="people-outline" size={14} color={colors.success} />
                 <Text style={styles.eventTicketsText}>
                   {item.capacity} {t('capacity')}
                 </Text>
@@ -442,14 +443,14 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             <Ionicons
               name={saved ? 'bookmark' : 'bookmark-outline'}
               size={20}
-              color={saved ? '#3b82f6' : '#9ca3af'}
+              color={saved ? colors.primary : colors.textMuted}
             />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.eventCardActionBtn}
             onPress={() => handleShare(item)}
           >
-            <Ionicons name="share-outline" size={20} color="#9ca3af" />
+            <Ionicons name="share-outline" size={20} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -475,8 +476,8 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           ]}
           onPress={handleResetFilter}
         >
-          <Ionicons name="apps-outline" size={14} color={selectedInterest === null ? '#fff' : '#3b82f6'} />
-          <Text style={[styles.interestPillText, selectedInterest !== null && { color: '#3b82f6' }]}>{t('all')}</Text>
+          <Ionicons name="apps-outline" size={14} color={selectedInterest === null ? colors.textInverse : colors.primary} />
+          <Text style={[styles.interestPillText, selectedInterest !== null && { color: colors.primary }]}>{t('all')}</Text>
         </TouchableOpacity>
 
         {user.interests.map((interest) => (
@@ -491,7 +492,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             <Ionicons
               name={getCategoryIcon(interest)}
               size={14}
-              color="#fff"
+              color={colors.textInverse}
             />
             <Text style={styles.interestPillText}>{interest}</Text>
           </TouchableOpacity>
@@ -502,7 +503,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           style={styles.editInterestsButton}
           onPress={() => navigation.push('Interests')}
         >
-          <Ionicons name="heart-outline" size={16} color="#3b82f6" />
+          <Ionicons name="heart-outline" size={16} color={colors.primary} />
         </TouchableOpacity>
       </ScrollView>
     );
@@ -529,11 +530,11 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             style={styles.locationDisplay}
             onPress={() => setShowLocationModal(true)}
           >
-            <Ionicons name="location" size={20} color="#3b82f6" />
+            <Ionicons name="location" size={20} color={colors.primary} />
             <Text style={styles.locationText}>
               {userLocation || 'Dubai'}
             </Text>
-            <Ionicons name="chevron-down" size={16} color="#0369a1" style={{ marginLeft: 4 }} />
+            <Ionicons name="chevron-down" size={16} color={colors.primaryDark} style={{ marginLeft: 4 }} />
           </TouchableOpacity>
         </View>
 
@@ -550,7 +551,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.weekendTitle}>{t('this_weekend')}</Text>
                 <Text style={styles.weekendSubtitle}>{weekendDigest.title}</Text>
               </View>
-              <Ionicons name="arrow-forward-circle" size={28} color="#2563eb" />
+              <Ionicons name="arrow-forward-circle" size={28} color={colors.primary} />
             </View>
             <Text style={styles.weekendCount}>
               {weekendDigest.sections.reduce((count, section) => count + section.events.length, 0)} {t('events')} · {t('free')}: {weekendDigest.sections.flatMap(section => section.events).filter(event => event.isFree).length}
@@ -559,7 +560,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
               {weekendDigest.sections.flatMap(section => section.events).slice(0, 3).map(event => (
                 event.coverImage
                   ? <Image key={event.id} source={{ uri: event.coverImage }} style={styles.weekendPoster} />
-                  : <View key={event.id} style={[styles.weekendPoster, styles.weekendPosterPlaceholder]}><Ionicons name="calendar-outline" size={20} color="#9ca3af" /></View>
+                  : <View key={event.id} style={[styles.weekendPoster, styles.weekendPosterPlaceholder]}><Ionicons name="calendar-outline" size={20} color={colors.textMuted} /></View>
               ))}
             </View>
           </TouchableOpacity>
@@ -595,7 +596,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             filteredThisWeek.map((event) => renderEventCard(event))
           ) : (
             <View style={styles.emptyState}>
-              <Ionicons name="calendar-outline" size={48} color="#d1d5db" />
+              <Ionicons name="calendar-outline" size={48} color={colors.border} />
               <Text style={styles.emptyStateText}>
                 {t('no_events_help')}
               </Text>
@@ -646,7 +647,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>{t('todays_picks')}</Text>
             <View style={styles.todayBadge}>
-              <Ionicons name="flash" size={12} color="#fff" />
+              <Ionicons name="flash" size={12} color={colors.textInverse} />
               <Text style={styles.todayBadgeText}>{t('live')}</Text>
             </View>
           </View>
@@ -654,7 +655,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             filteredToday.map((event) => renderEventCard(event, true))
           ) : (
             <View style={styles.emptyState}>
-              <Ionicons name="time-outline" size={48} color="#d1d5db" />
+              <Ionicons name="time-outline" size={48} color={colors.border} />
               <Text style={styles.emptyStateText}>
                 {t('no_events_help')}
               </Text>
@@ -681,12 +682,12 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
                   style={styles.ticketPreviewCard}
                   onPress={() => navigateToTab('Wallet')}
                 >
-                  <View style={[styles.ticketPreviewTop, { backgroundColor: ticket.category === 'Music' ? '#6d28d9' : ticket.category === 'Sports' ? '#065f46' : '#3b82f6' }]}>
+                  <View style={[styles.ticketPreviewTop, { backgroundColor: ticket.category === 'Music' ? colors.primaryDark : ticket.category === 'Sports' ? colors.success : colors.primary }]}>
                     <Text style={styles.ticketPreviewCategory}>{categoryLabel(ticket.category)}</Text>
                     <Text style={styles.ticketPreviewTitle} numberOfLines={2}>{ticket.eventTitle}</Text>
                   </View>
                   <View style={styles.ticketPreviewBottom}>
-                    <Ionicons name="calendar-outline" size={12} color="#6b7280" />
+                    <Ionicons name="calendar-outline" size={12} color={colors.textMuted} />
                     <Text style={styles.ticketPreviewDate}>
                       {formatEventDate(ticket.eventDate)}
                     </Text>
@@ -716,13 +717,13 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           onPress={() => navigateToTab('Chat')}
         >
           <View style={styles.aiAssistantIcon}>
-            <Ionicons name="sparkles" size={24} color="#fff" />
+            <Ionicons name="sparkles" size={24} color={colors.textInverse} />
           </View>
           <View style={styles.aiAssistantText}>
             <Text style={styles.aiAssistantTitle}>{t('need_help')}</Text>
             <Text style={styles.aiAssistantSubtitle}>{t('chat_with_ai')}</Text>
           </View>
-          <Ionicons name="chevron-forward" size={24} color="#3b82f6" />
+          <Ionicons name="chevron-forward" size={24} color={colors.primary} />
         </TouchableOpacity>
       </ScrollView>
 
@@ -738,7 +739,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{t('select_location')}</Text>
               <TouchableOpacity onPress={() => setShowLocationModal(false)}>
-                <Ionicons name="close" size={24} color="#6b7280" />
+                <Ionicons name="close" size={24} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -763,7 +764,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
                     <Ionicons
                       name="location"
                       size={24}
-                      color={userLocation === cityObj.name ? '#3b82f6' : '#6b7280'}
+                      color={userLocation === cityObj.name ? colors.primary : colors.textMuted}
                     />
                     <View style={styles.cityTextContainer}>
                       <Text
@@ -780,14 +781,14 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
                     </View>
                   </View>
                   {userLocation === cityObj.name && (
-                    <Ionicons name="checkmark-circle" size={24} color="#3b82f6" />
+                    <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
                   )}
                 </TouchableOpacity>
               ))}
 
               {availableCities.length === 0 && (
                 <View style={styles.noCitiesContainer}>
-                  <Ionicons name="location-outline" size={48} color="#d1d5db" />
+                  <Ionicons name="location-outline" size={48} color={colors.border} />
                   <Text style={styles.noCitiesText}>{t('loading_cities')}</Text>
                 </View>
               )}
@@ -802,7 +803,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
   },
   header: {
     flexDirection: 'row',
@@ -815,27 +816,27 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: colors.text,
   },
   subtitle: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.textMuted,
     marginTop: 4,
   },
   locationDisplay: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#e0f2fe',
+    backgroundColor: colors.primarySoft,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#0ea5e9',
+    borderColor: colors.primary,
   },
   locationText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#0369a1',
+    color: colors.primaryDark,
     marginLeft: 4,
   },
   interestsScroll: {
@@ -849,28 +850,28 @@ const styles = StyleSheet.create({
   interestPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     gap: 6,
   },
   interestPillActive: {
-    backgroundColor: '#1d4ed8',
+    backgroundColor: colors.primaryDark,
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: colors.textInverse,
   },
   interestPillAll: {
-    backgroundColor: '#e0f2fe',
+    backgroundColor: colors.primarySoft,
     borderWidth: 1.5,
-    borderColor: '#3b82f6',
+    borderColor: colors.primary,
   },
   interestPillAllActive: {
-    backgroundColor: '#3b82f6',
-    borderColor: '#3b82f6',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   interestPillText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -878,7 +879,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceAlt,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
@@ -891,17 +892,17 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     padding: 16,
     borderRadius: 16,
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primarySoft,
     borderWidth: 1,
-    borderColor: '#bfdbfe',
+    borderColor: colors.primarySoft,
   },
   weekendCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  weekendTitle: { fontSize: 20, fontWeight: '800', color: '#1e3a8a' },
-  weekendSubtitle: { marginTop: 4, color: '#1d4ed8' },
-  weekendCount: { marginTop: 10, color: '#374151', fontWeight: '600' },
+  weekendTitle: { fontSize: 20, fontWeight: '800', color: colors.primaryDark },
+  weekendSubtitle: { marginTop: 4, color: colors.primaryDark },
+  weekendCount: { marginTop: 10, color: colors.textSecondary, fontWeight: '600' },
   weekendPosters: { flexDirection: 'row', gap: 8, marginTop: 12 },
   weekendPoster: { width: 72, height: 72, borderRadius: 10 },
-  weekendPosterPlaceholder: { backgroundColor: '#dbeafe', justifyContent: 'center', alignItems: 'center' },
+  weekendPosterPlaceholder: { backgroundColor: colors.primarySoft, justifyContent: 'center', alignItems: 'center' },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -912,10 +913,10 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: colors.text,
   },
   seeAll: {
-    color: '#3b82f6',
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -935,7 +936,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   placeholderImageTop: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceAlt,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -953,7 +954,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   topEventBadgeText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 10,
     fontWeight: 'bold',
   },
@@ -978,7 +979,7 @@ const styles = StyleSheet.create({
     marginTop: 'auto',
   },
   topEventTitle: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 8,
@@ -995,12 +996,12 @@ const styles = StyleSheet.create({
   },
   eventCard: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     marginHorizontal: 20,
     marginBottom: 16,
     borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: colors.text,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -1008,14 +1009,14 @@ const styles = StyleSheet.create({
   },
   todayEventCard: {
     borderWidth: 2,
-    borderColor: '#3b82f6',
+    borderColor: colors.primary,
   },
   eventImage: {
     width: 120,
     height: '100%',
   },
   placeholderImageSmall: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceAlt,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1029,20 +1030,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  trustPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#dcfce7', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 10 },
-  trustPillText: { color: '#166534', fontSize: 10, fontWeight: '700' },
+  trustPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.successSoft, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 10 },
+  trustPillText: { color: colors.success, fontSize: 10, fontWeight: '700' },
   topTrustPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(22,101,52,0.85)', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 10 },
-  topTrustPillText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+  topTrustPillText: { color: colors.textInverse, fontSize: 10, fontWeight: '700' },
   eventCategory: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textMuted,
     fontWeight: '600',
     textTransform: 'uppercase',
   },
   eventTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: colors.text,
     marginBottom: 12,
     lineHeight: 22,
   },
@@ -1056,7 +1057,7 @@ const styles = StyleSheet.create({
   },
   eventMetaText: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textMuted,
     marginLeft: 6,
   },
   eventFooter: {
@@ -1070,25 +1071,25 @@ const styles = StyleSheet.create({
   },
   priceStarting: {
     fontSize: 11,
-    color: '#6b7280',
+    color: colors.textMuted,
     fontWeight: '400',
   },
   eventPrice: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#3b82f6',
+    color: colors.primary,
   },
   eventTickets: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0fdf4',
+    backgroundColor: colors.successSoft,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
   },
   eventTicketsText: {
     fontSize: 12,
-    color: '#059669',
+    color: colors.success,
     marginLeft: 4,
     fontWeight: '600',
   },
@@ -1099,27 +1100,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 12,
     borderLeftWidth: 1,
-    borderLeftColor: '#f3f4f6',
+    borderLeftColor: colors.surfaceAlt,
   },
   eventCardActionBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.bg,
     justifyContent: 'center',
     alignItems: 'center',
   },
   todayBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ef4444',
+    backgroundColor: colors.danger,
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
     gap: 4,
   },
   todayBadgeText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 10,
     fontWeight: 'bold',
   },
@@ -1127,49 +1128,49 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 32,
     marginHorizontal: 20,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.bg,
     borderRadius: 16,
   },
   emptyStateText: {
     fontSize: 16,
-    color: '#374151',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 16,
     marginBottom: 8,
   },
   emptyStateSubtext: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.textMuted,
     textAlign: 'center',
   },
   exploreButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 8,
     marginTop: 16,
   },
   exploreButtonText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 14,
     fontWeight: '600',
   },
   aiAssistantButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f9ff',
+    backgroundColor: colors.primarySoft,
     marginHorizontal: 20,
     marginBottom: 32,
     padding: 20,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#dbeafe',
+    borderColor: colors.primarySoft,
   },
   aiAssistantIcon: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -1180,19 +1181,19 @@ const styles = StyleSheet.create({
   aiAssistantTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: colors.text,
     marginBottom: 4,
   },
   aiAssistantSubtitle: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.textMuted,
   },
   // Ticket preview card
   ticketPreviewCard: {
     width: 160,
     borderRadius: 14,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: colors.text,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
@@ -1213,18 +1214,18 @@ const styles = StyleSheet.create({
   ticketPreviewTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.textInverse,
     marginTop: 4,
   },
   ticketPreviewBottom: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
-  ticketPreviewDate: { fontSize: 12, color: '#6b7280', fontWeight: '600' },
+  ticketPreviewDate: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
   // Top Venues
   venuesContainer: {
     paddingLeft: 20,
@@ -1246,7 +1247,7 @@ const styles = StyleSheet.create({
     height: 180,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: colors.text,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
@@ -1257,7 +1258,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   venuePlaceholder: {
-    backgroundColor: '#e5e7eb',
+    backgroundColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1268,7 +1269,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   venueName: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 14,
     fontWeight: '700',
     lineHeight: 18,
@@ -1297,7 +1298,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   venueEventCountText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 10,
     fontWeight: '700',
   },
@@ -1307,7 +1308,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 24,
@@ -1324,11 +1325,11 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: colors.text,
   },
   modalSubtitle: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.textMuted,
     marginBottom: 16,
   },
   citiesScroll: {
@@ -1338,7 +1339,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.bg,
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderRadius: 12,
@@ -1347,8 +1348,8 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   cityOptionSelected: {
-    backgroundColor: '#eff6ff',
-    borderColor: '#3b82f6',
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primary,
   },
   cityOptionContent: {
     flexDirection: 'row',
@@ -1362,14 +1363,14 @@ const styles = StyleSheet.create({
   cityOptionText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#374151',
+    color: colors.textSecondary,
   },
   cityOptionTextSelected: {
-    color: '#3b82f6',
+    color: colors.primary,
   },
   cityEventCount: {
     fontSize: 13,
-    color: '#9ca3af',
+    color: colors.textMuted,
     marginTop: 2,
   },
   noCitiesContainer: {
@@ -1378,7 +1379,7 @@ const styles = StyleSheet.create({
   },
   noCitiesText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.textMuted,
     marginTop: 12,
   },
 });

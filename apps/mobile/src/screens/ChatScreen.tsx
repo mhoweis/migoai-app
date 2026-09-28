@@ -1,3 +1,4 @@
+import { colors } from '../theme';
 // migo-mobile/src/screens/ChatScreen.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import {
@@ -292,7 +293,7 @@ const ChatScreen: React.FC = () => {
       <View style={[styles.messageContainer, isUser ? styles.userMessageContainer : styles.aiMessageContainer]}>
         {!isUser && (
           <View style={styles.aiAvatar}>
-            <Ionicons name="sparkles" size={16} color="#3b82f6" />
+            <Ionicons name="sparkles" size={16} color={colors.primary} />
           </View>
         )}
 
@@ -316,7 +317,7 @@ const ChatScreen: React.FC = () => {
                 style={styles.updateInterestsButton}
                 onPress={() => (navigation as any).push('Interests')}
               >
-                <Ionicons name="heart-outline" size={16} color="#fff" />
+                <Ionicons name="heart-outline" size={16} color={colors.textInverse} />
           <Text style={styles.updateInterestsButtonText}>{t('update_interests')}</Text>
               </TouchableOpacity>
             )}
@@ -325,7 +326,7 @@ const ChatScreen: React.FC = () => {
 
         {isUser && (
           <View style={styles.userAvatar}>
-            <Ionicons name="person" size={16} color="#fff" />
+            <Ionicons name="person" size={16} color={colors.textInverse} />
           </View>
         )}
       </View>
@@ -345,7 +346,7 @@ const ChatScreen: React.FC = () => {
         />
       ) : (
         <View style={styles.eventImagePlaceholder}>
-          <Ionicons name="image-outline" size={32} color="#d1d5db" />
+          <Ionicons name="image-outline" size={32} color={colors.border} />
         </View>
       )}
       <View style={styles.eventCardBody}>
@@ -358,13 +359,13 @@ const ChatScreen: React.FC = () => {
         </Text>
         <View style={styles.eventDetails}>
           <View style={styles.eventDetail}>
-            <Ionicons name="calendar-outline" size={12} color="#6b7280" />
+            <Ionicons name="calendar-outline" size={12} color={colors.textMuted} />
             <Text style={styles.eventDetailText}>
               {new Date(item.startDate).toLocaleDateString()}
             </Text>
           </View>
           <View style={styles.eventDetail}>
-            <Ionicons name="location-outline" size={12} color="#6b7280" />
+            <Ionicons name="location-outline" size={12} color={colors.textMuted} />
             <Text style={styles.eventDetailText}>
               {item.venue}, {item.city}
             </Text>
@@ -378,14 +379,14 @@ const ChatScreen: React.FC = () => {
             style={styles.eventCardActionPrimary}
             onPress={() => handleEventPress(item.id)}
           >
-            <Ionicons name="ticket-outline" size={14} color="#fff" />
+            <Ionicons name="ticket-outline" size={14} color={colors.textInverse} />
             <Text style={styles.eventCardActionPrimaryText}>{t('view_details')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.eventCardActionSecondary}
             onPress={() => handleSaveEvent(item.id)}
           >
-            <Ionicons name="bookmark-outline" size={14} color="#3b82f6" />
+            <Ionicons name="bookmark-outline" size={14} color={colors.primary} />
             <Text style={styles.eventCardActionSecondaryText}>{t('save')}</Text>
           </TouchableOpacity>
         </View>
@@ -422,7 +423,7 @@ const ChatScreen: React.FC = () => {
           style={styles.quickActionButton}
           onPress={() => handleQuickAction('events-nearby')}
         >
-          <Ionicons name="navigate" size={20} color="#3b82f6" />
+          <Ionicons name="navigate" size={20} color={colors.primary} />
           <Text style={styles.quickActionText}>{t('location_tba')}</Text>
         </TouchableOpacity>
         
@@ -430,7 +431,7 @@ const ChatScreen: React.FC = () => {
           style={styles.quickActionButton}
           onPress={() => handleQuickAction('by-interests')}
         >
-          <Ionicons name="heart" size={20} color="#3b82f6" />
+          <Ionicons name="heart" size={20} color={colors.primary} />
           <Text style={styles.quickActionText}>{t('home_subtitle')}</Text>
         </TouchableOpacity>
         
@@ -438,7 +439,7 @@ const ChatScreen: React.FC = () => {
           style={styles.quickActionButton}
           onPress={() => handleQuickAction('free-events')}
         >
-          <Ionicons name="wallet" size={20} color="#3b82f6" />
+          <Ionicons name="wallet" size={20} color={colors.primary} />
           <Text style={styles.quickActionText}>{t('free')}</Text>
         </TouchableOpacity>
         
@@ -446,7 +447,7 @@ const ChatScreen: React.FC = () => {
           style={styles.quickActionButton}
           onPress={() => handleQuickAction('popular')}
         >
-          <Ionicons name="trending-up" size={20} color="#3b82f6" />
+          <Ionicons name="trending-up" size={20} color={colors.primary} />
           <Text style={styles.quickActionText}>{t('featured')}</Text>
         </TouchableOpacity>
       </View>
@@ -464,7 +465,7 @@ const ChatScreen: React.FC = () => {
         <View style={styles.header}>
           <View style={styles.headerContent}>
             <View style={styles.aiHeaderIcon}>
-              <Ionicons name="sparkles" size={24} color="#3b82f6" />
+              <Ionicons name="sparkles" size={24} color={colors.primary} />
             </View>
             <View>
               <Text style={styles.headerTitle}>{t('chat_title')}</Text>
@@ -481,7 +482,7 @@ const ChatScreen: React.FC = () => {
               [{ text: t('ok') }]
             )}
           >
-            <Ionicons name="information-circle-outline" size={24} color="#6b7280" />
+            <Ionicons name="information-circle-outline" size={24} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
 
@@ -529,7 +530,7 @@ const ChatScreen: React.FC = () => {
                       <Ionicons
                         name={eventsExpanded ? 'chevron-up' : 'chevron-down'}
                         size={18}
-                        color="#6b7280"
+                        color={colors.textMuted}
                       />
                     </TouchableOpacity>
                     {eventsExpanded && (
@@ -555,7 +556,7 @@ const ChatScreen: React.FC = () => {
                           }}
                         >
                           <Text style={styles.viewAllButtonText}>{t('events')}</Text>
-                          <Ionicons name="arrow-forward" size={16} color="#3b82f6" />
+                          <Ionicons name="arrow-forward" size={16} color={colors.primary} />
                         </TouchableOpacity>
                       </>
                     )}
@@ -577,7 +578,7 @@ const ChatScreen: React.FC = () => {
               value={inputText}
               onChangeText={setInputText}
               placeholder={t('chat_placeholder')}
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={colors.textMuted}
               multiline
               maxLength={500}
               editable={!isLoading}
@@ -601,9 +602,9 @@ const ChatScreen: React.FC = () => {
               disabled={!inputText.trim() || isLoading}
             >
               {isLoading ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={colors.textInverse} />
               ) : (
-                <Ionicons name="send" size={20} color="#fff" />
+                <Ionicons name="send" size={20} color={colors.textInverse} />
               )}
             </TouchableOpacity>
           </View>
@@ -621,7 +622,7 @@ const ChatScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.bg,
   },
   keyboardView: {
     flex: 1,
@@ -632,9 +633,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: colors.border,
   },
   headerContent: {
     flexDirection: 'row',
@@ -645,18 +646,18 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primarySoft,
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: colors.text,
   },
   headerSubtitle: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textMuted,
     marginTop: 2,
   },
   infoButton: {
@@ -664,18 +665,18 @@ const styles = StyleSheet.create({
   },
   messagesContainer: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.bg,
   },
   messagesList: {
     paddingHorizontal: 16,
     paddingVertical: 20,
   },
   welcomeSection: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
-    shadowColor: '#000',
+    shadowColor: colors.text,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -684,12 +685,12 @@ const styles = StyleSheet.create({
   welcomeTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: colors.text,
     marginBottom: 8,
   },
   welcomeText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.textMuted,
     lineHeight: 20,
   },
   messageContainer: {
@@ -707,19 +708,19 @@ const styles = StyleSheet.create({
     maxWidth: '80%',
     padding: 12,
     borderRadius: 18,
-    shadowColor: '#000',
+    shadowColor: colors.text,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
   },
   userBubble: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     borderBottomRightRadius: 4,
     marginLeft: 8,
   },
   aiBubble: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     borderBottomLeftRadius: 4,
     marginRight: 8,
   },
@@ -728,10 +729,10 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   userMessageText: {
-    color: '#fff',
+    color: colors.textInverse,
   },
   aiMessageText: {
-    color: '#1f2937',
+    color: colors.text,
   },
   timestamp: {
     fontSize: 10,
@@ -739,18 +740,18 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   userTimestamp: {
-    color: '#fff',
+    color: colors.textInverse,
     textAlign: 'right',
   },
   aiTimestamp: {
-    color: '#6b7280',
+    color: colors.textMuted,
     textAlign: 'left',
   },
   aiAvatar: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primarySoft,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
@@ -759,7 +760,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
@@ -770,7 +771,7 @@ const styles = StyleSheet.create({
   quickActionsTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: colors.textSecondary,
     marginBottom: 12,
   },
   quickActionsGrid: {
@@ -781,7 +782,7 @@ const styles = StyleSheet.create({
   quickActionButton: {
     flex: 1,
     minWidth: '22%',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceAlt,
     paddingVertical: 12,
     paddingHorizontal: 8,
     borderRadius: 12,
@@ -790,7 +791,7 @@ const styles = StyleSheet.create({
   },
   quickActionText: {
     fontSize: 12,
-    color: '#374151',
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   quickRepliesContainer: {
@@ -802,16 +803,16 @@ const styles = StyleSheet.create({
   },
   quickReplyChip: {
     borderWidth: 1,
-    borderColor: '#3b82f6',
+    borderColor: colors.primary,
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primarySoft,
     maxWidth: '90%',
   },
   quickReplyChipText: {
     fontSize: 13,
-    color: '#1d4ed8',
+    color: colors.primaryDark,
   },
   eventCardActions: {
     flexDirection: 'row',
@@ -822,13 +823,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
   eventCardActionPrimaryText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -837,25 +838,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     borderWidth: 1,
-    borderColor: '#3b82f6',
+    borderColor: colors.primary,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
   eventCardActionSecondaryText: {
-    color: '#3b82f6',
+    color: colors.primary,
     fontSize: 12,
     fontWeight: '600',
   },
   typingIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     padding: 12,
     borderRadius: 18,
     alignSelf: 'flex-start',
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: colors.text,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
@@ -869,12 +870,12 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#d1d5db',
+    backgroundColor: colors.border,
     marginHorizontal: 2,
   },
   typingText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.textMuted,
   },
   suggestedEventsSection: {
     marginTop: 20,
@@ -889,18 +890,18 @@ const styles = StyleSheet.create({
   suggestedEventsTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: colors.text,
   },
   suggestedEventsList: {
     gap: 12,
   },
   eventCard: {
     width: 260,
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     borderRadius: 12,
     marginRight: 12,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: colors.text,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 6,
@@ -913,7 +914,7 @@ const styles = StyleSheet.create({
   eventImagePlaceholder: {
     width: '100%',
     height: 130,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceAlt,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -928,19 +929,19 @@ const styles = StyleSheet.create({
   },
   eventCategory: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textMuted,
     fontWeight: '600',
     textTransform: 'uppercase',
   },
   eventPrice: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#3b82f6',
+    color: colors.primary,
   },
   eventTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: colors.text,
     marginBottom: 8,
     lineHeight: 22,
   },
@@ -954,12 +955,12 @@ const styles = StyleSheet.create({
   },
   eventDetailText: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textMuted,
     marginLeft: 6,
   },
   eventDescription: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textMuted,
     lineHeight: 16,
   },
   viewAllButton: {
@@ -971,21 +972,21 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: '#3b82f6',
-    backgroundColor: '#eff6ff',
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoft,
   },
   viewAllButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#3b82f6',
+    color: colors.primary,
   },
   inputContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: Platform.OS === 'ios' ? 34 : 12,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: colors.border,
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -994,31 +995,31 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.bg,
     borderRadius: 24,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 15,
-    color: '#1f2937',
+    color: colors.text,
     maxHeight: 120,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
   },
   sendButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 4,
   },
   sendButtonDisabled: {
-    backgroundColor: '#93c5fd',
+    backgroundColor: colors.primarySoft,
   },
   charCount: {
     fontSize: 11,
-    color: '#9ca3af',
+    color: colors.textMuted,
     textAlign: 'right',
     marginTop: 4,
   },
@@ -1035,13 +1036,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     borderRadius: 20,
   },
   updateInterestsButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
+    color: colors.textInverse,
   },
 });
 

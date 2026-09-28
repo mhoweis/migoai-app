@@ -1,3 +1,4 @@
+import { colors } from '../theme';
 // migo-mobile/src/screens/LoginScreen.tsx - UPDATED
 import React, { useState } from 'react';
 import {
@@ -126,7 +127,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
           <View style={styles.form}>
             <View style={styles.inputContainer}>
-              {/*<Icon name="mail-outline" size={20} color="#9ca3af" style={styles.inputIcon} />*/}
+              {/*<Icon name="mail-outline" size={20} color={colors.textMuted} style={styles.inputIcon} />*/}
               <TextInput
                 style={styles.input}
                 placeholder={t('email_or_phone')}
@@ -144,7 +145,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
             </View>
 
             <View style={styles.inputContainer}>
-              {/*<Icon name="lock-closed-outline" size={20} color="#9ca3af" style={styles.inputIcon} />*/}
+              {/*<Icon name="lock-closed-outline" size={20} color={colors.textMuted} style={styles.inputIcon} />*/}
               <TextInput
                 style={styles.input}
                 placeholder={t('password')}
@@ -165,13 +166,13 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
               >
               <Image
                   source={require('../../assets/icons/show-password.png')}
-                  style={[styles.showPassword, { tintColor: showPassword ? '#9ca3af' : '#3b82f6' }]}
+                  style={[styles.showPassword, { tintColor: showPassword ? colors.textMuted : colors.primary }]}
                   resizeMode="contain"
                 />
                {/* <Icon
                   name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                   size={20}
-                  color="#9ca3af"
+                  color={colors.textMuted}
                 />*/}
               </TouchableOpacity>
             </View>
@@ -196,10 +197,10 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={colors.textInverse} />
               ) : (
                 <>
-                  {/*<Icon name="log-in-outline" size={20} color="#fff" style={styles.loginIcon} />*/}
+                  {/*<Icon name="log-in-outline" size={20} color={colors.textInverse} style={styles.loginIcon} />*/}
                   <Text style={styles.loginButtonText}>{t('sign_in')}</Text>
                 </>
               )}
@@ -267,7 +268,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
   },
   languageToggle: {
     position: 'absolute',
@@ -276,7 +277,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   languageToggleText: {
-    color: '#2563eb',
+    color: colors.primary,
     fontWeight: '700',
   },
   keyboardView: {
@@ -300,12 +301,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: colors.text,
     marginTop: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#6b7280',
+    color: colors.textMuted,
     marginTop: 8,
     textAlign: 'center',
   },
@@ -315,12 +316,12 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.bg,
     borderRadius: 12,
     paddingHorizontal: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     height: 56,
   },
   inputIcon: {
@@ -329,24 +330,24 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#1f2937',
+    color: colors.text,
   },
   forgotPassword: {
     alignSelf: 'flex-end',
     marginBottom: 24,
   },
   forgotPasswordText: {
-    color: '#3b82f6',
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
   errorMessage: {
-    color: '#dc2626',
+    color: colors.danger,
     fontSize: 14,
     marginBottom: 16,
   },
   loginButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     height: 56,
     borderRadius: 12,
     justifyContent: 'center',
@@ -355,7 +356,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   loginButtonDisabled: {
-    backgroundColor: '#93c5fd',
+    backgroundColor: colors.primarySoft,
   },
   showPassword: {
     width: 20,
@@ -365,7 +366,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   loginButtonText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -377,11 +378,11 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: colors.border,
   },
   dividerText: {
     marginHorizontal: 16,
-    color: '#9ca3af',
+    color: colors.textMuted,
     fontSize: 14,
   },
   socialButtons: {
@@ -394,11 +395,11 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.bg,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     overflow: 'hidden',
   },
   socialIcon: {
@@ -411,11 +412,11 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   footerText: {
-    color: '#6b7280',
+    color: colors.textMuted,
     fontSize: 14,
   },
   footerLink: {
-    color: '#3b82f6',
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
