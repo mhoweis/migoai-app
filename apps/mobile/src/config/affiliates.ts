@@ -14,7 +14,8 @@
  *   - click-outs are attributable to a user, an event and a feed placement
  */
 
-import { getApiBaseUrl } from './index';
+import { Platform } from 'react-native';
+import { API_BASE_URL } from '../services/api';
 
 export const PLATINUMLIST_BASE = 'https://platinumlist.net';
 
@@ -25,7 +26,11 @@ export const PLATINUMLIST_BASE = 'https://platinumlist.net';
  * @param placement Where the tap happened, for attribution ("detail", "ai_feed")
  */
 export function getBookingUrl(eventId: string, placement?: string): string {
-  const base = getApiBaseUrl().replace(/\/$/, '');
+  const base = (
+    Platform.OS === 'web' && typeof window !== 'undefined' && !API_BASE_URL
+      ? window.location.origin
+      : API_BASE_URL
+  ).replace(/\/$/, '');
   const query = placement ? `?from=${encodeURIComponent(placement)}` : '';
   return `${base}/go/${encodeURIComponent(eventId)}${query}`;
 }
