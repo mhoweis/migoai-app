@@ -13,6 +13,7 @@ dotenv.config();
 // Import routes
 import { authRouter } from './routes/auth.routes';
 import { eventsRouter } from './routes/events.routes';
+import shareRouter from './routes/share.routes';
 import { usersRouter } from './routes/users.routes';
 import { aiRouter } from './routes/ai.routes';
 import { paymentsRouter, publicPaymentsRouter } from './routes/payments.routes';
@@ -129,6 +130,7 @@ app.get('/api/health', (_req, res) => {
 
 // Public routes (no authentication required)
 app.use('/api/auth', authRouter);
+app.use('/e', shareRouter);
 app.use('/api/events', eventsRouter); // Assuming events are public for browsing
 
 // Protected routes (authentication required)

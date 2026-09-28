@@ -4,6 +4,8 @@ import config from '../config/env';
 import prisma from '../database/prisma';
 import { AppError } from '../middlewares/error.middleware';
 import { getPaymentProvider } from './payments';
+import { findInviteForEvent } from './social.service';
+import { whatsappService } from './messaging/whatsapp.service';
 
 const serviceError = (
   message: string,
@@ -74,6 +76,7 @@ class TicketsService {
       ticketCount?: number;
       attendeeName?: string;
       attendeeEmail?: string;
+      inviteCode?: string;
     } = {},
   ): Promise<any> {
     const ticketCount = input.ticketCount ?? 1;
@@ -102,9 +105,10 @@ class TicketsService {
     if ((event.capacity || 0) > 0 && (event.ticketsSold || 0) + ticketCount > (event.capacity || 0)) {
       throw serviceError('Event is sold out', 409, 'SOLD_OUT');
     }
+    const invite = await findInviteForEvent(eventId, input.inviteCode);
 
     try {
-      return await prisma.$transaction(async tx => {
+      const booking = await prisma.$transaction(async tx => {
         const booking = await tx.booking.create({
           data: {
             userId,
@@ -115,6 +119,7 @@ class TicketsService {
             status: BookingStatus.CONFIRMED,
             attendeeName: input.attendeeName || user?.name || undefined,
             attendeeEmail: input.attendeeEmail || user?.email || undefined,
+            inviteCode: invite?.code,
           },
         });
         const ticketsSold = (event.ticketsSold || 0) + ticketCount;
@@ -132,6 +137,10 @@ class TicketsService {
           include: { event: true },
         });
       });
+      void whatsappService.sendTicketConfirmation(booking.id).catch(error => {
+        console.error('[whatsapp] ticket confirmation failed', error);
+      });
+      return booking;
     } catch (error: any) {
       if (error?.code === 'P2002') {
         const existing = await prisma.booking.findUnique({
@@ -147,7 +156,7 @@ class TicketsService {
   async createCheckout(
     userId: string,
     eventId: string,
-    input: { ticketCount: number; returnUrl: string },
+    input: { ticketCount: number; returnUrl: string; inviteCode?: string },
   ): Promise<{ bookingId: string; checkoutUrl: string; provider: string }> {
     if (!Number.isInteger(input.ticketCount) || input.ticketCount < 1 || input.ticketCount > 4) {
       throw serviceError('Ticket count must be between 1 and 4', 400, 'INVALID_TICKET_COUNT');
@@ -179,6 +188,7 @@ class TicketsService {
     }
 
     const provider = getPaymentProvider();
+    const invite = await findInviteForEvent(eventId, input.inviteCode);
     const amount = Number(event.priceFrom) * input.ticketCount;
     const successUrl = this.appendCheckoutParams(input.returnUrl, {
       checkout: 'success',
@@ -237,6 +247,7 @@ class TicketsService {
         qrCode: null,
         transactionId: null,
         notes: JSON.stringify({ successUrl, cancelUrl }),
+        inviteCode: invite?.code,
         attendeeName: user?.name || undefined,
         attendeeEmail: user?.email || undefined,
       };
@@ -298,7 +309,7 @@ class TicketsService {
   }
 
   async confirmPaidBooking(bookingId: string): Promise<any> {
-    return prisma.$transaction(async tx => {
+    const confirmed = await prisma.$transaction(async tx => {
       const booking = await tx.booking.findUnique({
         where: { id: bookingId },
         include: { event: true },
@@ -332,6 +343,12 @@ class TicketsService {
         include: { event: true },
       });
     });
+    if (confirmed.status === BookingStatus.CONFIRMED) {
+      void whatsappService.sendTicketConfirmation(confirmed.id).catch(error => {
+        console.error('[whatsapp] ticket confirmation failed', error);
+      });
+    }
+    return confirmed;
   }
 
   async confirmBooking(bookingId: string, userId: string): Promise<

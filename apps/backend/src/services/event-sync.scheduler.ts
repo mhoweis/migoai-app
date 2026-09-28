@@ -1,12 +1,15 @@
 import config from '../config/env';
 import logger from '../utils/logger';
 import eventSyncService, { SyncSummary } from './event-sync.service';
+import { whatsappService } from './messaging/whatsapp.service';
 
 let intervalHandle: NodeJS.Timeout | undefined;
 let bootHandle: NodeJS.Timeout | undefined;
 let lastRunAt: Date | undefined;
 let lastSummary: SyncSummary | undefined;
 let nextRunAt: Date | undefined;
+let reminderTimeout: NodeJS.Timeout | undefined;
+let reminderInterval: NodeJS.Timeout | undefined;
 
 const runSync = async (): Promise<SyncSummary> => {
   lastRunAt = new Date();
@@ -38,6 +41,23 @@ export const start = (): void => {
       void runSync();
     }, 15_000);
   }
+  if (whatsappService.isConfigured()) {
+    const match = config.WHATSAPP_REMINDERS_CRON.match(/^(\d+)\s+(\d+)\s+\*\s+\*\s+\*$/);
+    if (match) {
+      const minute = Number(match[1]);
+      const hour = Number(match[2]);
+      const now = new Date();
+      const next = new Date(now);
+      next.setUTCHours(hour, minute, 0, 0);
+      if (next <= now) next.setUTCDate(next.getUTCDate() + 1);
+      reminderTimeout = setTimeout(() => {
+        void whatsappService.sendEventReminders().catch(error => logger.error('[whatsapp] reminders failed', { error }));
+        reminderInterval = setInterval(() => {
+          void whatsappService.sendEventReminders().catch(error => logger.error('[whatsapp] reminders failed', { error }));
+        }, 24 * 60 * 60 * 1000);
+      }, next.getTime() - now.getTime());
+    }
+  }
 };
 
 export const stop = (): void => {
@@ -48,6 +68,14 @@ export const stop = (): void => {
   if (bootHandle) {
     clearTimeout(bootHandle);
     bootHandle = undefined;
+  }
+  if (reminderTimeout) {
+    clearTimeout(reminderTimeout);
+    reminderTimeout = undefined;
+  }
+  if (reminderInterval) {
+    clearInterval(reminderInterval);
+    reminderInterval = undefined;
   }
   nextRunAt = undefined;
 };

@@ -4,6 +4,9 @@ import { eventService, EventFilters } from "../services/events.service";
 import { authenticate, AuthRequest, optionalAuthenticate } from "../middlewares/auth.middleware";
 import { asyncHandler } from "../middlewares/error.middleware";
 import { z } from "zod";
+import prisma from "../database/prisma";
+import { createEventInvite, getEventSocial } from "../services/social.service";
+import { getWebBase } from "./share.routes";
 
 const router = Router();
 
@@ -111,6 +114,37 @@ router.get("/weekend", asyncHandler(async (req: Request, res: Response) => {
 
 router.get("/mine", authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
   const result = await eventService.getMyEvents(req.userId!);
+  res.json({ success: true, data: result });
+}));
+
+router.get("/:id/social", optionalAuthenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const event = await prisma.event.findUnique({ where: { id: req.params.id }, select: { id: true } });
+  if (!event) {
+    res.status(404).json({ success: false, error: "Event not found" });
+    return;
+  }
+  const result = await getEventSocial(req.params.id, req.userId);
+  res.json({ success: true, data: result });
+}));
+
+router.post("/:id/invite", authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const input = z.object({
+    returnUrl: z.string().url().optional(),
+  }).parse(req.body || {});
+  let validatedBase: string | undefined;
+  if (input.returnUrl) {
+    const parsed = new URL(input.returnUrl);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      res.status(400).json({ success: false, error: "returnUrl must use http or https" });
+      return;
+    }
+    validatedBase = parsed.origin;
+  }
+  const result = await createEventInvite(req.params.id, req.userId!, getWebBase(req, validatedBase));
+  if (!result) {
+    res.status(404).json({ success: false, error: "Event not found" });
+    return;
+  }
   res.json({ success: true, data: result });
 }));
 

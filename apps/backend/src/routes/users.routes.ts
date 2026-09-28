@@ -4,10 +4,61 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import prisma from "../database/prisma";
 import { authenticate, AuthRequest } from "../middlewares/auth.middleware";
+import { asyncHandler } from "../middlewares/error.middleware";
+import {
+  followUser,
+  listFollowers,
+  listFollowing,
+  searchUsers,
+  unfollowUser,
+} from "../services/social.service";
 
 const router = Router();
 
 router.use(authenticate);
+
+router.get("/search", asyncHandler(async (req: AuthRequest, res: Response) => {
+  const query = String(req.query.q || "").trim();
+  if (query.length < 2) {
+    res.status(400).json({ success: false, error: "q must be at least 2 characters" });
+    return;
+  }
+  res.json({ success: true, data: await searchUsers(req.userId!, query) });
+}));
+
+router.get("/me/following", asyncHandler(async (req: AuthRequest, res: Response) => {
+  res.json({ success: true, data: await listFollowing(req.userId!) });
+}));
+
+router.get("/me/followers", asyncHandler(async (req: AuthRequest, res: Response) => {
+  res.json({ success: true, data: await listFollowers(req.userId!) });
+}));
+
+router.post("/:id/follow", asyncHandler(async (req: AuthRequest, res: Response) => {
+  const result = await followUser(req.userId!, req.params.id);
+  if (!result) {
+    res.status(404).json({ success: false, error: "User not found" });
+    return;
+  }
+  if (result.error) {
+    res.status(400).json({ success: false, error: "Cannot follow yourself" });
+    return;
+  }
+  res.json({ success: true, data: result });
+}));
+
+router.delete("/:id/follow", asyncHandler(async (req: AuthRequest, res: Response) => {
+  const result = await unfollowUser(req.userId!, req.params.id);
+  if (!result) {
+    res.status(404).json({ success: false, error: "User not found" });
+    return;
+  }
+  if (result.error) {
+    res.status(400).json({ success: false, error: "Cannot unfollow yourself" });
+    return;
+  }
+  res.json({ success: true, data: result });
+}));
 
 const publicUserSelect = {
   id: true,

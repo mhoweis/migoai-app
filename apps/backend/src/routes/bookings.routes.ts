@@ -11,6 +11,7 @@ const rsvpSchema = z.object({
   ticketCount: z.coerce.number().int().min(1).max(4).default(1),
   attendeeName: z.string().trim().min(1).optional(),
   attendeeEmail: z.string().email().optional(),
+  inviteCode: z.string().trim().max(16).optional(),
 });
 
 const returnUrlSchema = z.string().url().refine(value => {
@@ -22,6 +23,7 @@ const checkoutSchema = z.object({
   eventId: z.string().min(1),
   ticketCount: z.coerce.number().int().min(1).max(4).default(1),
   returnUrl: returnUrlSchema,
+  inviteCode: z.string().trim().max(16).optional(),
 });
 
 router.post('/', asyncHandler(async (req: AuthRequest, res: Response) => {

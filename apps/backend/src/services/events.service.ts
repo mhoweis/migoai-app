@@ -370,18 +370,29 @@ export class EventService {
     });
 
     return Promise.all(events.map(async event => {
-      const [confirmed, checkedIn] = await Promise.all([
+      const eventId = String((event as any).id);
+      const [confirmed, checkedIn, invites] = await Promise.all([
         prisma.booking.count({
-          where: { eventId: event.id, status: 'CONFIRMED' },
+          where: { eventId, status: 'CONFIRMED' },
         }),
         prisma.booking.count({
-          where: { eventId: event.id, status: 'CHECKED_IN' },
+          where: { eventId, status: 'CHECKED_IN' },
+        }),
+        prisma.eventInvite.findMany({
+          where: { eventId, inviterId: userId },
+          select: { code: true },
         }),
       ]);
+      const invited = invites.length
+        ? await prisma.booking.count({
+          where: { eventId, inviteCode: { in: invites.map(invite => invite.code) } },
+        })
+        : 0;
       return {
         ...this.formatEventResponse(event),
         confirmed,
         checkedIn,
+        invited,
       };
     }));
   }

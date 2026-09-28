@@ -60,6 +60,9 @@ const envSchema = z.object({
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_PUBLISHABLE_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  WHATSAPP_ACCESS_TOKEN: z.string().optional(),
+  WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
+  WHATSAPP_REMINDERS_CRON: z.string().default('0 5 * * *'),
 
   // Event Data APIs
   TICKETMASTER_API_KEY: z.string().optional(),
@@ -186,6 +189,9 @@ export default {
   STRIPE_SECRET_KEY: env.STRIPE_SECRET_KEY || '',
   STRIPE_PUBLISHABLE_KEY: env.STRIPE_PUBLISHABLE_KEY || '',
   STRIPE_WEBHOOK_SECRET: env.STRIPE_WEBHOOK_SECRET || '',
+  WHATSAPP_ACCESS_TOKEN: env.WHATSAPP_ACCESS_TOKEN || '',
+  WHATSAPP_PHONE_NUMBER_ID: env.WHATSAPP_PHONE_NUMBER_ID || '',
+  WHATSAPP_REMINDERS_CRON: env.WHATSAPP_REMINDERS_CRON,
 
   // Event Data APIs
   TICKETMASTER_API_KEY: env.TICKETMASTER_API_KEY || '',
