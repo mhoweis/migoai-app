@@ -144,13 +144,13 @@ class YasIslandProvider implements EventProvider {
     const month = endDateMatch ? match[2] : match[1];
     const explicitYear = match[3];
     let year = explicitYear ? Number(explicitYear) : startDate.getUTCFullYear();
-    let endDate = new Date(`${month} ${day}, ${year} 11:59:59 GMT+0400`);
+    let endDate = new Date(`${month} ${day}, ${year} 11:59:59 PM GMT+0400`);
     if (Number.isNaN(endDate.getTime())) return undefined;
     const endCalendar = Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate());
     const startCalendar = Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate());
     if (endCalendar < startCalendar && !explicitYear) {
       year += 1;
-      endDate = new Date(`${month} ${day}, ${year} 11:59:59 GMT+0400`);
+      endDate = new Date(`${month} ${day}, ${year} 11:59:59 PM GMT+0400`);
     }
     return Number.isNaN(endDate.getTime()) ? undefined : endDate;
   }
