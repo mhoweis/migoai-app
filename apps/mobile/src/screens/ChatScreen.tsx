@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useUserStore } from '../store/userStore';
 import { chatService } from '../services/chat.service';
 import { api } from '../services/api';
+import { eventService } from '../services/event.service';
 
 interface Message {
   id: string;
@@ -53,6 +54,7 @@ const ChatScreen: React.FC = () => {
     },
   ]);
   const [inputText, setInputText] = useState('');
+  const [quickReplies, setQuickReplies] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [suggestedEvents, setSuggestedEvents] = useState<SuggestedEvent[]>([]);
   const [eventsExpanded, setEventsExpanded] = useState(true);
@@ -137,10 +139,11 @@ const ChatScreen: React.FC = () => {
     }
   }, [user?.interests]);
 
-  const handleSendMessage = async () => {
-    if (!inputText.trim() || isLoading) return;
+  const handleSendMessage = async (presetText?: string) => {
+    const textToSend = (presetText ?? inputText).trim();
+    if (!textToSend || isLoading) return;
 
-    const userMessage = inputText.trim();
+    const userMessage = textToSend;
     setInputText('');
 
     // Add user message
@@ -183,7 +186,15 @@ const ChatScreen: React.FC = () => {
         };
         
         setMessages(prev => [...prev, aiMessage]);
-        
+
+        // Quick-reply chips: the backend suggests follow-ups the user can tap
+        // to send immediately.
+        const chips = [
+          ...(response.suggestions || []),
+          ...(response.nextQuestions || []),
+        ];
+        setQuickReplies([...new Set(chips)].slice(0, 4));
+
         // Show suggested events if available
         if (response.suggestedEvents && response.suggestedEvents.length > 0) {
           setSuggestedEvents(response.suggestedEvents);
@@ -261,6 +272,15 @@ const ChatScreen: React.FC = () => {
 
   const handleEventPress = (eventId: string) => {
     navigation.navigate('EventDetail', { eventId });
+  };
+
+  const handleSaveEvent = async (eventId: string) => {
+    try {
+      await eventService.bookmarkEvent(eventId);
+      Alert.alert('Saved', 'Event added to your bookmarks.');
+    } catch {
+      Alert.alert('Could not save', 'Bookmarking is unavailable right now.');
+    }
   };
 
   const renderMessage = ({ item }: { item: Message }) => {
@@ -351,9 +371,46 @@ const ChatScreen: React.FC = () => {
         <Text style={styles.eventDescription} numberOfLines={2}>
           {item.description}
         </Text>
+        <View style={styles.eventCardActions}>
+          <TouchableOpacity
+            style={styles.eventCardActionPrimary}
+            onPress={() => handleEventPress(item.id)}
+          >
+            <Ionicons name="ticket-outline" size={14} color="#fff" />
+            <Text style={styles.eventCardActionPrimaryText}>Book / Details</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.eventCardActionSecondary}
+            onPress={() => handleSaveEvent(item.id)}
+          >
+            <Ionicons name="bookmark-outline" size={14} color="#3b82f6" />
+            <Text style={styles.eventCardActionSecondaryText}>Save</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </TouchableOpacity>
   );
+
+  const renderQuickReplies = () => {
+    if (quickReplies.length === 0 || isTyping) return null;
+    return (
+      <View style={styles.quickRepliesContainer}>
+        {quickReplies.map((text, idx) => (
+          <TouchableOpacity
+            key={idx}
+            style={styles.quickReplyChip}
+            onPress={() => {
+              setQuickReplies([]);
+              void handleSendMessage(text);
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.quickReplyChipText} numberOfLines={1}>{text}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
+  };
 
   const renderQuickActions = () => (
     <View style={styles.quickActionsContainer}>
@@ -506,6 +563,9 @@ const ChatScreen: React.FC = () => {
             }
           />
         </View>
+
+        {/* Quick-reply chips */}
+        {renderQuickReplies()}
 
         {/* Input Area */}
         <View style={styles.inputContainer}>
@@ -723,6 +783,60 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#374151',
     fontWeight: '500',
+  },
+  quickRepliesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 16,
+    paddingBottom: 6,
+    gap: 8,
+  },
+  quickReplyChip: {
+    borderWidth: 1,
+    borderColor: '#3b82f6',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#eff6ff',
+    maxWidth: '90%',
+  },
+  quickReplyChipText: {
+    fontSize: 13,
+    color: '#1d4ed8',
+  },
+  eventCardActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  eventCardActionPrimary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#3b82f6',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  eventCardActionPrimaryText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  eventCardActionSecondary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderColor: '#3b82f6',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  eventCardActionSecondaryText: {
+    color: '#3b82f6',
+    fontSize: 12,
+    fontWeight: '600',
   },
   typingIndicator: {
     flexDirection: 'row',

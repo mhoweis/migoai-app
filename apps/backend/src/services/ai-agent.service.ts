@@ -655,6 +655,9 @@ UAE content policy:
     });
 
     // Build the prompt — returns prompt string and short-ID → UUID map
+    // Booking intent: "book …", "reserve …", "get tickets for …"
+    const bookingIntent = /\b(book|booking|reserve|reservation|buy|purchase|get\s+(me\s+)?tickets?|register|sign\s*up)\b/i.test(userMessage);
+
     const { prompt, eventIdMap } = this.buildPrompt(
       userMessage,
       context,
@@ -792,6 +795,13 @@ UAE content policy:
       if (placeResult?.places.length) {
         aiResponse.places = placeResult.places;
         aiResponse.placesPending = placeResult.queued;
+      }
+
+      if (bookingIntent && aiResponse.recommendations?.length) {
+        aiResponse.bookingIntent = true;
+        if (!/book|ticket/i.test(aiResponse.response)) {
+          aiResponse.response += "\n\nTap an event below, then press Book Now on its page to grab your spot.";
+        }
       }
 
       return aiResponse;
