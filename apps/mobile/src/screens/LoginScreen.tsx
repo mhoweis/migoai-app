@@ -19,6 +19,9 @@ import { useUserStore } from '../store/userStore';
 import { authService } from '../services/auth.service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setLocale, STORAGE_KEY, useLocale } from '../i18n';
+import GradientButton from '../components/GradientButton';
+import { LinearGradient } from 'expo-linear-gradient';
+import { gradients, radius, type } from '../theme';
 
 interface Props {
   navigation: any;
@@ -114,7 +117,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.header}>
+          <LinearGradient colors={gradients.primary} style={styles.header}>
             {/* Updated: Replaced Icon with actual logo */}
             <Image 
               source={require('../../assets/icon.png')}
@@ -123,7 +126,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
             />
             <Text style={styles.title}>{t('welcome')}</Text>
             <Text style={styles.subtitle}>{t('sign_in_continue')}</Text>
-          </View>
+          </LinearGradient>
 
           <View style={styles.form}>
             <View style={styles.inputContainer}>
@@ -191,20 +194,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
               <Text style={styles.forgotPasswordText}>{t('forgot_password')}?</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.loginButton, loading && styles.loginButtonDisabled]}
-              onPress={handleLogin}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color={colors.textInverse} />
-              ) : (
-                <>
-                  {/*<Icon name="log-in-outline" size={20} color={colors.textInverse} style={styles.loginIcon} />*/}
-                  <Text style={styles.loginButtonText}>{t('sign_in')}</Text>
-                </>
-              )}
-            </TouchableOpacity>
+            <GradientButton label={t('sign_in')} onPress={handleLogin} loading={loading} />
 
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
@@ -268,7 +258,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.textInverse,
+    backgroundColor: colors.bg,
   },
   languageToggle: {
     position: 'absolute',
@@ -292,6 +282,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 20,
     marginBottom: 40,
+    borderRadius: radius.xl,
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+    overflow: 'hidden',
   },
   logo: {
     width: 80,
@@ -299,25 +293,27 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: colors.text,
+    ...type.h1,
+    color: colors.textInverse,
     marginTop: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: colors.textMuted,
+    color: 'rgba(255,255,255,0.82)',
     marginTop: 8,
     textAlign: 'center',
   },
   form: {
     flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: 20,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.bg,
-    borderRadius: 12,
+    borderRadius: radius.md,
     paddingHorizontal: 16,
     marginBottom: 16,
     borderWidth: 1,

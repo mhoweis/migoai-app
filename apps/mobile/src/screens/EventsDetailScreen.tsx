@@ -30,6 +30,9 @@ import { socialService, EventSocial, InviteLinks } from '../services/social.serv
 import { inviteRef } from '../utils/inviteRef';
 import { categoryLabel, formatEventDate, formatPrice, useLocale } from '../i18n';
 import { sourceBadge } from '../utils/trust';
+import { LinearGradient } from 'expo-linear-gradient';
+import GradientButton from '../components/GradientButton';
+import { gradients, radius, shadow, spacing, type } from '../theme';
 
 const { width } = Dimensions.get('window');
 
@@ -227,7 +230,8 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <Ionicons name="image-outline" size={64} color={colors.border} />
             </View>
           )}
-          <View style={styles.imageOverlay}>
+          <LinearGradient colors={gradients.dark} style={styles.imageOverlay}>
+            <Text style={styles.imageTitle} numberOfLines={3}>{event.title}</Text>
             <View style={styles.imageActions}>
               <TouchableOpacity
                 style={styles.actionButton}
@@ -246,7 +250,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 <Ionicons name="share-outline" size={24} color={colors.textInverse} />
               </TouchableOpacity>
             </View>
-          </View>
+          </LinearGradient>
         </View>
 
         {/* Event Content */}
@@ -261,7 +265,6 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </View>
               )}
             </View>
-            <Text style={styles.eventTitle}>{event.title}</Text>
             {sourceBadge(event.trust, locale) && (
               <View style={[styles.sourceChip, { backgroundColor: sourceBadge(event.trust, locale)?.backgroundColor }]}>
                 <Ionicons name="shield-checkmark" size={15} color={sourceBadge(event.trust, locale)?.color} />
@@ -459,8 +462,18 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <Text style={styles.bottomBarTickets}>{t('capacity')}: {event.capacity}</Text>
           )}
         </View>
-        <TouchableOpacity
-          style={styles.bookButton}
+        <GradientButton
+          label={
+            event.myBookingId
+              ? t('view_ticket')
+              : event.canRsvp
+                ? t('get_free_ticket')
+                : event.canBuy
+                ? `${t('buy_ticket')} · ${formatPrice(Number(event.priceFrom || 0), event.currency || 'AED')}`
+                : event.externalUrl
+                  ? t('book_on', { supplier: supplierLabel(event) })
+                  : t('book_now')
+          }
           onPress={
             event.myBookingId
               ? () => navigateToTab('Wallet')
@@ -470,19 +483,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   ? () => setCheckoutOpen(true)
                   : handleBookTicket
           }
-        >
-          <Text style={styles.bookButtonText}>
-            {event.myBookingId
-              ? t('view_ticket')
-              : event.canRsvp
-                ? t('get_free_ticket')
-                : event.canBuy
-                ? `${t('buy_ticket')} · ${formatPrice(Number(event.priceFrom || 0), event.currency || 'AED')}`
-                : event.externalUrl
-                  ? t('book_on', { supplier: supplierLabel(event) })
-                  : t('book_now')}
-          </Text>
-        </TouchableOpacity>
+        />
       </View>
       <Modal
         visible={shareOpen}
@@ -609,10 +610,14 @@ const styles = StyleSheet.create({
   },
   imageOverlay: {
     ...StyleSheet.absoluteFillObject,
-    flexDirection: 'row',
     justifyContent: 'flex-end',
-    alignItems: 'flex-start',
-    padding: 20,
+    padding: spacing.lg,
+  },
+  imageTitle: {
+    ...type.h1,
+    color: colors.textInverse,
+    marginBottom: spacing.lg,
+    paddingRight: 72,
   },
   imageActions: {
     flexDirection: 'row',
@@ -627,7 +632,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   content: {
-    padding: 20,
+    padding: spacing.lg,
+    marginTop: -24,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    backgroundColor: colors.surface,
+    zIndex: 1,
   },
   eventHeader: {
     marginBottom: 24,
@@ -656,9 +666,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   eventTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: colors.text,
+    ...type.h1,
     marginBottom: 16,
   },
   sourceChip: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, marginBottom: 12 },
@@ -816,10 +824,11 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: colors.textInverse,
+    backgroundColor: colors.surface,
     padding: 20,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+    ...shadow.float,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',

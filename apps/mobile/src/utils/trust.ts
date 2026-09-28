@@ -37,7 +37,7 @@ export function sourceBadge(trust?: EventTrust, locale: 'en' | 'ar' = 'en'): {
   const text = kind === 'organizer'
     ? kindText.organizer
     : `${kindText[kind] || kind} · ${locale === 'ar' ? (trust.source.labelAr || trust.source.label) : trust.source.label}`;
-  const colors: Record<string, [string, string]> = {
+  const badgeColors: Record<string, [string, string]> = {
     official: [colors.success, colors.successSoft],
     venue: [colors.success, colors.successSoft],
     ticketing: [colors.primaryDark, colors.primarySoft],
@@ -45,6 +45,6 @@ export function sourceBadge(trust?: EventTrust, locale: 'en' | 'ar' = 'en'): {
     organizer: [colors.primary, colors.primarySoft],
     demo: [colors.textMuted, colors.surfaceAlt],
   };
-  const [color, backgroundColor] = colors[kind] || colors.community;
+  const [color, backgroundColor] = badgeColors[kind] || badgeColors.community;
   return { text, kind, color, backgroundColor };
 }

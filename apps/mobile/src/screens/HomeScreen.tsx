@@ -24,6 +24,9 @@ import { api } from '../services/api';
 import { navigateToTab, navigationRef } from '../navigation/navigationRef';
 import { categoryLabel, formatEventDate, formatPrice, useLocale } from '../i18n';
 import { sourceBadge } from '../utils/trust';
+import { LinearGradient } from 'expo-linear-gradient';
+import Chip from '../components/Chip';
+import { gradients, radius, shadow, spacing, type } from '../theme';
 
 type WeekendDigestPreview = {
   title: string;
@@ -468,34 +471,10 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         contentContainerStyle={styles.interestsContainer}
       >
         {/* "All" reset pill — always shown first */}
-        <TouchableOpacity
-          style={[
-            styles.interestPill,
-            styles.interestPillAll,
-            selectedInterest === null && styles.interestPillAllActive,
-          ]}
-          onPress={handleResetFilter}
-        >
-          <Ionicons name="apps-outline" size={14} color={selectedInterest === null ? colors.textInverse : colors.primary} />
-          <Text style={[styles.interestPillText, selectedInterest !== null && { color: colors.primary }]}>{t('all')}</Text>
-        </TouchableOpacity>
+        <Chip label={t('all')} selected={selectedInterest === null} onPress={handleResetFilter} />
 
         {user.interests.map((interest) => (
-          <TouchableOpacity
-            key={interest}
-            style={[
-              styles.interestPill,
-              selectedInterest === interest && styles.interestPillActive,
-            ]}
-            onPress={() => handleInterestSelect(interest)}
-          >
-            <Ionicons
-              name={getCategoryIcon(interest)}
-              size={14}
-              color={colors.textInverse}
-            />
-            <Text style={styles.interestPillText}>{interest}</Text>
-          </TouchableOpacity>
+          <Chip key={interest} label={interest} selected={selectedInterest === interest} onPress={() => handleInterestSelect(interest)} />
         ))}
 
         {/* Update interests button */}
@@ -517,35 +496,42 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         }
       >
         {/* Header */}
+        <LinearGradient colors={gradients.primary} style={styles.hero}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>
+            <Text style={styles.greetingHero}>
               {t('home_greeting', { name: user?.name?.split(' ')[0] || t('welcome') })} 👋
             </Text>
-            <Text style={styles.subtitle}>
+            <Text style={styles.subtitleHero}>
               {t('home_subtitle')}
             </Text>
           </View>
           <TouchableOpacity
-            style={styles.locationDisplay}
+            style={styles.locationDisplayHero}
             onPress={() => setShowLocationModal(true)}
           >
-            <Ionicons name="location" size={20} color={colors.primary} />
-            <Text style={styles.locationText}>
+            <Ionicons name="location" size={20} color={colors.textInverse} />
+            <Text style={styles.locationTextHero}>
               {userLocation || 'Dubai'}
             </Text>
-            <Ionicons name="chevron-down" size={16} color={colors.primaryDark} style={{ marginLeft: 4 }} />
+            <Ionicons name="chevron-down" size={16} color={colors.textInverse} style={{ marginLeft: 4 }} />
           </TouchableOpacity>
         </View>
+        <TouchableOpacity style={styles.homeSearch} onPress={navigateToEvents} accessibilityRole="button">
+          <Ionicons name="search" size={20} color={colors.textMuted} />
+          <Text style={styles.homeSearchText}>{t('search_events')}</Text>
+        </TouchableOpacity>
+        </LinearGradient>
 
         {/* User Interests */}
         {renderInterestPills()}
 
         {weekendDigest && (
           <TouchableOpacity
-            style={styles.weekendCard}
+            style={styles.weekendCardRing}
             onPress={() => navigationRef.current?.navigate('WeekendDigest')}
           >
+          <View style={styles.weekendCard}>
             <View style={styles.weekendCardHeader}>
               <View>
                 <Text style={styles.weekendTitle}>{t('this_weekend')}</Text>
@@ -563,6 +549,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
                   : <View key={event.id} style={[styles.weekendPoster, styles.weekendPosterPlaceholder]}><Ionicons name="calendar-outline" size={20} color={colors.textMuted} /></View>
               ))}
             </View>
+          </View>
           </TouchableOpacity>
         )}
 
@@ -803,8 +790,9 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.textInverse,
+    backgroundColor: colors.bg,
   },
+  hero: { paddingTop: 8, paddingBottom: 28, borderBottomLeftRadius: radius.xl, borderBottomRightRadius: radius.xl, overflow: 'hidden' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -818,6 +806,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.text,
   },
+  greetingHero: { ...type.h1, color: colors.textInverse },
+  subtitleHero: { ...type.body, color: 'rgba(255,255,255,0.82)', marginTop: 4 },
   subtitle: {
     fontSize: 14,
     color: colors.textMuted,
@@ -833,6 +823,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.primary,
   },
+  locationDisplayHero: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.pill },
+  locationTextHero: { fontSize: 14, fontWeight: '600', color: colors.textInverse, marginLeft: 4 },
+  homeSearch: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginHorizontal: 20, marginBottom: -48, paddingHorizontal: 16, height: 52, borderRadius: radius.pill, backgroundColor: colors.surface, ...shadow.card },
+  homeSearchText: { ...type.body, color: colors.textMuted },
   locationText: {
     fontSize: 14,
     fontWeight: '600',
@@ -891,11 +885,10 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 24,
     padding: 16,
-    borderRadius: 16,
-    backgroundColor: colors.primarySoft,
-    borderWidth: 1,
-    borderColor: colors.primarySoft,
+    borderRadius: radius.lg - 1,
+    backgroundColor: colors.surface,
   },
+  weekendCardRing: { marginHorizontal: 20, marginBottom: 24, padding: 1, borderRadius: radius.lg, backgroundColor: colors.primary, ...shadow.card },
   weekendCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   weekendTitle: { fontSize: 20, fontWeight: '800', color: colors.primaryDark },
   weekendSubtitle: { marginTop: 4, color: colors.primaryDark },

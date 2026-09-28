@@ -341,7 +341,7 @@ function MainTabNavigator({ navigation }: { navigation: any }) {
 const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: colors.textInversefff,
+    backgroundColor: colors.textInverse,
     borderTopWidth: 1,
     borderTopColor: colors.border,
     paddingBottom: 8,

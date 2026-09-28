@@ -24,6 +24,7 @@ import { useUserStore } from '../store/userStore';
 import { useSavedEventsStore } from '../store/savedEventsStore';
 import { categoryLabel, formatEventDate, formatPrice, useLocale } from '../i18n';
 import { sourceBadge } from '../utils/trust';
+import { radius, shadow, spacing, type } from '../theme';
 
 // Event categories for filtering
 const EVENT_CATEGORIES = [
@@ -876,26 +877,7 @@ const EventsScreen = () => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-      <Text style={styles.headerTitle}>{t('discover_events')}</Text>
-        <TouchableOpacity
-          style={styles.filterButton}
-          onPress={() => setFiltersVisible(!filtersVisible)}
-        >
-          <Ionicons
-            name={
-              selectedCategory !== 'All' ||
-              venueFilter ||
-              dateFrom ||
-              dateTo ||
-              searchQuery ||
-              selectedCity !== 'All Cities'
-                ? "options"
-                : "options-outline"
-            }
-            size={24}
-            color={colors.primary}
-          />
-        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{t('discover_events')}</Text>
       </View>
 
       {/* Venue filter banner — shown when navigated from Top Venues */}
@@ -925,24 +907,29 @@ const EventsScreen = () => {
       )}
 
       {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color={colors.textMuted} style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder={t('search_events')}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          autoCapitalize="none"
-          autoCorrect={false}
-          returnKeyType="search"
-          textContentType="none"
-          editable={true}
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <Ionicons name="close-circle" size={20} color={colors.textMuted} />
-          </TouchableOpacity>
-        )}
+      <View style={styles.searchRow}>
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={20} color={colors.textMuted} style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder={t('search_events')}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+            textContentType="none"
+            editable={true}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
+          )}
+        </View>
+        <TouchableOpacity style={styles.filterButton} onPress={() => setFiltersVisible(!filtersVisible)}>
+          <Ionicons name={filtersVisible ? 'options' : 'options-outline'} size={22} color={colors.primary} />
+        </TouchableOpacity>
       </View>
 
       {/* Sort Options - Outside filters */}
@@ -1058,31 +1045,45 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: colors.text,
+    ...type.h1,
   },
   filterButton: {
-    padding: 8,
+    width: 52,
+    height: 52,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shadow.card,
   },
   filtersSection: {
-    backgroundColor: colors.textInverse,
+    backgroundColor: colors.surface,
     marginHorizontal: 20,
     marginBottom: 12,
     paddingVertical: 12,
     paddingHorizontal: 12,
-    borderRadius: 12,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
+    ...shadow.card,
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginHorizontal: 20,
+    marginBottom: 16,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.textInverse,
-    marginHorizontal: 20,
-    marginBottom: 16,
+    flex: 1,
+    marginBottom: 0,
     paddingHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -1271,22 +1272,20 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   eventCard: {
-    backgroundColor: colors.textInverse,
-    borderRadius: 12,
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     marginBottom: 16,
-    shadowColor: colors.text,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    ...shadow.card,
     overflow: 'hidden',
   },
   eventCardImageContainer: {
     position: 'relative',
   },
   eventCardImage: {
-    width: '100%',
-    height: 200,
+    width: 96,
+    height: 96,
+    borderRadius: radius.md,
   },
   imageOverlayButtons: {
     position: 'absolute',
@@ -1306,7 +1305,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   eventCardContent: {
-    padding: 16,
+    flex: 1,
+    padding: spacing.md,
   },
   eventHeader: {
     flexDirection: 'row',
@@ -1342,14 +1342,11 @@ const styles = StyleSheet.create({
   trustPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.successSoft, paddingHorizontal: 7, paddingVertical: 4, borderRadius: 10 },
   trustPillText: { color: colors.success, fontSize: 11, fontWeight: '700' },
   eventTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.text,
+    ...type.h3,
     marginBottom: 8,
   },
   eventDescription: {
-    fontSize: 14,
-    color: colors.textMuted,
+    ...type.caption,
     marginBottom: 16,
     lineHeight: 20,
   },

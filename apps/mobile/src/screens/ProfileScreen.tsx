@@ -23,6 +23,8 @@ import { ProfileStackParamList } from '../navigation/MainTabNavigator';
 import { navigationRef } from '../navigation/navigationRef';
 import { authService } from '../services/auth.service';
 import { setLocale, useLocale } from '../i18n';
+import { LinearGradient } from 'expo-linear-gradient';
+import { gradients, radius, shadow, type } from '../theme';
 
 type ProfileScreenNavigationProp = NavigationProp<ProfileStackParamList, 'ProfileMain'>;
 
@@ -138,6 +140,7 @@ const ProfileScreen = () => {
 
             {/* Tappable avatar */}
             <TouchableOpacity onPress={handlePickAvatar} style={styles.avatarWrapper}>
+              <LinearGradient colors={gradients.primary} style={styles.avatarRing}>
               {user?.avatar ? (
                 <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
               ) : (
@@ -145,6 +148,7 @@ const ProfileScreen = () => {
                   <Ionicons name="person" size={44} color={colors.textMuted} />
                 </View>
               )}
+              </LinearGradient>
               <View style={styles.cameraOverlay}>
                 <Ionicons name="camera" size={14} color={colors.textInverse} />
               </View>
@@ -307,21 +311,15 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: colors.text,
+    ...type.h1,
   },
   section: {
-    backgroundColor: colors.textInversefff,
+    backgroundColor: colors.surface,
     marginHorizontal: 20,
     marginTop: 20,
-    borderRadius: 12,
+    borderRadius: radius.lg,
     paddingVertical: 10,
-    shadowColor: colors.text,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    ...shadow.card,
   },
   sectionTitle: {
     paddingHorizontal: 20,
@@ -369,6 +367,7 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
   },
+  avatarRing: { width: 80, height: 80, borderRadius: 40, padding: 3 },
   avatarPlaceholder: {
     width: 80,
     height: 80,

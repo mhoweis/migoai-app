@@ -35,6 +35,7 @@ import { inviteRef } from "./src/utils/inviteRef";
 import { ticketsService } from "./src/services/tickets.service";
 import { navigateToTab } from "./src/navigation/navigationRef";
 import { setLocale, STORAGE_KEY, useLocale } from "./src/i18n";
+import { shadow, radius } from "./src/theme";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -45,7 +46,7 @@ const CHECKOUT_CANCEL_QUERY = 'checkout=cancel';
 const CustomTabIcon = ({ routeName, focused }: { routeName: string, focused: boolean }) => {
   if (routeName === "WalletTab") {
     return (
-      <View style={styles.iconContainer}>
+      <View style={[styles.iconContainer, focused && styles.iconContainerFocused]}>
         <Ionicons
           name={focused ? "wallet" : "wallet-outline"}
           size={24}
@@ -75,7 +76,7 @@ const CustomTabIcon = ({ routeName, focused }: { routeName: string, focused: boo
   }
   
   return (
-    <View style={styles.iconContainer}>
+    <View style={[styles.iconContainer, focused && styles.iconContainerFocused]}>
       <Image 
         source={iconSource} 
         style={[
@@ -99,11 +100,17 @@ function MainTabs() {
         ),
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
-        tabBarLabelStyle: { fontSize: 11 },
+            tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         tabBarStyle: {
-          borderTopWidth: 1,
-          borderTopColor: colors.border,
-          minHeight: 60,
+          borderTopWidth: 0,
+          backgroundColor: colors.surface,
+          minHeight: 64,
+          height: 64,
+          paddingBottom: 8,
+          paddingTop: 4,
+          borderTopLeftRadius: radius.xl,
+          borderTopRightRadius: radius.xl,
+          ...shadow.float,
           maxWidth: '100%',
         },
         headerShown: false,
@@ -198,11 +205,17 @@ function MainTabsWithProfileStack() {
         ),
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
-        tabBarLabelStyle: { fontSize: 11 },
+            tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         tabBarStyle: {
-          borderTopWidth: 1,
-          borderTopColor: colors.border,
-          minHeight: 60,
+          borderTopWidth: 0,
+          backgroundColor: colors.surface,
+          minHeight: 64,
+          height: 64,
+          paddingBottom: 8,
+          paddingTop: 4,
+          borderTopLeftRadius: radius.xl,
+          borderTopRightRadius: radius.xl,
+          ...shadow.float,
           maxWidth: '100%',
         },
         headerShown: false,
@@ -489,8 +502,14 @@ export default function App() {
 
 const styles = StyleSheet.create({
   iconContainer: {
+    width: 38,
+    height: 30,
+    borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  iconContainerFocused: {
+    backgroundColor: colors.primarySoft,
   },
   tabIcon: {
     width: 24,

@@ -24,6 +24,7 @@ import { navigateToTab } from '../navigation/navigationRef';
 import { Ticket, ticketsService } from '../services/tickets.service';
 import { socialService } from '../services/social.service';
 import { formatEventDate, useLocale, categoryLabel } from '../i18n';
+import { radius, shadow, spacing, type } from '../theme';
 
 const categoryColors: Record<string, string> = {
   Music: colors.primaryDark,
@@ -88,7 +89,7 @@ function TicketCard({
           <Ionicons name="ticket-outline" size={42} color={colors.textInverse} />
         </View>
       )}
-      <View style={styles.cardBody}>
+        <View style={styles.cardBody}>
         <View style={styles.cardHeading}>
           <Text style={styles.category}>{categoryLabel(ticket.event.category)}</Text>
           <View style={[styles.statusBadge, ticket.status === 'CHECKED_IN' && styles.usedBadge]}>
@@ -106,9 +107,14 @@ function TicketCard({
             ? `${ticket.currency || ticket.event.currency || 'AED'} ${Number(ticket.totalAmount).toFixed(2)} paid`
             : t('free')}
         </Text>
+        <View style={styles.perforation}>
+          <View style={styles.perforationCircleLeft} />
+          <View style={styles.perforationLine} />
+          <View style={styles.perforationCircleRight} />
+        </View>
         {ticket.qrCode ? (
           <View style={styles.qrSection}>
-            <QRCode value={ticket.qrCode} size={160} />
+            <View style={styles.qrFrame}><QRCode value={ticket.qrCode} size={160} /></View>
             <Text style={styles.code}>{ticket.qrCode}</Text>
           </View>
         ) : null}
@@ -361,19 +367,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 18,
-    backgroundColor: colors.textInverse,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
   },
-  headerTitle: { fontSize: 28, fontWeight: '700', color: colors.text },
+  headerTitle: { ...type.h1 },
   list: { padding: 16, gap: 16 },
   emptyList: { flexGrow: 1, padding: 24 },
   card: {
     overflow: 'hidden',
-    borderRadius: 16,
-    backgroundColor: colors.textInverse,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    ...shadow.card,
   },
   coverImage: {
     width: '100%',
@@ -381,17 +384,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cardBody: { padding: 16 },
+  cardBody: { padding: spacing.lg },
   cardHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   category: { color: colors.primary, fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: colors.successSoft },
   usedBadge: { backgroundColor: colors.border },
   statusText: { color: colors.success, fontSize: 12, fontWeight: '700' },
-  title: { marginTop: 8, fontSize: 20, fontWeight: '700', color: colors.text },
+  title: { marginTop: 8, ...type.h2 },
   meta: { marginTop: 5, color: colors.textSecondary, fontSize: 14 },
   quantity: { marginTop: 12, color: colors.text, fontSize: 14, fontWeight: '600' },
   price: { marginTop: 6, color: colors.primary, fontSize: 14, fontWeight: '700' },
-  qrSection: { alignItems: 'center', gap: 8, paddingVertical: 18, borderTopWidth: 1, borderTopColor: colors.surfaceAlt, marginTop: 16 },
+  perforation: { flexDirection: 'row', alignItems: 'center', marginHorizontal: -spacing.lg, marginTop: spacing.lg },
+  perforationCircleLeft: { width: 18, height: 18, borderRadius: 9, backgroundColor: colors.bg, marginLeft: -9 },
+  perforationCircleRight: { width: 18, height: 18, borderRadius: 9, backgroundColor: colors.bg, marginRight: -9 },
+  perforationLine: { flex: 1, borderTopWidth: 1, borderStyle: 'dashed', borderColor: colors.border },
+  qrSection: { alignItems: 'center', gap: 8, paddingVertical: 18, marginTop: 0 },
+  qrFrame: { padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.surface },
   code: { maxWidth: '100%', color: colors.textMuted, fontSize: 11, textAlign: 'center' },
   cancelButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: 14 },
   cancelText: { color: colors.danger, fontSize: 14, fontWeight: '600' },

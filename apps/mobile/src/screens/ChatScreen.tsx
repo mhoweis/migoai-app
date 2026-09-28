@@ -22,6 +22,9 @@ import { chatService } from '../services/chat.service';
 import { api } from '../services/api';
 import { eventService } from '../services/event.service';
 import { useLocale } from '../i18n';
+import Chip from '../components/Chip';
+import { gradients, shadow, type } from '../theme';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface Message {
   id: string;
@@ -298,12 +301,12 @@ const ChatScreen: React.FC = () => {
         )}
 
         {isUser ? (
-          <View style={[styles.messageBubble, styles.userBubble]}>
+          <LinearGradient colors={gradients.primaryButton} style={[styles.messageBubble, styles.userBubble]}>
             <Text style={[styles.messageText, styles.userMessageText]}>{item.text}</Text>
             <Text style={[styles.timestamp, styles.userTimestamp]}>
               {item.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </Text>
-          </View>
+          </LinearGradient>
         ) : (
           <View style={styles.aiMessageWrapper}>
             <View style={[styles.messageBubble, styles.aiBubble]}>
@@ -399,17 +402,14 @@ const ChatScreen: React.FC = () => {
     return (
       <View style={styles.quickRepliesContainer}>
         {quickReplies.map((text, idx) => (
-          <TouchableOpacity
+          <Chip
             key={idx}
-            style={styles.quickReplyChip}
+            label={text}
             onPress={() => {
               setQuickReplies([]);
               void handleSendMessage(text);
             }}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.quickReplyChipText} numberOfLines={1}>{text}</Text>
-          </TouchableOpacity>
+          />
         ))}
       </View>
     );
@@ -601,11 +601,13 @@ const ChatScreen: React.FC = () => {
               onPress={() => void handleSendMessage()}
               disabled={!inputText.trim() || isLoading}
             >
-              {isLoading ? (
-                <ActivityIndicator size="small" color={colors.textInverse} />
-              ) : (
-                <Ionicons name="send" size={20} color={colors.textInverse} />
-              )}
+              <LinearGradient colors={gradients.primaryButton} style={styles.sendGradient}>
+                {isLoading ? (
+                  <ActivityIndicator size="small" color={colors.textInverse} />
+                ) : (
+                  <Ionicons name="send" size={20} color={colors.textInverse} />
+                )}
+              </LinearGradient>
             </TouchableOpacity>
           </View>
           
@@ -633,9 +635,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: colors.textInverse,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
   },
   headerContent: {
     flexDirection: 'row',
@@ -651,9 +651,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.text,
+    ...type.h3,
   },
   headerSubtitle: {
     fontSize: 12,
@@ -708,11 +706,7 @@ const styles = StyleSheet.create({
     maxWidth: '80%',
     padding: 12,
     borderRadius: 18,
-    shadowColor: colors.text,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    ...shadow.card,
   },
   userBubble: {
     backgroundColor: colors.primary,
@@ -720,7 +714,9 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   aiBubble: {
-    backgroundColor: colors.textInverse,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderBottomLeftRadius: 4,
     marginRight: 8,
   },
@@ -1009,7 +1005,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 4,
@@ -1017,6 +1012,7 @@ const styles = StyleSheet.create({
   sendButtonDisabled: {
     backgroundColor: colors.primarySoft,
   },
+  sendGradient: { flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center', borderRadius: 24 },
   charCount: {
     fontSize: 11,
     color: colors.textMuted,
