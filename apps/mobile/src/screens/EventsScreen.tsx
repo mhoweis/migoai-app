@@ -55,6 +55,21 @@ const EventsScreen = () => {
   const [availableCities, setAvailableCities] = useState<Array<{ name: string; count: number }>>([]);
   const [availableVenues, setAvailableVenues] = useState<Array<{ name: string; count: number }>>([]);
   const [filtersVisible, setFiltersVisible] = useState(false);
+  const listOffsetRef = useRef(0);
+  const filtersOpenedAtOffsetRef = useRef(0);
+  const filtersVisibleRef = useRef(false);
+
+  useEffect(() => {
+    filtersVisibleRef.current = filtersVisible;
+    if (filtersVisible) filtersOpenedAtOffsetRef.current = listOffsetRef.current;
+  }, [filtersVisible]);
+
+  const closeFiltersOnScroll = (offsetY: number) => {
+    listOffsetRef.current = offsetY;
+    if (filtersVisibleRef.current && Math.abs(offsetY - filtersOpenedAtOffsetRef.current) > 12) {
+      setFiltersVisible(false);
+    }
+  };
   // Dynamic filter options based on current selection
   const [dynamicCities, setDynamicCities] = useState<Array<{ name: string; count: number }>>([]);
   const [dynamicVenues, setDynamicVenues] = useState<Array<{ name: string; count: number }>>([]);
@@ -947,6 +962,9 @@ const EventsScreen = () => {
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.eventsList}
+        onScroll={(e) => closeFiltersOnScroll(e.nativeEvent.contentOffset.y)}
+        onScrollBeginDrag={() => filtersVisibleRef.current && setFiltersVisible(false)}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
