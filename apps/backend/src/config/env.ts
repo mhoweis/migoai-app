@@ -9,6 +9,7 @@ const envSchema = z.object({
   SUPABASE_DATABASE_URL: z.string().min(1, 'SUPABASE_DATABASE_URL is required'),
   JWT_SECRET: z.string().min(1, 'JWT_SECRET is required'),
   JWT_REFRESH_SECRET: z.string().min(1, 'JWT_REFRESH_SECRET is required'),
+  TICKET_SIGNING_SECRET: z.string().optional(),
   
   // Optional with defaults
   COOKIE_SECRET: z.string().default('dev-cookie-secret'),
@@ -60,7 +61,20 @@ const envSchema = z.object({
 
   // Event Data APIs
   TICKETMASTER_API_KEY: z.string().optional(),
+  TICKETMASTER_MAX_PAGES: z.coerce.number().int().min(1).default(3),
   EVENTBRITE_API_KEY: z.string().optional(),
+  EVENTBRITE_PRIVATE_TOKEN: z.string().optional(),
+  EVENTBRITE_ORGANIZATION_IDS: z.string().default(''),
+  MOCK_EVENTS_PROVIDER: z.preprocess(
+    value => typeof value === 'string' ? value.toLowerCase() === 'true' : value,
+    z.boolean().default(false),
+  ),
+  SYNC_CITIES: z.string().default('Dubai,Abu Dhabi'),
+  EVENT_SYNC_INTERVAL_MINUTES: z.coerce.number().min(0).default(60),
+  EVENT_SYNC_ON_BOOT: z.preprocess(
+    value => typeof value === 'string' ? value.toLowerCase() === 'true' : value,
+    z.boolean().default(true),
+  ),
   PREDICTHQ_ACCESS_TOKEN: z.string().optional(),
   PLATINUMLIST_API_KEY: z.string().optional(),
   MEETUP_API_KEY: z.string().optional(),
@@ -133,6 +147,7 @@ export default {
   // Authentication
   JWT_SECRET: env.JWT_SECRET,
   JWT_REFRESH_SECRET: env.JWT_REFRESH_SECRET,
+  TICKET_SIGNING_SECRET: env.TICKET_SIGNING_SECRET || env.JWT_SECRET,
   JWT_EXPIRES_IN: '15m',
   JWT_REFRESH_EXPIRES_IN: '7d',
   COOKIE_SECRET: env.COOKIE_SECRET,
@@ -163,7 +178,17 @@ export default {
 
   // Event Data APIs
   TICKETMASTER_API_KEY: env.TICKETMASTER_API_KEY || '',
+  TICKETMASTER_MAX_PAGES: env.TICKETMASTER_MAX_PAGES,
   EVENTBRITE_API_KEY: env.EVENTBRITE_API_KEY || '',
+  EVENTBRITE_PRIVATE_TOKEN: env.EVENTBRITE_PRIVATE_TOKEN || '',
+  EVENTBRITE_ORGANIZATION_IDS: env.EVENTBRITE_ORGANIZATION_IDS
+    .split(',')
+    .map(value => value.trim())
+    .filter(Boolean),
+  MOCK_EVENTS_PROVIDER: env.MOCK_EVENTS_PROVIDER,
+  SYNC_CITIES: env.SYNC_CITIES.split(',').map(value => value.trim()).filter(Boolean),
+  EVENT_SYNC_INTERVAL_MINUTES: env.EVENT_SYNC_INTERVAL_MINUTES,
+  EVENT_SYNC_ON_BOOT: env.EVENT_SYNC_ON_BOOT,
   PREDICTHQ_ACCESS_TOKEN: env.PREDICTHQ_ACCESS_TOKEN || '',
   PLATINUMLIST_API_KEY: env.PLATINUMLIST_API_KEY || '',
   MEETUP_API_KEY: env.MEETUP_API_KEY || '',

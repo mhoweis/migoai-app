@@ -3,6 +3,7 @@ import app from './app';
 import prisma from './config/database';
 import config from './config/env';
 import { startPlaceWorker, stopPlaceWorker } from './services/places/place-worker';
+import * as eventSyncScheduler from './services/event-sync.scheduler';
 
 const PORT = config.PORT || 5000;
 
@@ -86,6 +87,7 @@ async function bootstrap() {
     // Drains the place-search queue, one scrape job at a time. Disable with
     // PLACES_WORKER_ENABLED=false on instances that should not scrape.
     startPlaceWorker();
+    eventSyncScheduler.start();
   });
 
   // Handle unhandled promise rejections
@@ -100,6 +102,7 @@ async function bootstrap() {
     console.log(`👋 ${signal} RECEIVED. Shutting down gracefully...`);
 
     stopPlaceWorker();
+    eventSyncScheduler.stop();
 
     server.close(async () => {
       console.log('🛑 Server closed');

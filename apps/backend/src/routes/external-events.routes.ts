@@ -3,8 +3,19 @@ import express, { Request, Response } from 'express';
 import externalEventsService from '../services/external-events.service';
 import logger from '../utils/logger';
 import { authenticate, requireAdmin } from '../middlewares/auth.middleware';
+import eventSyncService from '../services/event-sync.service';
+import * as eventSyncScheduler from '../services/event-sync.scheduler';
 
 const router = express.Router();
+
+router.post('/sync-now', authenticate, requireAdmin, async (_req: Request, res: Response) => {
+  const result = await eventSyncService.syncAll();
+  res.json({ success: true, data: result });
+});
+
+router.get('/sync-status', authenticate, requireAdmin, async (_req: Request, res: Response) => {
+  res.json({ success: true, data: eventSyncScheduler.getStatus() });
+});
 
 /**
  * GET /api/external-events/fetch

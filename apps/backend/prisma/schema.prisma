@@ -240,6 +240,7 @@ model Event {
   updatedAt                 DateTime            @updatedAt @map("updated_at")
   publishedAt               DateTime?           @map("published_at")
   approvedAt                DateTime?           @map("approved_at")
+  lastSyncedAt              DateTime?           @map("last_synced_at")
 
   @@map("events")
   @@index([organizerId])
