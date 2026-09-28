@@ -1,6 +1,7 @@
 import prisma from '../config/database';
 import { BookingType, EventStatus, EventVisibility, Prisma } from '@prisma/client';
 import config from '../config/env';
+import { getSourceInfo } from './providers/source-registry';
 
 export interface EventFilters {
   page?: number;
@@ -359,17 +360,26 @@ export class EventService {
     }
   }
 
-  async getMyEvents(userId: string): Promise<any[]> {
-    const events = await prisma.event.findMany({
+  async getMyEvents(userId: string): Promise<{ events: any[]; organizer: { isVerified: boolean } }> {
+    const [events, user] = await Promise.all([
+      prisma.event.findMany({
       where: {
         organizerId: userId,
         status: { not: 'DELETED' },
       },
       orderBy: { startDate: 'desc' },
       select: this.getEventSelectFields(),
-    });
+      }),
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          isVerified: true,
+          organizerProfile: { select: { isVerified: true } },
+        },
+      }),
+    ]);
 
-    return Promise.all(events.map(async event => {
+    const hostedEvents = await Promise.all(events.map(async event => {
       const eventId = String((event as any).id);
       const [confirmed, checkedIn, invites] = await Promise.all([
         prisma.booking.count({
@@ -395,6 +405,12 @@ export class EventService {
         invited,
       };
     }));
+    return {
+      events: hostedEvents,
+      organizer: {
+        isVerified: Boolean(user?.organizerProfile?.isVerified || user?.isVerified),
+      },
+    };
   }
   
   private async getSimilarEvents(event: any): Promise<any[]> {
@@ -948,6 +964,24 @@ export class EventService {
       publishedAt: true,
       approvedAt: true,
       organizerId: true,
+      organizer: {
+        select: {
+          id: true,
+          name: true,
+          displayName: true,
+          avatar: true,
+          avatarUrl: true,
+          isVerified: true,
+          organizerProfile: { select: { isVerified: true } },
+          _count: {
+            select: {
+              organizedEvents: {
+                where: { status: 'ACTIVE' },
+              },
+            },
+          },
+        },
+      },
     };
     
     if (fullDetails) {
@@ -974,6 +1008,27 @@ export class EventService {
   
   private formatEventResponse(event: any, userId?: string): any {
     const eventAny = event as any;
+    const source = getSourceInfo(eventAny.externalSource, eventAny.source);
+    const isNative = source.id === 'migo';
+    const organizer = isNative && eventAny.organizer
+      ? {
+          id: eventAny.organizer.id,
+          name: eventAny.organizer.displayName || eventAny.organizer.name || 'Migo organizer',
+          avatar: eventAny.organizer.avatar || eventAny.organizer.avatarUrl || null,
+          isVerified: Boolean(
+            eventAny.organizer.organizerProfile?.isVerified || eventAny.organizer.isVerified,
+          ),
+          eventsHosted: eventAny.organizer._count?.organizedEvents || 0,
+        }
+      : undefined;
+    const refundKey = isNative
+      ? (eventAny.isFree ? 'free_cancel_until_start' : 'organizer_policy')
+      : 'per_provider';
+    const refundText = refundKey === 'free_cancel_until_start'
+      ? 'Free tickets can be cancelled until the event starts.'
+      : refundKey === 'organizer_policy'
+        ? 'Refunds are available up to 48 hours before the event starts.'
+        : "Refunds follow the provider's policy.";
     // Return flat structure matching shared Event type
     const formatted: any = {
       id: eventAny.migoId ? eventAny.migoId.toString() : eventAny.id,
@@ -1056,6 +1111,14 @@ export class EventService {
 
       // Relations
       organizerId: eventAny.organizerId,
+      trust: {
+        source,
+        ...(organizer ? { organizer } : {}),
+        refund: refundKey,
+        refundKey,
+        refundText,
+        isOfficial: ['official', 'venue', 'ticketing'].includes(source.kind),
+      },
 
       // Stats - flat structure
       viewCount: Number(eventAny.views) || 0,

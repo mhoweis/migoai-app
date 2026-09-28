@@ -408,6 +408,13 @@ class TicketsService {
     if (booking.status !== BookingStatus.CONFIRMED) {
       throw serviceError('Booking is not active', 400, 'BOOKING_NOT_ACTIVE');
     }
+    const eventForCancellation = await prisma.event.findUnique({
+      where: { id: booking.eventId },
+      select: { startDate: true },
+    });
+    if (eventForCancellation && eventForCancellation.startDate <= new Date()) {
+      throw serviceError('Tickets cannot be cancelled after the event starts', 400, 'EVENT_STARTED');
+    }
 
     return prisma.$transaction(async tx => {
       const event = await tx.event.findUnique({ where: { id: booking.eventId } });

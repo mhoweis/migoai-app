@@ -63,6 +63,7 @@ const envSchema = z.object({
   WHATSAPP_ACCESS_TOKEN: z.string().optional(),
   WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
   WHATSAPP_REMINDERS_CRON: z.string().default('0 5 * * *'),
+  WEEKEND_DIGEST_CRON: z.string().default('0 6 * * 4'),
 
   // Event Data APIs
   TICKETMASTER_API_KEY: z.string().optional(),
@@ -200,6 +201,7 @@ export default {
   WHATSAPP_ACCESS_TOKEN: env.WHATSAPP_ACCESS_TOKEN || '',
   WHATSAPP_PHONE_NUMBER_ID: env.WHATSAPP_PHONE_NUMBER_ID || '',
   WHATSAPP_REMINDERS_CRON: env.WHATSAPP_REMINDERS_CRON,
+  WEEKEND_DIGEST_CRON: env.WEEKEND_DIGEST_CRON,
 
   // Event Data APIs
   TICKETMASTER_API_KEY: env.TICKETMASTER_API_KEY || '',

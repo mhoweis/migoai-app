@@ -2,6 +2,7 @@ import config from '../config/env';
 import logger from '../utils/logger';
 import eventSyncService, { SyncSummary } from './event-sync.service';
 import { whatsappService } from './messaging/whatsapp.service';
+import { buildWeekendDigest } from './digest.service';
 
 let intervalHandle: NodeJS.Timeout | undefined;
 let bootHandle: NodeJS.Timeout | undefined;
@@ -10,6 +11,8 @@ let lastSummary: SyncSummary | undefined;
 let nextRunAt: Date | undefined;
 let reminderTimeout: NodeJS.Timeout | undefined;
 let reminderInterval: NodeJS.Timeout | undefined;
+let digestTimeout: NodeJS.Timeout | undefined;
+let digestInterval: NodeJS.Timeout | undefined;
 
 const runSync = async (): Promise<SyncSummary> => {
   lastRunAt = new Date();
@@ -27,6 +30,33 @@ const runSync = async (): Promise<SyncSummary> => {
 };
 
 export const runNow = async (): Promise<SyncSummary> => runSync();
+
+const prewarmDigest = async (): Promise<void> => {
+  await Promise.all(config.SYNC_CITIES.map(city => buildWeekendDigest(city, 'en')));
+  if (whatsappService.isConfigured()) {
+    logger.info('[whatsapp] weekend digest prewarmed; delivery is not enabled');
+  }
+};
+
+const scheduleDigest = (): void => {
+  const match = config.WEEKEND_DIGEST_CRON.match(/^(\d+)\s+(\d+)\s+\*\s+\*\s+(\d+)$/);
+  if (!match) return;
+  const minute = Number(match[1]);
+  const hour = Number(match[2]);
+  const weekday = Number(match[3]);
+  const now = new Date();
+  const next = new Date(now);
+  const daysAhead = (weekday - next.getUTCDay() + 7) % 7;
+  next.setUTCDate(next.getUTCDate() + daysAhead);
+  next.setUTCHours(hour, minute, 0, 0);
+  if (next <= now) next.setUTCDate(next.getUTCDate() + 7);
+  digestTimeout = setTimeout(() => {
+    void prewarmDigest().catch(error => logger.error('[digest] prewarm failed', { error }));
+    digestInterval = setInterval(() => {
+      void prewarmDigest().catch(error => logger.error('[digest] prewarm failed', { error }));
+    }, 7 * 24 * 60 * 60 * 1000);
+  }, next.getTime() - now.getTime());
+};
 
 export const start = (): void => {
   stop();
@@ -58,6 +88,7 @@ export const start = (): void => {
       }, next.getTime() - now.getTime());
     }
   }
+  scheduleDigest();
 };
 
 export const stop = (): void => {
@@ -76,6 +107,14 @@ export const stop = (): void => {
   if (reminderInterval) {
     clearInterval(reminderInterval);
     reminderInterval = undefined;
+  }
+  if (digestTimeout) {
+    clearTimeout(digestTimeout);
+    digestTimeout = undefined;
+  }
+  if (digestInterval) {
+    clearInterval(digestInterval);
+    digestInterval = undefined;
   }
   nextRunAt = undefined;
 };

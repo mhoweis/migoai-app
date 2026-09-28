@@ -23,6 +23,7 @@ import goRouter from './routes/go.routes';
 import { adminRouter } from './routes/admin.routes';
 import placesRouter from './routes/places.routes';
 import bookingsRouter from './routes/bookings.routes';
+import digestRouter, { digestHtmlRouter } from './routes/digest.routes';
 
 // Import middleware
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
@@ -131,7 +132,9 @@ app.get('/api/health', (_req, res) => {
 // Public routes (no authentication required)
 app.use('/api/auth', authRouter);
 app.use('/e', shareRouter);
+app.use('/digest', digestHtmlRouter);
 app.use('/api/events', eventsRouter); // Assuming events are public for browsing
+app.use('/api/digest', digestRouter);
 
 // Protected routes (authentication required)
 app.use('/api/users', authenticate, usersRouter);
