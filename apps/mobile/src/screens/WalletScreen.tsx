@@ -25,6 +25,7 @@ import { Ticket, ticketsService } from '../services/tickets.service';
 import { socialService } from '../services/social.service';
 import { formatEventDate, useLocale, categoryLabel } from '../i18n';
 import { radius, shadow, spacing, type } from '../theme';
+import GradientButton from '../components/GradientButton';
 
 const categoryColors: Record<string, string> = {
   Music: colors.primaryDark,
@@ -326,12 +327,12 @@ export default function WalletScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadTickets(true)} />}
         ListEmptyComponent={(
           <View style={styles.empty}>
-            <Ionicons name="ticket-outline" size={58} color={colors.textMuted} />
+            <View style={styles.emptyIcon}>
+              <Ionicons name="ticket-outline" size={48} color={colors.primary} />
+            </View>
             <Text style={styles.emptyTitle}>{t('no_tickets')}</Text>
             <Text style={styles.emptyText}>{t('no_tickets_help')}</Text>
-            <TouchableOpacity style={styles.eventsButton} onPress={() => navigateToTab('Events')}>
-              <Text style={styles.eventsButtonText}>{t('events')}</Text>
-            </TouchableOpacity>
+            <GradientButton label={t('browse_events')} onPress={() => navigateToTab('Events')} />
           </View>
         )}
       />
@@ -419,6 +420,5 @@ const styles = StyleSheet.create({
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 120 },
   emptyTitle: { marginTop: 16, fontSize: 20, fontWeight: '700', color: colors.textSecondary },
   emptyText: { marginTop: 6, color: colors.textMuted, textAlign: 'center' },
-  eventsButton: { marginTop: 20, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10, backgroundColor: colors.primary },
-  eventsButtonText: { color: colors.textInverse, fontWeight: '700' },
+  emptyIcon: { width: 96, height: 96, borderRadius: 48, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
 });

@@ -473,8 +473,7 @@ export default function App() {
                 name="EventDetail"
                 component={EventDetailScreen}
                 options={{
-                  title: "Event Details",
-                  headerBackTitle: "Back",
+                  headerShown: false,
                 }}
               />
               <Stack.Screen

@@ -126,7 +126,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <View style={styles.header}>
             <Image source={require('../../assets/icon.png')} style={styles.logo} resizeMode="contain" />
             <Text style={styles.title}>{t('create_account')}</Text>
-            <Text style={styles.subtitle}>{t('sign_in_continue')}</Text>
+            <Text style={styles.subtitle}>{t('register_subtitle')}</Text>
           </View>
 
           <View style={styles.modeSelector}>
@@ -135,7 +135,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               onPress={() => switchMode('phone')}
             >
               <Text style={[styles.modeText, mode === 'phone' && styles.modeTextActive]}>
-                {t('phone_number')}
+                {t('tab_phone')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -143,7 +143,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               onPress={() => switchMode('email')}
             >
               <Text style={[styles.modeText, mode === 'email' && styles.modeTextActive]}>
-                {t('email_address')}
+                {t('tab_email')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -195,7 +195,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               <Text style={styles.hint}>
                 {otpSent
                   ? t('code_sent_help')
-                  : t('send_code')}
+                  : t('otp_hint')}
               </Text>
               <TouchableOpacity
                 style={[styles.primaryButton, loading && styles.buttonDisabled]}
@@ -275,7 +275,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           {errorMessage && <Text style={styles.errorMessage}>{errorMessage}</Text>}
 
           <Text style={styles.termsText}>
-            {t('create_account')} · Migo
+            {t('terms_note')}
           </Text>
           <View style={styles.loginRow}>
             <Text style={styles.secondaryText}>{t('already_have_account')} </Text>

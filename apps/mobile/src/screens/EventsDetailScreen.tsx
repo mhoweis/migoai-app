@@ -16,7 +16,7 @@ import {
   Modal,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import EventMap from '../components/EventMap';
 import { api } from '../services/api';
@@ -55,6 +55,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { user } = useUserStore();
   const { t, locale } = useLocale();
   const { savedIds, toggleSaved, loadSavedEvents } = useSavedEventsStore();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     fetchEvent();
@@ -231,6 +232,14 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </View>
           )}
           <LinearGradient colors={gradients.dark} style={styles.imageOverlay}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.backButton, { top: insets.top + spacing.md }]}
+              onPress={() => navigation.goBack()}
+              accessibilityRole="button"
+              accessibilityLabel={t('back')}
+            >
+              <Ionicons name="arrow-back" size={24} color={colors.textInverse} />
+            </TouchableOpacity>
             <Text style={styles.imageTitle} numberOfLines={3}>{event.title}</Text>
             <View style={styles.imageActions}>
               <TouchableOpacity
@@ -273,17 +282,19 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </Text>
               </View>
             )}
-            {(event as any).trust?.organizer && (
+            {(event as any).trust?.organizer && ((event as any).trust.organizer.name || (event as any).trust.organizer.displayName) && (
               <View style={styles.trustOrganizer}>
                 {(event as any).trust.organizer.avatar ? (
                   <Image source={{ uri: (event as any).trust.organizer.avatar }} style={styles.organizerAvatar} />
                 ) : <Ionicons name="person-circle-outline" size={32} color={colors.textMuted} />}
-                <Text style={styles.organizerName}>{(event as any).trust.organizer.name}</Text>
+                <Text style={styles.organizerName}>{(event as any).trust.organizer.displayName || (event as any).trust.organizer.name}</Text>
                 {(event as any).trust.organizer.isVerified && <Ionicons name="checkmark-circle" size={18} color={colors.primary} />}
-                <Text style={styles.hostedCount}>{(event as any).trust.organizer.eventsHosted} {t('events_hosted')}</Text>
+                {((event as any).trust.organizer.eventsHosted ?? 0) > 0 ? (
+                  <Text style={styles.hostedCount}>{(event as any).trust.organizer.eventsHosted} {t('events_hosted')}</Text>
+                ) : null}
               </View>
             )}
-            {event.organizer && (
+            {event.organizer && (event.organizer.displayName || event.organizer.name) && (
               <View style={styles.eventOrganizer}>
                 {event.organizer.avatarUrl ? (
                   <Image
@@ -313,7 +324,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <View style={styles.detailItem}>
                 <Ionicons name="calendar-outline" size={20} color={colors.primary} />
                 <View style={styles.detailText}>
-                    <Text style={styles.detailLabel}>{t('events')}</Text>
+                    <Text style={styles.detailLabel}>{t('date_time')}</Text>
                   <Text style={styles.detailValue}>
                     {formatEventDate(event.startDate, { withTime: true })}
                   </Text>
@@ -340,7 +351,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </View>
               </View>
 
-              {event.capacity && (
+              {event.capacity ? (
                 <View style={styles.detailItem}>
                   <Ionicons name="people-outline" size={20} color={colors.primary} />
                   <View style={styles.detailText}>
@@ -350,7 +361,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     </Text>
                   </View>
                 </View>
-              )}
+              ) : null}
 
               <View style={styles.detailItem}>
                 <Ionicons name="cash-outline" size={20} color={colors.primary} />
@@ -361,11 +372,13 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                       ? t('free')
                       : formatPrice(Number(event.priceFrom), event.currency || 'AED')}
                   </Text>
-                  {event.priceTo && event.priceFrom !== event.priceTo && (
-                    <Text style={styles.detailValueSecondary}>
-                      {formatPrice(Number(event.priceTo), event.currency || 'AED')}
-                    </Text>
-                  )}
+                  {event.priceTo ? (
+                    event.priceFrom !== event.priceTo ? (
+                      <Text style={styles.detailValueSecondary}>
+                        {formatPrice(Number(event.priceTo), event.currency || 'AED')}
+                      </Text>
+                    ) : null
+                  ) : null}
                 </View>
               </View>
             </View>
@@ -458,9 +471,9 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               ? t('free')
               : formatPrice(Number(event.priceFrom), event.currency || 'AED')}
           </Text>
-          {event.capacity && (
+          {event.capacity ? (
             <Text style={styles.bottomBarTickets}>{t('capacity')}: {event.capacity}</Text>
-          )}
+          ) : null}
         </View>
         <GradientButton
           label={
@@ -612,6 +625,11 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'flex-end',
     padding: spacing.lg,
+    paddingBottom: spacing.lg + 24,
+  },
+  backButton: {
+    position: 'absolute',
+    left: spacing.lg,
   },
   imageTitle: {
     ...type.h1,

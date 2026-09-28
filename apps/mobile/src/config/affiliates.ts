@@ -56,11 +56,19 @@ export function isPlatinumlistUrl(url?: string | null): boolean {
 export function supplierLabel(event: {
   externalSource?: string | null;
   externalUrl?: string | null;
+  trust?: { source?: { label: string } } | null;
 }): string {
+  if (event.trust?.source?.label) return event.trust.source.label;
   if (event.externalSource) {
     const source = event.externalSource.toLowerCase();
     if (source === 'platinumlist') return 'Platinumlist';
-    return event.externalSource;
+    return event.externalSource
+      .split(/[-_]/)
+      .filter(Boolean)
+      .map((word) => word.length <= 4 && /^[a-z]+$/i.test(word)
+        ? word.toUpperCase()
+        : `${word[0].toUpperCase()}${word.slice(1).toLowerCase()}`)
+      .join(' ');
   }
   if (isPlatinumlistUrl(event.externalUrl)) return 'Platinumlist';
   return 'Website';

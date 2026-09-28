@@ -198,7 +198,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>{t('sign_in')}</Text>
+              <Text style={styles.dividerText}>{t('or_continue_with')}</Text>
               <View style={styles.dividerLine} />
             </View>
 
@@ -240,7 +240,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
             </View>
 
             <View style={styles.footer}>
-              <Text style={styles.footerText}>{t('already_have_account')} </Text>
+              <Text style={styles.footerText}>{t('no_account_yet')} </Text>
               <TouchableOpacity 
                 onPress={() => navigation.navigate('Register')}
                 disabled={loading}
@@ -367,6 +367,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   divider: {
+    marginTop: 16,
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 24,

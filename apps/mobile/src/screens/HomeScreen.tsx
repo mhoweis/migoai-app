@@ -500,7 +500,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.header}>
           <View>
             <Text style={styles.greetingHero}>
-              {t('home_greeting', { name: user?.name?.split(' ')[0] || t('welcome') })} 👋
+              {t('home_greeting', { name: user?.name?.split(' ')[0] || t('welcome') })}
             </Text>
             <Text style={styles.subtitleHero}>
               {t('home_subtitle')}
@@ -835,6 +835,7 @@ const styles = StyleSheet.create({
   },
   interestsScroll: {
     paddingLeft: 20,
+    marginTop: 60,
     marginBottom: 20,
   },
   interestsContainer: {

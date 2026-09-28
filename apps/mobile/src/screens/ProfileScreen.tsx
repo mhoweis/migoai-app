@@ -160,7 +160,7 @@ const ProfileScreen = () => {
                 <Text style={styles.userName}>{user?.name || 'User'}</Text>
                 <Ionicons name="pencil" size={14} color={colors.textMuted} style={{ marginLeft: 6 }} />
               </TouchableOpacity>
-              <Text style={styles.userEmail}>{user?.email || 'user@example.com'}</Text>
+              <Text style={styles.userEmail} numberOfLines={1} ellipsizeMode="middle">{user?.email || 'user@example.com'}</Text>
             </View>
           </View>
         </View>
@@ -392,6 +392,7 @@ const styles = StyleSheet.create({
   userDetails: {
     marginLeft: 16,
     flex: 1,
+    minWidth: 0,
   },
   nameRow: {
     flexDirection: 'row',

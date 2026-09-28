@@ -25,6 +25,7 @@ import { useSavedEventsStore } from '../store/savedEventsStore';
 import { categoryLabel, formatEventDate, formatPrice, useLocale } from '../i18n';
 import { sourceBadge } from '../utils/trust';
 import { radius, shadow, spacing, type } from '../theme';
+import Chip from '../components/Chip';
 
 // Event categories for filtering
 const EVENT_CATEGORIES = [
@@ -585,9 +586,11 @@ const EventsScreen = () => {
           </View>
 
           <Text style={styles.eventTitle}>{item.title}</Text>
-          <Text style={styles.eventDescription} numberOfLines={2}>
-            {item.description || item.shortDescription || t('no_events_help')}
-          </Text>
+          {(item.shortDescription || item.description) ? (
+            <Text style={styles.eventDescription} numberOfLines={2}>
+              {item.shortDescription || item.description}
+            </Text>
+          ) : null}
 
           <View style={styles.eventDetails}>
             <View style={styles.detailItem}>
@@ -602,10 +605,12 @@ const EventsScreen = () => {
               <Text style={styles.detailText}>{item.city || item.venueName || t('location_tba')}</Text>
             </View>
 
+            {(item.capacity || item.venueName || !item.city) ? (
             <View style={styles.detailItem}>
               <Ionicons name="people-outline" size={16} color={colors.textMuted} />
-              <Text style={styles.detailText}>{item.capacity ? `${item.capacity} ${t('capacity')}` : t('venue')}</Text>
+              <Text style={styles.detailText}>{item.capacity ? `${item.capacity} ${t('capacity')}` : item.venueName || t('location_tba')}</Text>
             </View>
+            ) : null}
           </View>
 
           <View style={styles.eventFooter}>
@@ -643,28 +648,12 @@ const EventsScreen = () => {
             const isDisabled = count === 0 && item.name !== 'All Cities' && item.name !== selectedCity;
 
             return (
-              <TouchableOpacity
-                style={[
-                  styles.cityChip,
-                  selectedCity === item.name && styles.cityChipSelected,
-                  isDisabled && styles.cityChipDisabled
-                ]}
-                onPress={() => !isDisabled && setSelectedCity(item.name)}
+              <Chip
+                label={`${item.name}${count > 0 ? ` (${count})` : ''}`}
+                selected={selectedCity === item.name}
                 disabled={isDisabled}
-              >
-                <Text
-                  style={[
-                    styles.cityChipText,
-                    selectedCity === item.name && styles.cityChipTextSelected,
-                    isDisabled && styles.cityChipTextDisabled
-                  ]}
-                >
-                  {item.name}
-                  {count > 0 && (
-                    <Text style={styles.cityChipCount}> ({count})</Text>
-                  )}
-                </Text>
-              </TouchableOpacity>
+                onPress={() => !isDisabled && setSelectedCity(item.name)}
+              />
             );
           }}
         />
@@ -694,28 +683,12 @@ const EventsScreen = () => {
             const isDisabled = count === 0 && item.name !== 'All Venues' && item.name !== venueFilter;
 
             return (
-              <TouchableOpacity
-                style={[
-                  styles.venueChip,
-                  isSelected && styles.venueChipSelected,
-                  isDisabled && styles.venueChipDisabled
-                ]}
-                onPress={() => !isDisabled && setVenueFilter(item.name === 'All Venues' ? '' : item.name)}
+              <Chip
+                label={`${item.name}${count > 0 ? ` (${count})` : ''}`}
+                selected={isSelected}
                 disabled={isDisabled}
-              >
-                <Text
-                  style={[
-                    styles.venueChipText,
-                    isSelected && styles.venueChipTextSelected,
-                    isDisabled && styles.venueChipTextDisabled
-                  ]}
-                >
-                  {item.name}
-                  {count > 0 && (
-                    <Text style={styles.venueChipCount}> ({count})</Text>
-                  )}
-                </Text>
-              </TouchableOpacity>
+                onPress={() => !isDisabled && setVenueFilter(item.name === 'All Venues' ? '' : item.name)}
+              />
             );
           }}
         />
@@ -745,31 +718,12 @@ const EventsScreen = () => {
           const isDisabled = count === 0 && item !== 'All' && item !== selectedCategory;
 
           return (
-            <TouchableOpacity
-              style={[
-                styles.categoryChip,
-                isSelected && styles.categoryChipSelected,
-                isDisabled && styles.categoryChipDisabled
-              ]}
-              onPress={() => !isDisabled && setSelectedCategory(item)}
+            <Chip
+              label={`${categoryLabel(item)}${count > 0 ? ` (${count})` : ''}`}
+              selected={isSelected}
               disabled={isDisabled}
-            >
-              <Ionicons
-                name={getCategoryIcon(item)}
-                size={14}
-                color={isSelected ? colors.textInverse : isDisabled ? colors.border : colors.primary}
-              />
-              <Text
-                style={[
-                  styles.categoryChipText,
-                  isSelected && styles.categoryChipTextSelected,
-                  isDisabled && styles.categoryChipTextDisabled
-                ]}
-              >
-                {categoryLabel(item)}
-                {count > 0 && <Text style={styles.categoryChipCount}> ({count})</Text>}
-              </Text>
-            </TouchableOpacity>
+              onPress={() => !isDisabled && setSelectedCategory(item)}
+            />
           );
         }}
       />
@@ -798,19 +752,11 @@ const EventsScreen = () => {
           renderItem={({ item }) => {
             const active = item.preset ? isPresetActive(item.preset) : isCustomActive;
             return (
-              <TouchableOpacity
-                style={[styles.dateChip, active && styles.dateChipActive]}
+              <Chip
+                label={item.label}
+                selected={active}
                 onPress={() => item.preset ? applyDatePreset(active ? 'clear' : item.preset) : setDatePickerVisible(true)}
-              >
-                <Ionicons
-                  name={item.key === 'custom' ? 'options-outline' : 'calendar-outline'}
-                  size={13}
-                  color={active ? colors.textInverse : colors.textMuted}
-                />
-                <Text style={[styles.dateChipText, active && styles.dateChipTextActive]}>
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
+              />
             );
           }}
         />

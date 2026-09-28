@@ -258,22 +258,22 @@ const ChatScreen: React.FC = () => {
     
     switch (action) {
       case 'events-nearby':
-        quickMessage = t('this_week_for_you');
+        quickMessage = t('qa_nearby');
         break;
       case 'by-interests':
-        quickMessage = t('home_subtitle');
+        quickMessage = t('qa_interests');
         break;
       case 'free-events':
-        quickMessage = t('free');
+        quickMessage = t('qa_free');
         break;
       case 'popular':
-        quickMessage = t('top_upcoming_events');
+        quickMessage = t('qa_popular');
         break;
       default:
         quickMessage = action;
     }
     
-    setInputText(quickMessage);
+    void handleSendMessage(quickMessage);
   };
 
   const handleEventPress = (eventId: string) => {
@@ -417,14 +417,14 @@ const ChatScreen: React.FC = () => {
 
   const renderQuickActions = () => (
     <View style={styles.quickActionsContainer}>
-      <Text style={styles.quickActionsTitle}>{t('more')}</Text>
+      <Text style={styles.quickActionsTitle}>{t('quick_actions_title')}</Text>
       <View style={styles.quickActionsGrid}>
         <TouchableOpacity
           style={styles.quickActionButton}
           onPress={() => handleQuickAction('events-nearby')}
         >
           <Ionicons name="navigate" size={20} color={colors.primary} />
-          <Text style={styles.quickActionText}>{t('location_tba')}</Text>
+          <Text style={styles.quickActionText}>{t('qa_nearby')}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity
@@ -432,7 +432,7 @@ const ChatScreen: React.FC = () => {
           onPress={() => handleQuickAction('by-interests')}
         >
           <Ionicons name="heart" size={20} color={colors.primary} />
-          <Text style={styles.quickActionText}>{t('home_subtitle')}</Text>
+          <Text style={styles.quickActionText}>{t('qa_interests')}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity
@@ -440,7 +440,7 @@ const ChatScreen: React.FC = () => {
           onPress={() => handleQuickAction('free-events')}
         >
           <Ionicons name="wallet" size={20} color={colors.primary} />
-          <Text style={styles.quickActionText}>{t('free')}</Text>
+          <Text style={styles.quickActionText}>{t('qa_free')}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity
@@ -448,7 +448,7 @@ const ChatScreen: React.FC = () => {
           onPress={() => handleQuickAction('popular')}
         >
           <Ionicons name="trending-up" size={20} color={colors.primary} />
-          <Text style={styles.quickActionText}>{t('featured')}</Text>
+          <Text style={styles.quickActionText}>{t('qa_popular')}</Text>
         </TouchableOpacity>
       </View>
     </View>
