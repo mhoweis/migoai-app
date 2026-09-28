@@ -55,6 +55,13 @@ enum BookingType {
   RSVP
 }
 
+enum TransferStatus {
+  PENDING
+  ACCEPTED
+  CANCELLED
+  EXPIRED
+}
+
 // Models
 model User {
   id                        String              @id @default(cuid())
@@ -120,6 +127,8 @@ model User {
   following                 Follow[]            @relation("Following")
   followers                 Follow[]            @relation("Followers")
   createdInvites            EventInvite[]       @relation("Inviter")
+  transfersSent             TicketTransfer[]   @relation("TransfersSent")
+  transfersReceived         TicketTransfer[]   @relation("TransfersReceived")
   
   // Timestamps
   createdAt                 DateTime            @default(now()) @map("created_at")
@@ -293,6 +302,7 @@ model Booking {
   // Relations
   user            User          @relation(fields: [userId], references: [id])
   event           Event         @relation(fields: [eventId], references: [id])
+  transfers       TicketTransfer[]
 
   @@map("bookings")
   @@index([userId])
@@ -300,6 +310,26 @@ model Booking {
   @@index([status])
   @@index([bookingDate])
   @@unique([userId, eventId])
+}
+
+model TicketTransfer {
+  id          String         @id @default(cuid())
+  bookingId   String         @map("booking_id")
+  fromUserId  String         @map("from_user_id")
+  toUserId    String?        @map("to_user_id")
+  toEmail     String         @map("to_email") @db.VarChar(255)
+  code        String         @unique @db.VarChar(24)
+  status      TransferStatus @default(PENDING)
+  expiresAt   DateTime       @map("expires_at")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  acceptedAt  DateTime?      @map("accepted_at")
+  booking     Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  fromUser    User           @relation("TransfersSent", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser      User?          @relation("TransfersReceived", fields: [toUserId], references: [id], onDelete: SetNull)
+
+  @@index([bookingId])
+  @@index([toEmail])
+  @@map("ticket_transfers")
 }
 
 model Follow {

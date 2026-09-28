@@ -431,13 +431,34 @@ class TicketsService {
   }
 
   async listMyTickets(userId: string): Promise<any[]> {
-    return prisma.booking.findMany({
+    const tickets = await prisma.booking.findMany({
       where: {
         userId,
         status: { in: [BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN] },
       },
       include: { event: { select: eventTicketSelect } },
       orderBy: { event: { startDate: 'asc' } },
+    });
+    const pendingTransfers = await prisma.ticketTransfer.findMany({
+      where: {
+        bookingId: { in: tickets.map(ticket => ticket.id) },
+        status: 'PENDING',
+      },
+      select: { id: true, bookingId: true, toEmail: true, expiresAt: true },
+    });
+    const pendingByBooking = new Map(pendingTransfers.map(transfer => [transfer.bookingId, transfer]));
+    return tickets.map(ticket => {
+      const pendingTransfer = pendingByBooking.get(ticket.id);
+      return pendingTransfer
+        ? {
+            ...ticket,
+            pendingTransfer: {
+              id: pendingTransfer.id,
+              toEmail: pendingTransfer.toEmail,
+              expiresAt: pendingTransfer.expiresAt,
+            },
+          }
+        : ticket;
     });
   }
 

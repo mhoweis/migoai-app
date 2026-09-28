@@ -64,6 +64,7 @@
     "multer": "^2.0.2",
     "mysql2": "^3.16.0",
     "nodemailer": "^7.0.12",
+    "passkit-generator": "3.6.1",
     "pdfjs-dist": "^4.10.38",
     "puppeteer": "^24.32.1",
     "redis": "^5.10.0",
