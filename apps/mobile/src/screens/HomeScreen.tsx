@@ -39,6 +39,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const [filteredToday, setFilteredToday] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [showLocationModal, setShowLocationModal] = useState(false);
+  const [showAllVenues, setShowAllVenues] = useState(false);
   const [availableCities, setAvailableCities] = useState<Array<{ name: string; count: number }>>([]);
   const [selectedInterest, setSelectedInterest] = useState<string | null>(null);
   const [allEvents, setAllEvents] = useState<Event[]>([]);
@@ -228,10 +229,37 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         });
       }
     });
-    return Array.from(map.values())
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 15);
+    return Array.from(map.values()).sort((a, b) => b.count - a.count);
   }, [allEvents]);
+
+  const renderVenueCard = (item: { name: string; image?: string; city: string; count: number }, style?: object) => (
+    <TouchableOpacity
+      style={[styles.venueCard, style]}
+      onPress={() => navigateToVenue(item.name)}
+    >
+      {item.image ? (
+        <Image source={{ uri: item.image }} style={styles.venueImage} />
+      ) : (
+        <View style={[styles.venueImage, styles.venuePlaceholder]}>
+          <Ionicons name="business-outline" size={32} color="#d1d5db" />
+        </View>
+      )}
+      <View style={styles.venueOverlay}>
+        <Text style={styles.venueName} numberOfLines={2}>{item.name}</Text>
+        <View style={styles.venueMetaRow}>
+          {item.city ? (
+            <View style={styles.venueMetaItem}>
+              <Ionicons name="location-outline" size={10} color="rgba(255,255,255,0.8)" />
+              <Text style={styles.venueMetaText} numberOfLines={1}>{item.city}</Text>
+            </View>
+          ) : null}
+          <View style={styles.venueEventCount}>
+            <Text style={styles.venueEventCountText}>{item.count} event{item.count !== 1 ? 's' : ''}</Text>
+          </View>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
 
   // Navigate to EventsScreen filtered by a specific venue
   const navigateToVenue = (venueName: string) => {
@@ -538,45 +566,30 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Top Venues</Text>
-              <TouchableOpacity onPress={() => navigateToTab('Events')}>
-                <Text style={styles.seeAll}>See All</Text>
+              <TouchableOpacity onPress={() => setShowAllVenues((v) => !v)}>
+                <Text style={styles.seeAll}>
+                  {showAllVenues ? 'Show Less' : `See All (${topVenues.length})`}
+                </Text>
               </TouchableOpacity>
             </View>
-            <FlatList
-              horizontal
-              data={topVenues}
-              keyExtractor={(item) => item.name}
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.venuesContainer}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.venueCard}
-                  onPress={() => navigateToVenue(item.name)}
-                >
-                  {item.image ? (
-                    <Image source={{ uri: item.image }} style={styles.venueImage} />
-                  ) : (
-                    <View style={[styles.venueImage, styles.venuePlaceholder]}>
-                      <Ionicons name="business-outline" size={32} color="#d1d5db" />
-                    </View>
-                  )}
-                  <View style={styles.venueOverlay}>
-                    <Text style={styles.venueName} numberOfLines={2}>{item.name}</Text>
-                    <View style={styles.venueMetaRow}>
-                      {item.city ? (
-                        <View style={styles.venueMetaItem}>
-                          <Ionicons name="location-outline" size={10} color="rgba(255,255,255,0.8)" />
-                          <Text style={styles.venueMetaText} numberOfLines={1}>{item.city}</Text>
-                        </View>
-                      ) : null}
-                      <View style={styles.venueEventCount}>
-                        <Text style={styles.venueEventCountText}>{item.count} event{item.count !== 1 ? 's' : ''}</Text>
-                      </View>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              )}
-            />
+            {showAllVenues ? (
+              <View style={styles.venuesGrid}>
+                {topVenues.map((item) => (
+                  <React.Fragment key={item.name}>
+                    {renderVenueCard(item, styles.venueGridCard)}
+                  </React.Fragment>
+                ))}
+              </View>
+            ) : (
+              <FlatList
+                horizontal
+                data={topVenues.slice(0, 15)}
+                keyExtractor={(item) => item.name}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.venuesContainer}
+                renderItem={({ item }) => renderVenueCard(item)}
+              />
+            )}
           </View>
         )}
 
@@ -1148,6 +1161,17 @@ const styles = StyleSheet.create({
   venuesContainer: {
     paddingLeft: 20,
     gap: 12,
+  },
+  venuesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  venueGridCard: {
+    width: '47%',
+    flexGrow: 1,
+    maxWidth: 220,
   },
   venueCard: {
     width: 150,
