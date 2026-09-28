@@ -1,5 +1,6 @@
 import { api } from './api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { tokenStorage } from './tokenStorage';
 
 export interface User {
   id: string;
@@ -70,8 +71,7 @@ export const authService = {
       );
       const { user, tokens, isFirstLogin } = response.data.data;
 
-      await AsyncStorage.setItem('accessToken', tokens.accessToken);
-      await AsyncStorage.setItem('refreshToken', tokens.refreshToken);
+      await tokenStorage.setTokens(tokens);
       await AsyncStorage.setItem('user', JSON.stringify(user));
       await AsyncStorage.setItem('firstLogin', JSON.stringify(isFirstLogin));
       api.defaults.headers.common.Authorization = `Bearer ${tokens.accessToken}`;
@@ -95,8 +95,7 @@ export const authService = {
       const { user, tokens, isFirstLogin } = response.data.data;
       
       // Store tokens and user data
-      await AsyncStorage.setItem('accessToken', tokens.accessToken);
-      await AsyncStorage.setItem('refreshToken', tokens.refreshToken);
+      await tokenStorage.setTokens(tokens);
       await AsyncStorage.setItem('user', JSON.stringify(user));
       await AsyncStorage.setItem('firstLogin', JSON.stringify(isFirstLogin));
       
@@ -125,8 +124,7 @@ export const authService = {
       
       const { user, tokens, isFirstLogin } = response.data.data;
       
-      await AsyncStorage.setItem('accessToken', tokens.accessToken);
-      await AsyncStorage.setItem('refreshToken', tokens.refreshToken);
+      await tokenStorage.setTokens(tokens);
       await AsyncStorage.setItem('user', JSON.stringify(user));
       await AsyncStorage.setItem('firstLogin', JSON.stringify(isFirstLogin));
       
@@ -147,7 +145,7 @@ export const authService = {
 
   async logout(): Promise<void> {
     try {
-      const refreshToken = await AsyncStorage.getItem('refreshToken');
+      const refreshToken = await tokenStorage.get('refreshToken');
       
       if (refreshToken) {
         await api.post<ApiResponse<{ message: string }>>('/auth/logout', { 
@@ -156,11 +154,9 @@ export const authService = {
       }
       
       // Clear all stored data
-      await AsyncStorage.multiRemove([
-        'accessToken',
-        'refreshToken',
-        'user',
-        'firstLogin',
+      await Promise.all([
+        tokenStorage.clear(),
+        AsyncStorage.multiRemove(['user', 'firstLogin']),
       ]);
       
       // Remove authorization header
@@ -169,11 +165,9 @@ export const authService = {
     } catch (error: any) {
       console.error('Logout error:', error);
       // Even if API call fails, clear local storage
-      await AsyncStorage.multiRemove([
-        'accessToken',
-        'refreshToken',
-        'user',
-        'firstLogin',
+      await Promise.all([
+        tokenStorage.clear(),
+        AsyncStorage.multiRemove(['user', 'firstLogin']),
       ]);
       delete api.defaults.headers.common['Authorization'];
     }
@@ -243,15 +237,15 @@ export const authService = {
     }
   },
 
-  async refreshAccessToken(): Promise<{ accessToken: string; expiresIn: number }> {
+  async refreshAccessToken(): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
     try {
-      const refreshToken = await AsyncStorage.getItem('refreshToken');
+      const refreshToken = await tokenStorage.get('refreshToken');
       
       if (!refreshToken) {
         throw new Error('No refresh token available');
       }
       
-      const response = await api.post<ApiResponse<{ accessToken: string; expiresIn: number }>>(
+      const response = await api.post<ApiResponse<{ accessToken: string; refreshToken: string; expiresIn: number }>>(
         '/auth/refresh-token',
         { refreshToken }
       );
@@ -260,15 +254,14 @@ export const authService = {
         throw new Error(response.data.error || 'Token refresh failed');
       }
       
-      const { accessToken, expiresIn } = response.data.data;
+      const { accessToken, refreshToken: newRefreshToken, expiresIn } = response.data.data;
       
-      // Store new access token
-      await AsyncStorage.setItem('accessToken', accessToken);
+      await tokenStorage.setTokens({ accessToken, refreshToken: newRefreshToken });
       
       // Update API default headers
       api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
       
-      return { accessToken, expiresIn };
+      return { accessToken, refreshToken: newRefreshToken, expiresIn };
     } catch (error: any) {
       console.error('Token refresh error:', error);
       throw error;
@@ -288,8 +281,7 @@ export const authService = {
       
       const { user, tokens, isFirstLogin } = response.data.data;
       
-      await AsyncStorage.setItem('accessToken', tokens.accessToken);
-      await AsyncStorage.setItem('refreshToken', tokens.refreshToken);
+      await tokenStorage.setTokens(tokens);
       await AsyncStorage.setItem('user', JSON.stringify(user));
       await AsyncStorage.setItem('firstLogin', JSON.stringify(isFirstLogin));
       
@@ -311,7 +303,7 @@ export const authService = {
   // Initialize API with stored token
   async initializeApiToken(): Promise<void> {
     try {
-      const accessToken = await AsyncStorage.getItem('accessToken');
+      const accessToken = await tokenStorage.get('accessToken');
       
       if (accessToken) {
         api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
@@ -324,8 +316,8 @@ export const authService = {
   // Check if user is authenticated
   async isAuthenticated(): Promise<boolean> {
     try {
-      const accessToken = await AsyncStorage.getItem('accessToken');
-      const refreshToken = await AsyncStorage.getItem('refreshToken');
+      const accessToken = await tokenStorage.get('accessToken');
+      const refreshToken = await tokenStorage.get('refreshToken');
       
       return !!(accessToken && refreshToken);
     } catch (error) {
@@ -338,8 +330,8 @@ export const authService = {
   async getStoredTokens(): Promise<{ accessToken: string | null; refreshToken: string | null }> {
     try {
       const [accessToken, refreshToken] = await Promise.all([
-        AsyncStorage.getItem('accessToken'),
-        AsyncStorage.getItem('refreshToken'),
+        tokenStorage.get('accessToken'),
+        tokenStorage.get('refreshToken'),
       ]);
       
       return { accessToken, refreshToken };

@@ -2,6 +2,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform, Alert } from "react-native";
 import Constants from "expo-constants"; // Optional: if using Expo
+import { tokenStorage } from "./tokenStorage";
 
 // Get the machine's IP address for physical device testing
 let MACHINE_IP = "192.168.12.33";
@@ -102,7 +103,7 @@ export const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   async (config) => {
-    const token = await AsyncStorage.getItem("accessToken");
+    const token = await tokenStorage.get("accessToken");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -111,7 +112,9 @@ api.interceptors.request.use(
     config.headers["X-Request-ID"] =
       Date.now() + "-" + Math.random().toString(36).substr(2, 9);
 
-    console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`);
+    if (__DEV__) {
+      console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`);
+    }
     return config;
   },
   (error) => {
@@ -123,7 +126,9 @@ api.interceptors.request.use(
 // Response interceptor for token refresh
 api.interceptors.response.use(
   (response) => {
-    console.log(`[API Response] ${response.status} ${response.config.url}`);
+    if (__DEV__) {
+      console.log(`[API Response] ${response.status} ${response.config.url}`);
+    }
     return response;
   },
   async (error) => {
@@ -143,7 +148,7 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const refreshToken = await AsyncStorage.getItem("refreshToken");
+        const refreshToken = await tokenStorage.get("refreshToken");
 
         if (!refreshToken) {
           throw new Error("No refresh token available");
@@ -157,13 +162,13 @@ api.interceptors.response.use(
           },
         );
 
-        const { accessToken, refreshToken: newRefreshToken } = response.data;
+        const { accessToken, refreshToken: newRefreshToken } =
+          response.data.data;
 
-        // Store new tokens
-        await AsyncStorage.setItem("accessToken", accessToken);
-        if (newRefreshToken) {
-          await AsyncStorage.setItem("refreshToken", newRefreshToken);
-        }
+        await tokenStorage.setTokens({
+          accessToken,
+          refreshToken: newRefreshToken,
+        });
 
         // Update the original request header
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
@@ -172,8 +177,7 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         // If refresh fails, logout the user
-        await AsyncStorage.removeItem("accessToken");
-        await AsyncStorage.removeItem("refreshToken");
+        await tokenStorage.clear();
 
         // You might want to redirect to login screen here
         console.log("Session expired, please login again");

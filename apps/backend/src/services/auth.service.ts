@@ -26,7 +26,12 @@ export interface AuthResponse {
 
 export class AuthService {
   private jwtSecret = config.JWT_SECRET;
-  private jwtRefreshSecret = config.JWT_REFRESH_SECRET || config.JWT_SECRET;
+  private jwtRefreshSecret = config.JWT_REFRESH_SECRET;
+  private static readonly REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+  private hashRefreshToken(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex');
+  }
 
   private normalizePhone(phone: string): string {
     const normalized = phone.trim().replace(/[^\d+]/g, '');
@@ -229,25 +234,9 @@ export class AuthService {
     };
     
     // Generate access token
-    const accessToken = jwt.sign(payload, this.jwtSecret, {
-      expiresIn: '15m',
-    });
+    const accessToken = this.signAccessToken(payload);
     
-    // Generate refresh token
-    const refreshToken = jwt.sign(
-      { userId: user.id, type: 'refresh' },
-      this.jwtRefreshSecret,
-      { expiresIn: '7d' }
-    );
-    
-    // Store refresh token in database (optional for now)
-    // await prisma.refreshToken.create({
-    //   data: {
-    //     userId: user.id,
-    //     token: refreshToken,
-    //     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    //   }
-    // });
+    const refreshToken = await this.issueRefreshToken(user.id);
     
     return {
       accessToken,
@@ -256,17 +245,74 @@ export class AuthService {
     };
   }
   
-  // Refresh access token
+  private signAccessToken(payload: JwtPayload): string {
+    return jwt.sign({ ...payload, type: 'access' }, this.jwtSecret, {
+      algorithm: 'HS256',
+      expiresIn: '15m',
+    });
+  }
+
+  private async issueRefreshToken(userId: string): Promise<string> {
+    const refreshToken = jwt.sign(
+      { userId, type: 'refresh', jti: crypto.randomUUID() },
+      this.jwtRefreshSecret,
+      { algorithm: 'HS256', expiresIn: '7d' }
+    );
+
+    await prisma.refreshToken.create({
+      data: {
+        userId,
+        token: this.hashRefreshToken(refreshToken),
+        expiresAt: new Date(Date.now() + AuthService.REFRESH_TTL_MS),
+      },
+    });
+
+    return refreshToken;
+  }
+
+  // Refresh access token. Refresh tokens are single-use: each call revokes the
+  // presented token and issues a new one. Reuse of a revoked token revokes
+  // every session for that user.
   async refreshAccessToken(refreshToken: string): Promise<{
     accessToken: string;
+    refreshToken: string;
     expiresIn: number;
   }> {
     try {
-      // Verify refresh token
-      const decoded = jwt.verify(refreshToken, this.jwtRefreshSecret) as { userId: string; type: string };
+      const decoded = jwt.verify(refreshToken, this.jwtRefreshSecret, {
+        algorithms: ['HS256'],
+      }) as { userId: string; type: string };
       
       if (decoded.type !== 'refresh') {
         throw new Error('Invalid token type');
+      }
+
+      const stored = await prisma.refreshToken.findUnique({
+        where: { token: this.hashRefreshToken(refreshToken) },
+      });
+
+      if (!stored || stored.userId !== decoded.userId) {
+        throw new Error('Unknown refresh token');
+      }
+
+      if (stored.revoked) {
+        await prisma.refreshToken.updateMany({
+          where: { userId: stored.userId, revoked: false },
+          data: { revoked: true },
+        });
+        throw new Error('Refresh token reuse detected');
+      }
+
+      if (stored.expiresAt.getTime() < Date.now()) {
+        throw new Error('Refresh token expired');
+      }
+
+      const { count } = await prisma.refreshToken.updateMany({
+        where: { id: stored.id, revoked: false },
+        data: { revoked: true },
+      });
+      if (count === 0) {
+        throw new Error('Refresh token already used');
       }
       
       // Find user
@@ -285,12 +331,12 @@ export class AuthService {
         role: user.role,
       };
       
-      const accessToken = jwt.sign(payload, this.jwtSecret, {
-        expiresIn: '15m',
-      });
+      const accessToken = this.signAccessToken(payload);
+      const newRefreshToken = await this.issueRefreshToken(user.id);
       
       return {
         accessToken,
+        refreshToken: newRefreshToken,
         expiresIn: 15 * 60,
       };
     } catch (error: any) {
@@ -299,9 +345,13 @@ export class AuthService {
   }
   
   // Logout
-  async logout(userId: string, _refreshToken?: string): Promise<void> {
-    // For now, just log the logout
-    console.log(`User ${userId} logged out`);
+  async logout(userId: string, refreshToken?: string): Promise<void> {
+    await prisma.refreshToken.updateMany({
+      where: refreshToken
+        ? { userId, token: this.hashRefreshToken(refreshToken) }
+        : { userId },
+      data: { revoked: true },
+    });
 
     // Update user last active
     await prisma.user.update({
@@ -312,11 +362,17 @@ export class AuthService {
   
   // Validate token
   async validateToken(token: string): Promise<JwtPayload> {
-    return jwt.verify(token, this.jwtSecret) as JwtPayload;
+    const decoded = jwt.verify(token, this.jwtSecret, {
+      algorithms: ['HS256'],
+    }) as JwtPayload & { type?: string };
+    if (decoded.type === 'refresh') {
+      throw new jwt.JsonWebTokenError('Invalid token type');
+    }
+    return decoded;
   }
   
   // Helper methods
-  private sanitizeUser(user: User): any {
+  sanitizeUser(user: User): any {
     const {
       password,
       phoneVerificationCode,

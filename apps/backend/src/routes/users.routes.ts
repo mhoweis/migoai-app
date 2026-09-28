@@ -1,46 +1,134 @@
 // src/routes/users.routes.ts
-import { Router, Request, Response } from "express";
+import { Router, Response } from "express";
+import { Prisma } from "@prisma/client";
+import { z } from "zod";
 import prisma from "../database/prisma";
-import { authenticate } from "../middlewares/auth.middleware";
+import { authenticate, AuthRequest } from "../middlewares/auth.middleware";
 
 const router = Router();
 
-// ✅ Add this middleware to protect routes
 router.use(authenticate);
 
-// Get all users (protected)
-router.get("/", async (req: Request, res: Response) => {
+const publicUserSelect = {
+  id: true,
+  email: true,
+  name: true,
+  phone: true,
+  avatar: true,
+  preferences: true,
+  role: true,
+  createdAt: true,
+  updatedAt: true,
+} satisfies Prisma.UserSelect;
+
+const updateUserSchema = z
+  .object({
+    name: z.string().trim().min(1).max(100).optional(),
+    avatar: z.string().url().max(2048).nullable().optional(),
+    preferences: z.record(z.string(), z.unknown()).optional(),
+  })
+  .strict();
+
+const isSelfOrAdmin = (req: AuthRequest, id: string): boolean =>
+  req.userId === id || req.user?.role === "ADMIN";
+
+// Get all users (admin only)
+router.get("/", async (req: AuthRequest, res: Response) => {
+  if (req.user?.role !== "ADMIN") {
+    return res.status(403).json({ error: "Insufficient permissions" });
+  }
   try {
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        createdAt: true,
-        bookings: true,
-        reviews: true,
-      },
-    });
+    const users = await prisma.user.findMany({ select: publicUserSelect });
     res.json(users);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch users" });
   }
 });
 
-// Get user by ID (protected)
-router.get("/:id", async (req: Request, res: Response) => {
+router.put("/interests", async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
+    const userId = req.userId;
+    const { interests } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    if (
+      !Array.isArray(interests) ||
+      interests.length > 50 ||
+      !interests.every((i) => typeof i === "string" && i.length <= 100)
+    ) {
+      return res.status(400).json({ error: "Interests must be an array of strings" });
+    }
+
+    const existing = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { preferences: true },
+    });
+    const currentPreferences =
+      existing?.preferences && typeof existing.preferences === "object" && !Array.isArray(existing.preferences)
+        ? (existing.preferences as Prisma.JsonObject)
+        : {};
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        preferences: { ...currentPreferences, interests },
+      },
+      select: publicUserSelect,
+    });
+
+    res.json({
+      success: true,
+      message: "Interests updated successfully",
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error("Update interests error:", error);
+    res.status(500).json({ error: "Failed to update interests" });
+  }
+});
+
+router.get("/me", async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: publicUserSelect,
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json(user);
+  } catch (error) {
+    console.error("Get current user error:", error);
+    res.status(500).json({ error: "Failed to fetch user" });
+  }
+});
+
+// Get user by ID (self or admin)
+router.get("/:id", async (req: AuthRequest, res: Response) => {
+  try {
+    const id = String(req.params.id);
+    if (!isSelfOrAdmin(req, id)) {
+      return res.status(403).json({ error: "Insufficient permissions" });
+    }
+
     const user = await prisma.user.findUnique({
       where: { id },
-      include: {
+      select: {
+        ...publicUserSelect,
         bookings: true,
         reviews: true,
-        wishlists: {
-          include: {
-            event: true,
-          },
-        },
+        wishlists: { include: { event: true } },
         organizedEvents: true,
       },
     });
@@ -55,96 +143,28 @@ router.get("/:id", async (req: Request, res: Response) => {
   }
 });
 
-// ✅ Add this route for updating user interests
-router.put("/interests", async (req: Request, res: Response) => {
+// Update user (self or admin)
+router.put("/:id", async (req: AuthRequest, res: Response) => {
   try {
-    const userId = (req as any).user?.userId;
-    const { interests } = req.body;
-
-    if (!userId) {
-      return res.status(401).json({ error: "Unauthorized" });
+    const id = String(req.params.id);
+    if (!isSelfOrAdmin(req, id)) {
+      return res.status(403).json({ error: "Insufficient permissions" });
     }
 
-    if (!interests || !Array.isArray(interests)) {
-      return res.status(400).json({ error: "Interests must be an array" });
+    const parsed = updateUserSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid user data" });
     }
-
-    // Update user preferences with interests
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: {
-        preferences: {
-          ...(req.body.preferences || {}),
-          interests: interests,
-        },
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        preferences: true,
-        createdAt: true,
-      },
-    });
-
-    res.json({
-      success: true,
-      message: "Interests updated successfully",
-      user: updatedUser,
-    });
-  } catch (error) {
-    console.error("Update interests error:", error);
-    res.status(500).json({ error: "Failed to update interests" });
-  }
-});
-
-// ✅ Add this route for getting current user
-router.get("/me", async (req: Request, res: Response) => {
-  try {
-    const userId = (req as any).user?.userId;
-
-    if (!userId) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        phone: true,
-        avatar: true,
-        preferences: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    res.json(user);
-  } catch (error) {
-    console.error("Get current user error:", error);
-    res.status(500).json({ error: "Failed to fetch user" });
-  }
-});
-
-// Update user (protected)
-router.put("/:id", async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { name, avatar, preferences } = req.body;
+    const { name, avatar, preferences } = parsed.data;
 
     const updatedUser = await prisma.user.update({
       where: { id },
       data: {
         name,
         avatar,
-        preferences,
+        preferences: preferences as Prisma.InputJsonObject | undefined,
       },
+      select: publicUserSelect,
     });
 
     res.json({
@@ -156,10 +176,14 @@ router.put("/:id", async (req: Request, res: Response) => {
   }
 });
 
-// Delete user (protected)
-router.delete("/:id", async (req: Request, res: Response) => {
+// Delete user (self or admin)
+router.delete("/:id", async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
+    if (!isSelfOrAdmin(req, id)) {
+      return res.status(403).json({ error: "Insufficient permissions" });
+    }
+
     await prisma.user.delete({
       where: { id },
     });

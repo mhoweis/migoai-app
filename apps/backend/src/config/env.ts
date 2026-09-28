@@ -87,6 +87,33 @@ const envSchema = z.object({
 // Parse and export
 const env = envSchema.parse(process.env);
 
+const INSECURE_SECRET_VALUES = new Set([
+  'replace_me',
+  'replace_me_with_random_string',
+  'dev-cookie-secret',
+  'migo-dev-salt',
+]);
+
+if (env.NODE_ENV === 'production') {
+  const secrets = {
+    JWT_SECRET: env.JWT_SECRET,
+    JWT_REFRESH_SECRET: env.JWT_REFRESH_SECRET,
+    COOKIE_SECRET: env.COOKIE_SECRET,
+    IP_HASH_SALT: env.IP_HASH_SALT,
+  };
+  for (const [name, value] of Object.entries(secrets)) {
+    if (value.length < 32 || INSECURE_SECRET_VALUES.has(value)) {
+      throw new Error(`${name} must be set to a random value of at least 32 characters in production`);
+    }
+  }
+  if (env.JWT_SECRET === env.JWT_REFRESH_SECRET) {
+    throw new Error('JWT_SECRET and JWT_REFRESH_SECRET must be different');
+  }
+  if (env.ALLOW_DEV_AUTH === 'true') {
+    throw new Error('ALLOW_DEV_AUTH must not be enabled in production');
+  }
+}
+
 // Helper function to get app URL
 const getAppUrl = () => {
   const port = parseInt(env.PORT, 10);

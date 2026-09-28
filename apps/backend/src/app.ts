@@ -66,7 +66,7 @@ const corsOptions = {
     ].filter(Boolean); // Remove undefined values
 
     // Check if the origin is in allowed list or if we're in development
-    const isDevelopment = (process.env.NODE_ENV || 'development') === 'development';
+    const isDevelopment = process.env.NODE_ENV === 'development';
     if (allowedOrigins.indexOf(origin) !== -1 || isDevelopment) {
       callback(null, true);
     } else {
@@ -97,9 +97,8 @@ const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, error: 'Too many requests, please try again later.' },
-  // Health checks and the click-out redirect must not be throttled by a
-  // shared carrier NAT address.
-  skip: (req) => req.path === '/health' || req.path.startsWith('/debug/'),
+  // Health checks must not be throttled by a shared carrier NAT address.
+  skip: (req) => req.path === '/health',
 });
 app.use('/api/', limiter);
 
@@ -117,24 +116,6 @@ app.get('/api/health', (_req, res) => {
       status: 'success',
       message: 'Migo Backend Server is running',
       timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV || 'development',
-      nodeVersion: process.version,
-      corsAllowed: true,
-      platform: process.platform,
-      database: 'connected', // Add database connection check
-    },
-  });
-});
-
-// Debug endpoint for network testing
-app.get('/api/debug/headers', (req, res) => {
-  res.status(200).json({
-    success: true,
-    data: {
-      headers: req.headers,
-      ip: req.ip,
-      hostname: req.hostname,
-      originalUrl: req.originalUrl,
     },
   });
 });

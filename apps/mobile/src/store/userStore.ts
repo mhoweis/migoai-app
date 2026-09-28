@@ -1,6 +1,7 @@
 // migo-mobile/src/store/userStore.ts - UPDATED
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { tokenStorage } from '../services/tokenStorage';
 import { authService, User } from '../services/auth.service';
 
 interface UserStore {
@@ -85,7 +86,10 @@ export const useUserStore = create<UserStore>((set, get) => ({
       });
       
       // Clear all storage
-      await AsyncStorage.multiRemove(['user', 'firstLogin', 'accessToken', 'refreshToken']);
+      await Promise.all([
+        tokenStorage.clear(),
+        AsyncStorage.multiRemove(['user', 'firstLogin']),
+      ]);
       
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
@@ -100,7 +104,7 @@ export const useUserStore = create<UserStore>((set, get) => ({
       const [userString, firstLoginString, accessToken, userLocation, localAvatar, localName] = await Promise.all([
         AsyncStorage.getItem('user'),
         AsyncStorage.getItem('firstLogin'),
-        AsyncStorage.getItem('accessToken'),
+        tokenStorage.get('accessToken'),
         AsyncStorage.getItem('userLocation'),
         AsyncStorage.getItem('localProfileAvatar'),
         AsyncStorage.getItem('localProfileName'),
@@ -129,7 +133,7 @@ export const useUserStore = create<UserStore>((set, get) => ({
         } catch (error) {
           console.warn('Failed to fetch user with token:', error);
           // Clear invalid token
-          await AsyncStorage.multiRemove(['accessToken', 'refreshToken']);
+          await tokenStorage.clear();
         }
       }
 
