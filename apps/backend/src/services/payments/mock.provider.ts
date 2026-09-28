@@ -33,7 +33,8 @@ export class MockPaymentProvider implements PaymentProvider {
   async createCheckout(req: CheckoutRequest): Promise<CheckoutSession> {
     const reference = `mock_${req.bookingId}`;
     const token = createMockPaymentToken(reference);
-    const baseUrl = config.APP_PUBLIC_URL || config.APP_URL;
+    const returnOrigin = /^https?:/.test(req.successUrl) ? new URL(req.successUrl).origin : '';
+    const baseUrl = config.APP_PUBLIC_URL || returnOrigin || config.APP_URL;
     return {
       provider: this.name,
       reference,
