@@ -30,6 +30,7 @@ import FindFriendsScreen from "./src/screens/FindFriendsScreen";
 import { inviteRef } from "./src/utils/inviteRef";
 import { ticketsService } from "./src/services/tickets.service";
 import { navigateToTab } from "./src/navigation/navigationRef";
+import { setLocale, STORAGE_KEY, useLocale } from "./src/i18n";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -85,6 +86,7 @@ const CustomTabIcon = ({ routeName, focused }: { routeName: string, focused: boo
 
 // Updated MainTabs with custom icons
 function MainTabs() {
+  const { t } = useLocale();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -106,27 +108,27 @@ function MainTabs() {
       <Tab.Screen
         name="HomeTab"
         component={HomeScreen}
-        options={{ title: "Home" }}
+        options={{ title: t('home') }}
       />
       <Tab.Screen
         name="EventsTab"
         component={EventsScreen}
-        options={{ title: "Events" }}
+        options={{ title: t('events') }}
       />
       <Tab.Screen
         name="ChatTab"
         component={ChatScreen}
-        options={{ title: "AI Chat" }}
+        options={{ title: t('chat') }}
       />
       <Tab.Screen
         name="WalletTab"
         component={WalletScreen}
-        options={{ title: "Wallet" }}
+        options={{ title: t('wallet') }}
       />
       <Tab.Screen
         name="ProfileTab"
         component={ProfileScreen}
-        options={{ title: "Profile" }}
+        options={{ title: t('profile') }}
       />
     </Tab.Navigator>
   );
@@ -134,6 +136,7 @@ function MainTabs() {
 
 // Profile Stack Navigator for nested navigation
 export function ProfileStack() {
+  const { t } = useLocale();
   return (
     <Stack.Navigator>
       <Stack.Screen
@@ -144,32 +147,32 @@ export function ProfileStack() {
       <Stack.Screen
         name="Interests"
         component={InterestsScreen}
-        options={{ title: "Update Interests" }}
+        options={{ title: t('update_interests') }}
       />
       <Stack.Screen
         name="ConnectionTest"
         component={ConnectionTestScreen}
-        options={{ title: "Connection Test" }}
+        options={{ title: t('connection_test') }}
       />
       <Stack.Screen
         name="CreateEvent"
         component={CreateEventScreen}
-        options={{ title: "Create an event", headerBackTitle: "Back" }}
+        options={{ title: t('create_event'), headerBackTitle: t('back') }}
       />
       <Stack.Screen
         name="MyEvents"
         component={MyEventsScreen}
-        options={{ title: "My events", headerBackTitle: "Back" }}
+        options={{ title: t('my_events'), headerBackTitle: t('back') }}
       />
       <Stack.Screen
         name="CheckIn"
         component={CheckInScreen}
-        options={{ title: "Check in", headerBackTitle: "Back" }}
+        options={{ title: t('check_in'), headerBackTitle: t('back') }}
       />
       <Stack.Screen
         name="FindFriends"
         component={FindFriendsScreen}
-        options={{ title: "Find friends", headerBackTitle: "Back" }}
+        options={{ title: t('find_friends'), headerBackTitle: t('back') }}
       />
     </Stack.Navigator>
   );
@@ -177,6 +180,7 @@ export function ProfileStack() {
 
 // Updated MainTabsWithProfileStack with custom icons
 function MainTabsWithProfileStack() {
+  const { t } = useLocale();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -198,27 +202,27 @@ function MainTabsWithProfileStack() {
       <Tab.Screen
         name="HomeTab"
         component={HomeScreen}
-        options={{ title: "Home" }}
+        options={{ title: t('home') }}
       />
       <Tab.Screen
         name="EventsTab"
         component={EventsScreen}
-        options={{ title: "Events" }}
+        options={{ title: t('events') }}
       />
       <Tab.Screen
         name="ChatTab"
         component={ChatScreen}
-        options={{ title: "AI Chat" }}
+        options={{ title: t('chat') }}
       />
       <Tab.Screen
         name="WalletTab"
         component={WalletScreen}
-        options={{ title: "Wallet" }}
+        options={{ title: t('wallet') }}
       />
       <Tab.Screen
         name="ProfileTab"
         component={ProfileStack}
-        options={{ title: "Profile" }}
+        options={{ title: t('profile') }}
       />
     </Tab.Navigator>
   );
@@ -228,6 +232,7 @@ export default function App() {
   const { user, firstLogin, loadUserFromStorage, setUser, setFirstLogin } = useUserStore();
   const [appLoading, setAppLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
+  const { t } = useLocale();
 
   useEffect(() => {
     initializeApp();
@@ -266,7 +271,7 @@ export default function App() {
           window.history.replaceState({}, '', `${parsed.pathname}${parsed.hash}`);
         }
         if (checkout === CHECKOUT_CANCEL_QUERY.split('=')[1]) {
-          Alert.alert('Payment cancelled');
+          Alert.alert(t('payment_cancelled'));
           return;
         }
         if (checkout !== CHECKOUT_SUCCESS_QUERY.split('=')[1] || !bookingId) return;
@@ -275,17 +280,17 @@ export default function App() {
           const result = await ticketsService.confirm(bookingId);
           if (result.status === 'CONFIRMED') {
             navigateToTab('Wallet');
-            Alert.alert('Payment received — ticket added to Wallet');
+            Alert.alert(t('payment_received'));
             return;
           }
           if (attempt < 4) {
             await new Promise(resolve => setTimeout(resolve, 2000));
           }
         }
-        Alert.alert('Payment is still processing', 'Please check your Wallet shortly.');
+        Alert.alert(t('payment_processing'), t('payment_processing_help'));
       } catch (error) {
         console.error('Checkout return handling failed:', error);
-        Alert.alert('Payment confirmation failed', 'Please check your Wallet or try again.');
+        Alert.alert(t('payment_failed'), t('payment_failed_help'));
       }
     };
 
@@ -334,6 +339,11 @@ export default function App() {
           
           // Try to get current user to validate token
           const currentUser = await authService.getCurrentUser();
+          const localLocale = await AsyncStorage.getItem(STORAGE_KEY);
+          const serverLocale = currentUser.preferences?.locale;
+          if (!localLocale && (serverLocale === 'en' || serverLocale === 'ar')) {
+            await setLocale(serverLocale);
+          }
           console.log('✅ Valid token, user:', currentUser.email);
           
           // Check if user has interests for first login logic
@@ -372,7 +382,7 @@ export default function App() {
   };
 
   if (appLoading) {
-    return <LoadingScreen message="Initializing app..." />;
+    return <LoadingScreen message={t('initializing_app')} />;
   }
 
   console.log('📍 Navigation state:', {

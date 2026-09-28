@@ -14,6 +14,7 @@ export interface User {
     notifications: boolean;
     location: string;
     theme: 'light' | 'dark';
+    locale?: 'en' | 'ar';
   };
   createdAt: string;
   updatedAt: string;
@@ -235,6 +236,17 @@ export const authService = {
         'Failed to update profile'
       );
     }
+  },
+
+  async updateLocale(locale: 'en' | 'ar'): Promise<User> {
+    const response = await api.put<ApiResponse<User>>('/users/me', {
+      preferences: { locale },
+    });
+    if (!response.data.success) {
+      throw new Error(response.data.error || 'Failed to update language');
+    }
+    await AsyncStorage.setItem('user', JSON.stringify(response.data.data));
+    return response.data.data;
   },
 
   async refreshAccessToken(): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {

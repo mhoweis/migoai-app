@@ -179,6 +179,39 @@ router.get("/me", async (req: AuthRequest, res: Response) => {
   }
 });
 
+router.put("/me", async (req: AuthRequest, res: Response) => {
+  try {
+    const parsed = updateUserSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ success: false, error: "Invalid user data" });
+      return;
+    }
+    const existing = await prisma.user.findUnique({
+      where: { id: req.userId! },
+      select: { preferences: true },
+    });
+    const currentPreferences =
+      existing?.preferences && typeof existing.preferences === "object" && !Array.isArray(existing.preferences)
+        ? existing.preferences as Prisma.JsonObject
+        : {};
+    const preferences = (parsed.data.preferences
+      ? { ...currentPreferences, ...parsed.data.preferences }
+      : currentPreferences) as Prisma.InputJsonObject;
+    const user = await prisma.user.update({
+      where: { id: req.userId! },
+      data: {
+        name: parsed.data.name,
+        avatar: parsed.data.avatar,
+        preferences,
+      },
+      select: publicUserSelect,
+    });
+    res.json({ success: true, data: user });
+  } catch {
+    res.status(500).json({ success: false, error: "Failed to update user" });
+  }
+});
+
 // Get user by ID (self or admin)
 router.get("/:id", async (req: AuthRequest, res: Response) => {
   try {

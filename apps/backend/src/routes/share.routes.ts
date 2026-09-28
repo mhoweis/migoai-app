@@ -56,19 +56,23 @@ router.get('/:eventId', async (req: Request, res: Response) => {
     });
   }
   const webBase = getWebBase(req);
+  const isArabic = req.query.lang === 'ar';
+  const pageLanguage = isArabic ? 'ar' : 'en';
+  const openInMigo = isArabic ? 'فتح في Migo' : 'Open in Migo';
+  const openInApp = isArabic ? 'فتح في التطبيق' : 'Open in the app';
   const selfUrl = `${webBase}/e/${encodeURIComponent(event.id)}${code ? `?ref=${encodeURIComponent(code)}` : ''}`;
   const appUrl = `${webBase}/?event=${encodeURIComponent(event.id)}${code ? `&ref=${encodeURIComponent(code)}` : ''}`;
   const dateLine = `${formatShareDate(event.startDate)} · ${event.venueName || event.city || 'TBA'} · ${event.isFree ? 'Free' : `from ${event.currency || 'AED'} ${Number(event.priceFrom || 0).toFixed(2)}`}`;
   const image = event.coverImage ? `<meta property="og:image" content="${escapeHtml(event.coverImage)}">` : '';
   const poster = event.coverImage ? `<img src="${escapeHtml(event.coverImage)}" alt="${escapeHtml(event.title)}">` : '';
-  res.type('html').send(`<!doctype html><html><head><meta charset="utf-8">
+  res.type('html').send(`<!doctype html><html lang="${pageLanguage}"${isArabic ? ' dir="rtl"' : ''}><head><meta charset="utf-8">
 <meta property="og:title" content="${escapeHtml(event.title)}">
 <meta property="og:description" content="${escapeHtml(dateLine)}">
 ${image}<meta property="og:url" content="${escapeHtml(selfUrl)}">
 <meta name="twitter:card" content="summary_large_image"><title>${escapeHtml(event.title)}</title></head>
 <body><main>${poster}<h1>${escapeHtml(event.title)}</h1><p>${escapeHtml(dateLine)}</p>
-<a href="${escapeHtml(appUrl)}">Open in Migo</a>
-<p><a href="migo://event/${encodeURIComponent(event.id)}${code ? `?ref=${encodeURIComponent(code)}` : ''}">Open in the app</a></p></main></body></html>`);
+<a href="${escapeHtml(appUrl)}">${openInMigo}</a>
+<p><a href="migo://event/${encodeURIComponent(event.id)}${code ? `?ref=${encodeURIComponent(code)}` : ''}">${openInApp}</a></p></main></body></html>`);
 });
 
 export default router;
