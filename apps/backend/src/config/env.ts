@@ -71,6 +71,7 @@ const envSchema = z.object({
   VISIT_DUBAI_ALGOLIA_API_KEY: z.string().optional(),
   VISIT_DUBAI_ALGOLIA_INDEX: z.string().default('prod104_vd_en'),
   UAE_GOV_MONTHS_AHEAD: z.coerce.number().int().min(1).default(6),
+  YAS_ISLAND_COVEO_TOKEN: z.string().optional(),
   MOCK_EVENTS_PROVIDER: z.preprocess(
     value => typeof value === 'string' ? value.toLowerCase() === 'true' : value,
     z.boolean().default(false),
@@ -200,6 +201,7 @@ export default {
   VISIT_DUBAI_ALGOLIA_API_KEY: env.VISIT_DUBAI_ALGOLIA_API_KEY || '',
   VISIT_DUBAI_ALGOLIA_INDEX: env.VISIT_DUBAI_ALGOLIA_INDEX,
   UAE_GOV_MONTHS_AHEAD: env.UAE_GOV_MONTHS_AHEAD,
+  YAS_ISLAND_COVEO_TOKEN: env.YAS_ISLAND_COVEO_TOKEN || '',
   MOCK_EVENTS_PROVIDER: env.MOCK_EVENTS_PROVIDER,
   SYNC_CITIES: env.SYNC_CITIES.split(',').map(value => value.trim()).filter(Boolean),
   EVENT_SYNC_INTERVAL_MINUTES: env.EVENT_SYNC_INTERVAL_MINUTES,

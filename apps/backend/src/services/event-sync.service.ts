@@ -14,6 +14,8 @@ import { abuDhabiFestivalProvider } from './providers/abu-dhabi-festival.provide
 import { visitSharjahProvider } from './providers/visit-sharjah.provider';
 import { expoCentreSharjahProvider } from './providers/expo-centre-sharjah.provider';
 import { uaeGovProvider } from './providers/uae-gov.provider';
+import { yasIslandProvider } from './providers/yas-island.provider';
+import { alserkalProvider } from './providers/alserkal.provider';
 import { EventProvider, NormalizedEvent } from './providers/types';
 
 export interface ProviderSyncSummary {
@@ -45,6 +47,8 @@ export class EventSyncService {
     visitSharjahProvider,
     expoCentreSharjahProvider,
     uaeGovProvider,
+    yasIslandProvider,
+    alserkalProvider,
     mockProvider,
   ];
 
