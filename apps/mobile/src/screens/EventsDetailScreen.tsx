@@ -12,6 +12,8 @@ import {
   Dimensions,
   ActivityIndicator,
   Linking,
+  Modal,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,6 +38,9 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [ticketCount, setTicketCount] = useState(1);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const { user } = useUserStore();
   const { savedIds, toggleSaved, loadSavedEvents } = useSavedEventsStore();
 
@@ -112,6 +117,28 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       } else {
         Alert.alert('Unable to RSVP', 'Please try again.');
       }
+    }
+  };
+
+  const handleCheckout = async () => {
+    if (!event) return;
+    setCheckoutLoading(true);
+    try {
+      const returnUrl = Platform.OS === 'web' && typeof window !== 'undefined'
+        ? window.location.origin
+        : 'migo://checkout';
+      const result = await ticketsService.checkout(event.id, ticketCount, returnUrl);
+      setCheckoutOpen(false);
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.location.assign(result.checkoutUrl);
+      } else {
+        await Linking.openURL(result.checkoutUrl);
+      }
+    } catch (checkoutError) {
+      console.error('Checkout failed:', checkoutError);
+      Alert.alert('Unable to start checkout', 'Please try again.');
+    } finally {
+      setCheckoutLoading(false);
     }
   };
 
@@ -356,19 +383,84 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         </View>
         <TouchableOpacity
           style={styles.bookButton}
-          onPress={event.myBookingId ? () => navigateToTab('Wallet') : event.canRsvp ? handleRsvp : handleBookTicket}
+          onPress={
+            event.myBookingId
+              ? () => navigateToTab('Wallet')
+              : event.canRsvp
+                ? handleRsvp
+                : event.canBuy
+                  ? () => setCheckoutOpen(true)
+                  : handleBookTicket
+          }
         >
           <Text style={styles.bookButtonText}>
             {event.myBookingId
               ? 'View Ticket'
               : event.canRsvp
                 ? 'Get Free Ticket'
+                : event.canBuy
+                  ? `Buy Ticket · ${event.currency || 'AED'} ${Number(event.priceFrom || 0).toFixed(2)}`
                 : event.externalUrl
                   ? `Book on ${supplierLabel(event)}`
                   : 'Book Now'}
           </Text>
         </TouchableOpacity>
       </View>
+      <Modal
+        visible={checkoutOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setCheckoutOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.checkoutSheet}>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Buy tickets</Text>
+              <TouchableOpacity onPress={() => setCheckoutOpen(false)} disabled={checkoutLoading}>
+                <Ionicons name="close" size={24} color="#6b7280" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.sheetEventTitle}>{event.title}</Text>
+            <View style={styles.quantityRow}>
+              <Text style={styles.quantityLabel}>Quantity</Text>
+              <View style={styles.stepper}>
+                <TouchableOpacity
+                  style={styles.stepperButton}
+                  onPress={() => setTicketCount(value => Math.max(1, value - 1))}
+                  disabled={checkoutLoading || ticketCount === 1}
+                >
+                  <Ionicons name="remove" size={20} color="#2563eb" />
+                </TouchableOpacity>
+                <Text style={styles.stepperValue}>{ticketCount}</Text>
+                <TouchableOpacity
+                  style={styles.stepperButton}
+                  onPress={() => setTicketCount(value => Math.min(4, value + 1))}
+                  disabled={checkoutLoading || ticketCount === 4}
+                >
+                  <Ionicons name="add" size={20} color="#2563eb" />
+                </TouchableOpacity>
+              </View>
+            </View>
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Total</Text>
+              <Text style={styles.totalValue}>
+                {event.currency || 'AED'} {(Number(event.priceFrom || 0) * ticketCount).toFixed(2)}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.payButton}
+              onPress={handleCheckout}
+              disabled={checkoutLoading}
+            >
+              {checkoutLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.payButtonText}>Pay</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -645,6 +737,93 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+  },
+  checkoutSheet: {
+    padding: 24,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    backgroundColor: '#fff',
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sheetTitle: {
+    color: '#111827',
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  sheetEventTitle: {
+    marginTop: 12,
+    color: '#4b5563',
+    fontSize: 15,
+  },
+  quantityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 28,
+  },
+  quantityLabel: {
+    color: '#374151',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  stepperButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 18,
+    backgroundColor: '#eff6ff',
+  },
+  stepperValue: {
+    minWidth: 18,
+    color: '#111827',
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 28,
+    paddingTop: 18,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  totalLabel: {
+    color: '#4b5563',
+    fontSize: 16,
+  },
+  totalValue: {
+    color: '#111827',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  payButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 50,
+    marginTop: 24,
+    borderRadius: 12,
+    backgroundColor: '#2563eb',
+  },
+  payButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
 

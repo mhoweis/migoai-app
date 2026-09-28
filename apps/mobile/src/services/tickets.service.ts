@@ -2,6 +2,8 @@ import { api } from './api';
 
 export interface Ticket {
   id: string;
+  totalAmount?: number | string | null;
+  currency?: string | null;
   qrCode?: string;
   ticketCount: number;
   status: 'CONFIRMED' | 'CHECKED_IN' | string;
@@ -61,6 +63,28 @@ export const ticketsService = {
       ticketCount,
     });
     return response.data.data;
+  },
+
+  async checkout(
+    eventId: string,
+    ticketCount: number,
+    returnUrl: string,
+  ): Promise<{ bookingId: string; checkoutUrl: string; provider: string }> {
+    const response = await api.post<{
+      success: boolean;
+      data: { bookingId: string; checkoutUrl: string; provider: string };
+    }>('/bookings/checkout', { eventId, ticketCount, returnUrl });
+    return response.data.data;
+  },
+
+  async confirm(bookingId: string): Promise<{ status: 'PENDING' | 'CONFIRMED'; booking?: Ticket }> {
+    const response = await api.post<{ success: boolean; data: Ticket | { status: 'PENDING' } }>(
+      `/bookings/${bookingId}/confirm`,
+    );
+    const data = response.data.data;
+    return 'status' in data && data.status === 'PENDING'
+      ? { status: 'PENDING' }
+      : { status: 'CONFIRMED', booking: data as Ticket };
   },
 
   async myTickets(): Promise<Ticket[]> {

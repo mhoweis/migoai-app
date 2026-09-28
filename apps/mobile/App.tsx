@@ -4,7 +4,7 @@ import { navigationRef } from "./src/navigation/navigationRef";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { Image, StyleSheet, View } from "react-native"; // Changed: Added Image
+import { Alert, Image, Linking, Platform, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useUserStore } from "./src/store/userStore";
 import { authService } from "./src/services/auth.service";
@@ -26,9 +26,13 @@ import WalletScreen from "./src/screens/WalletScreen";
 import CreateEventScreen from "./src/screens/CreateEventScreen";
 import MyEventsScreen from "./src/screens/MyEventsScreen";
 import CheckInScreen from "./src/screens/CheckInScreen";
+import { ticketsService } from "./src/services/tickets.service";
+import { navigateToTab } from "./src/navigation/navigationRef";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+const CHECKOUT_SUCCESS_QUERY = 'checkout=success';
+const CHECKOUT_CANCEL_QUERY = 'checkout=cancel';
 
 // Custom Tab Icon Component
 const CustomTabIcon = ({ routeName, focused }: { routeName: string, focused: boolean }) => {
@@ -221,6 +225,62 @@ export default function App() {
   useEffect(() => {
     initializeApp();
   }, []);
+
+  useEffect(() => {
+    if (!user || appLoading) return undefined;
+    let active = true;
+
+    const processCheckoutUrl = async (url: string) => {
+      try {
+        const parsed = new URL(url);
+        const checkout = parsed.searchParams.get('checkout');
+        const bookingId = parsed.searchParams.get('bookingId');
+        if (!checkout) return;
+
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+          window.history.replaceState({}, '', `${parsed.pathname}${parsed.hash}`);
+        }
+        if (checkout === CHECKOUT_CANCEL_QUERY.split('=')[1]) {
+          Alert.alert('Payment cancelled');
+          return;
+        }
+        if (checkout !== CHECKOUT_SUCCESS_QUERY.split('=')[1] || !bookingId) return;
+
+        for (let attempt = 0; attempt < 5 && active; attempt += 1) {
+          const result = await ticketsService.confirm(bookingId);
+          if (result.status === 'CONFIRMED') {
+            navigateToTab('Wallet');
+            Alert.alert('Payment received — ticket added to Wallet');
+            return;
+          }
+          if (attempt < 4) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+        }
+        Alert.alert('Payment is still processing', 'Please check your Wallet shortly.');
+      } catch (error) {
+        console.error('Checkout return handling failed:', error);
+        Alert.alert('Payment confirmation failed', 'Please check your Wallet or try again.');
+      }
+    };
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      void processCheckoutUrl(window.location.href);
+      return undefined;
+    }
+
+    let subscription: { remove: () => void } | undefined;
+    void Linking.getInitialURL().then(url => {
+      if (url) void processCheckoutUrl(url);
+    });
+    subscription = Linking.addEventListener('url', event => {
+      void processCheckoutUrl(event.url);
+    });
+    return () => {
+      subscription?.remove();
+      active = false;
+    };
+  }, [appLoading, user]);
 
   const initializeApp = async () => {
     try {

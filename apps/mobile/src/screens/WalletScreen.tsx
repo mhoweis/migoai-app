@@ -66,6 +66,11 @@ function TicketCard({ ticket, onCancel }: { ticket: Ticket; onCancel: (ticket: T
           {ticket.event.venueName || 'Venue TBA'}{ticket.event.city ? ` · ${ticket.event.city}` : ''}
         </Text>
         <Text style={styles.quantity}>{ticket.ticketCount} × General admission</Text>
+        <Text style={styles.price}>
+          {Number(ticket.totalAmount || 0) > 0
+            ? `${ticket.currency || ticket.event.currency || 'AED'} ${Number(ticket.totalAmount).toFixed(2)} paid`
+            : 'Free'}
+        </Text>
         {ticket.qrCode ? (
           <View style={styles.qrSection}>
             <QRCode value={ticket.qrCode} size={160} />
@@ -196,6 +201,7 @@ const styles = StyleSheet.create({
   title: { marginTop: 8, fontSize: 20, fontWeight: '700', color: '#111827' },
   meta: { marginTop: 5, color: '#4b5563', fontSize: 14 },
   quantity: { marginTop: 12, color: '#111827', fontSize: 14, fontWeight: '600' },
+  price: { marginTop: 6, color: '#2563eb', fontSize: 14, fontWeight: '700' },
   qrSection: { alignItems: 'center', gap: 8, paddingVertical: 18, borderTopWidth: 1, borderTopColor: '#f3f4f6', marginTop: 16 },
   code: { maxWidth: '100%', color: '#6b7280', fontSize: 11, textAlign: 'center' },
   cancelButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: 14 },
