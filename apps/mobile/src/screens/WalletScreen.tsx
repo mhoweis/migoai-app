@@ -5,12 +5,16 @@ import {
   FlatList,
   Image,
   Linking,
+  Modal,
+  Platform,
   RefreshControl,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
@@ -45,7 +49,25 @@ const formatDate = (value: string) => {
   })} at ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
 };
 
-function TicketCard({ ticket, onCancel, t }: { ticket: Ticket; onCancel: (ticket: Ticket) => void; t: ReturnType<typeof useLocale>['t'] }) {
+function TicketCard({
+  ticket,
+  onCancel,
+  onTransfer,
+  onCancelTransfer,
+  onApple,
+  onGoogle,
+  capabilities,
+  t,
+}: {
+  ticket: Ticket;
+  onCancel: (ticket: Ticket) => void;
+  onTransfer: (ticket: Ticket) => void;
+  onCancelTransfer: (ticket: Ticket) => void;
+  onApple: (ticket: Ticket) => void;
+  onGoogle: (ticket: Ticket) => void;
+  capabilities: { apple: boolean; google: boolean };
+  t: ReturnType<typeof useLocale>['t'];
+}) {
   const color = ticketColor(ticket.event.category || undefined);
   const sendToWhatsApp = async () => {
     try {
@@ -90,6 +112,32 @@ function TicketCard({ ticket, onCancel, t }: { ticket: Ticket; onCancel: (ticket
           </View>
         ) : null}
         {ticket.status === 'CONFIRMED' && (
+          <View style={styles.actions}>
+            {capabilities.apple && Platform.OS === 'web' ? (
+              <TouchableOpacity style={styles.actionButton} onPress={() => onApple(ticket)}>
+                <Text style={styles.actionText}>{t('add_apple_wallet')}</Text>
+              </TouchableOpacity>
+            ) : null}
+            {capabilities.google ? (
+              <TouchableOpacity style={styles.actionButton} onPress={() => onGoogle(ticket)}>
+                <Text style={styles.actionText}>{t('save_google_wallet')}</Text>
+              </TouchableOpacity>
+            ) : null}
+            {ticket.pendingTransfer ? (
+              <>
+                <Text style={styles.pendingText}>{t('transfer_sent', { email: ticket.pendingTransfer.toEmail })}</Text>
+                <TouchableOpacity style={styles.cancelTransferButton} onPress={() => onCancelTransfer(ticket)}>
+                  <Text style={styles.cancelText}>{t('cancel_transfer')}</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <TouchableOpacity style={styles.actionButton} onPress={() => onTransfer(ticket)}>
+                <Text style={styles.actionText}>{t('transfer_ticket')}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+        {ticket.status === 'CONFIRMED' && (
           <TouchableOpacity style={styles.shareTicketButton} onPress={sendToWhatsApp}>
             <Ionicons name="logo-whatsapp" size={16} color="#16a34a" />
             <Text style={styles.shareTicketText}>{t('send_to_whatsapp')}</Text>
@@ -111,14 +159,33 @@ export default function WalletScreen() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [offline, setOffline] = useState(false);
+  const [capabilities, setCapabilities] = useState({ apple: false, google: false });
+  const [recipientTicket, setRecipientTicket] = useState<Ticket | null>(null);
+  const [recipientEmail, setRecipientEmail] = useState('');
+  const cacheKey = 'migo.wallet.cache';
 
   const loadTickets = useCallback(async (pull = false) => {
     if (pull) setRefreshing(true);
     else setLoading(true);
+    if (!pull) {
+      const cached = await AsyncStorage.getItem(cacheKey);
+      if (cached) {
+        try {
+          setTickets(JSON.parse(cached));
+          setLoading(false);
+        } catch {
+          await AsyncStorage.removeItem(cacheKey);
+        }
+      }
+    }
     try {
-      setTickets(await ticketsService.myTickets());
+      const nextTickets = await ticketsService.myTickets();
+      setTickets(nextTickets);
+      setOffline(false);
+      await AsyncStorage.setItem(cacheKey, JSON.stringify(nextTickets));
     } catch {
-      setTickets([]);
+      setOffline(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -126,8 +193,79 @@ export default function WalletScreen() {
   }, []);
 
   useFocusEffect(useCallback(() => {
-    loadTickets();
+    void loadTickets();
+    void ticketsService.passesConfig().then(setCapabilities).catch(() => undefined);
   }, [loadTickets]));
+
+  const transferTicket = (ticket: Ticket) => {
+    if (Platform.OS === 'ios') {
+      Alert.prompt(t('recipient_email'), undefined, async value => {
+        if (value) {
+          try {
+            const result = await ticketsService.transfer(ticket.id, value);
+            await Linking.openURL(result.whatsappUrl);
+            await loadTickets();
+          } catch {
+            Alert.alert(t('transfer_unavailable'), t('please_try_again'));
+          }
+        }
+      }, 'plain-text');
+      return;
+    }
+    setRecipientTicket(ticket);
+  };
+
+  const submitTransfer = async () => {
+    if (!recipientTicket || !recipientEmail.trim()) return;
+    try {
+      const result = await ticketsService.transfer(recipientTicket.id, recipientEmail.trim());
+      setRecipientTicket(null);
+      setRecipientEmail('');
+      await loadTickets();
+      await Linking.openURL(result.whatsappUrl);
+    } catch {
+      Alert.alert(t('transfer_unavailable'), t('please_try_again'));
+    }
+  };
+
+  const cancelTransfer = (ticket: Ticket) => {
+    if (!ticket.pendingTransfer) return;
+    Alert.alert(t('cancel_transfer'), t('transfer_sent', { email: ticket.pendingTransfer.toEmail }), [
+      { text: t('cancel'), style: 'cancel' },
+      {
+        text: t('cancel_transfer'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await ticketsService.cancelTransfer(ticket.pendingTransfer!.id);
+            await loadTickets();
+          } catch {
+            Alert.alert(t('transfer_unavailable'), t('please_try_again'));
+          }
+        },
+      },
+    ]);
+  };
+
+  const openApple = async (ticket: Ticket) => {
+    if (Platform.OS !== 'web') return;
+    const response = await fetch(ticketsService.applePassUrl(ticket.id));
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `migo-${ticket.id}.pkpass`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const openGoogle = async (ticket: Ticket) => {
+    try {
+      await Linking.openURL(await ticketsService.googlePassUrl(ticket.id));
+    } catch {
+      Alert.alert(t('transfer_unavailable'), t('please_try_again'));
+    }
+  };
 
   const cancelTicket = (ticket: Ticket) => {
     Alert.alert(t('cancel_ticket'), t('cancel_ticket_help', { title: ticket.event.title }), [
@@ -161,10 +299,22 @@ export default function WalletScreen() {
         <Text style={styles.headerTitle}>{t('wallet')}</Text>
         <Ionicons name="wallet-outline" size={25} color="#2563eb" />
       </View>
+      {offline ? <Text style={styles.offline}>{t('offline_saved_tickets')}</Text> : null}
       <FlatList<Ticket>
         data={tickets}
         keyExtractor={(ticket: Ticket) => ticket.id}
-        renderItem={({ item }: { item: Ticket }) => <TicketCard ticket={item} onCancel={cancelTicket} t={t} />}
+        renderItem={({ item }: { item: Ticket }) => (
+          <TicketCard
+            ticket={item}
+            onCancel={cancelTicket}
+            onTransfer={transferTicket}
+            onCancelTransfer={cancelTransfer}
+            onApple={openApple}
+            onGoogle={openGoogle}
+            capabilities={capabilities}
+            t={t}
+          />
+        )}
         contentContainerStyle={tickets.length ? styles.list : styles.emptyList}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadTickets(true)} />}
         ListEmptyComponent={(
@@ -178,6 +328,25 @@ export default function WalletScreen() {
           </View>
         )}
       />
+      <Modal visible={Boolean(recipientTicket)} transparent animationType="fade" onRequestClose={() => setRecipientTicket(null)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>{t('transfer_ticket')}</Text>
+            <TextInput
+              style={styles.input}
+              value={recipientEmail}
+              onChangeText={setRecipientEmail}
+              placeholder={t('recipient_email')}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity onPress={() => setRecipientTicket(null)}><Text>{t('cancel')}</Text></TouchableOpacity>
+              <TouchableOpacity onPress={() => void submitTransfer()}><Text style={styles.actionText}>{t('send_to_whatsapp')}</Text></TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -227,6 +396,17 @@ const styles = StyleSheet.create({
   cancelText: { color: '#dc2626', fontSize: 14, fontWeight: '600' },
   shareTicketButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: 14 },
   shareTicketText: { color: '#16a34a', fontSize: 14, fontWeight: '600' },
+  actions: { gap: 10, marginTop: 14 },
+  actionButton: { paddingVertical: 10, borderRadius: 8, backgroundColor: '#eff6ff', alignItems: 'center' },
+  actionText: { color: '#2563eb', fontSize: 14, fontWeight: '700' },
+  pendingText: { color: '#92400e', fontSize: 13, textAlign: 'center' },
+  cancelTransferButton: { alignItems: 'center' },
+  offline: { paddingHorizontal: 16, paddingVertical: 8, color: '#92400e', backgroundColor: '#fef3c7', textAlign: 'center' },
+  modalBackdrop: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: 'rgba(0,0,0,0.4)' },
+  modalCard: { padding: 20, borderRadius: 16, backgroundColor: '#fff' },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: '#111827' },
+  input: { marginTop: 16, padding: 12, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8 },
+  modalActions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 18 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 120 },
   emptyTitle: { marginTop: 16, fontSize: 20, fontWeight: '700', color: '#374151' },
   emptyText: { marginTop: 6, color: '#6b7280', textAlign: 'center' },

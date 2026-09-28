@@ -10,6 +10,11 @@ export interface Ticket {
   attendeeName?: string;
   attendeeEmail?: string;
   checkedInAt?: string | null;
+  pendingTransfer?: {
+    id: string;
+    toEmail: string;
+    expiresAt: string;
+  };
   event: {
     id: string;
     title: string;
@@ -23,6 +28,11 @@ export interface Ticket {
     currency?: string | null;
     isFree?: boolean;
   };
+}
+
+export interface PassCapabilities {
+  apple: boolean;
+  google: boolean;
 }
 
 export interface CreateEventPayload {
@@ -93,6 +103,54 @@ export const ticketsService = {
   async myTickets(): Promise<Ticket[]> {
     const response = await api.get<{ success: boolean; data: Ticket[] }>('/bookings/me');
     return response.data.data || [];
+  },
+
+  async passesConfig(): Promise<PassCapabilities> {
+    const response = await api.get<{ success: boolean; data: PassCapabilities }>('/bookings/passes/config');
+    return response.data.data;
+  },
+
+  async googlePassUrl(id: string): Promise<string> {
+    const response = await api.get<{ success: boolean; data: { saveUrl: string } }>(`/bookings/${id}/pass/google`);
+    return response.data.data.saveUrl;
+  },
+
+  applePassUrl(id: string): string {
+    return `/api/bookings/${id}/pass/apple`;
+  },
+
+  async transfer(id: string, toEmail: string): Promise<{
+    id: string;
+    code: string;
+    toEmail: string;
+    expiresAt: string;
+    claimUrl: string;
+    whatsappUrl: string;
+  }> {
+    const response = await api.post('/bookings/' + id + '/transfer', { toEmail });
+    return response.data.data;
+  },
+
+  async cancelTransfer(id: string): Promise<void> {
+    await api.delete(`/bookings/transfers/${id}`);
+  },
+
+  async getTransfer(code: string): Promise<{
+    eventTitle: string;
+    startDate: string;
+    venue: string;
+    fromName?: string | null;
+    status: string;
+    expiresAt: string;
+    canAccept: boolean;
+  }> {
+    const response = await api.get(`/bookings/transfers/${encodeURIComponent(code)}`);
+    return response.data.data;
+  },
+
+  async acceptTransfer(code: string): Promise<Ticket> {
+    const response = await api.post(`/bookings/transfers/${encodeURIComponent(code)}/accept`);
+    return response.data.data;
   },
 
   async cancelTicket(id: string): Promise<void> {

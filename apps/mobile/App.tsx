@@ -27,6 +27,7 @@ import CreateEventScreen from "./src/screens/CreateEventScreen";
 import MyEventsScreen from "./src/screens/MyEventsScreen";
 import CheckInScreen from "./src/screens/CheckInScreen";
 import FindFriendsScreen from "./src/screens/FindFriendsScreen";
+import ClaimTicketScreen from "./src/screens/ClaimTicketScreen";
 import { inviteRef } from "./src/utils/inviteRef";
 import { ticketsService } from "./src/services/tickets.service";
 import { navigateToTab } from "./src/navigation/navigationRef";
@@ -239,12 +240,26 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!user || appLoading) return undefined;
+    if (appLoading) return undefined;
     let active = true;
 
     const processCheckoutUrl = async (url: string) => {
       try {
         const parsed = new URL(url);
+        const transferCode = parsed.searchParams.get('transfer')
+          || (parsed.protocol === 'migo:' && parsed.hostname === 'transfer' ? parsed.pathname.split('/').filter(Boolean)[1] : null);
+        if (transferCode) {
+          if (!user) {
+            inviteRef.setTransfer(transferCode);
+            return;
+          }
+          if (Platform.OS === 'web' && typeof window !== 'undefined') {
+            window.history.replaceState({}, '', `${parsed.pathname}${parsed.hash}`);
+          }
+          inviteRef.setTransfer(null);
+          navigationRef.current?.navigate('ClaimTicket', { code: transferCode });
+          return;
+        }
         const eventId = parsed.searchParams.get('event')
           || (parsed.protocol === 'migo:' && parsed.hostname === 'event' ? parsed.pathname.slice(1) : null);
         const ref = parsed.searchParams.get('ref');
@@ -296,6 +311,7 @@ export default function App() {
 
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       void processCheckoutUrl(window.location.href);
+      if (!user) return undefined;
       return undefined;
     }
 
@@ -303,6 +319,11 @@ export default function App() {
     void Linking.getInitialURL().then(url => {
       if (url) void processCheckoutUrl(url);
     });
+    const pendingTransfer = inviteRef.getTransfer();
+    if (user && pendingTransfer) {
+      inviteRef.setTransfer(null);
+      navigationRef.current?.navigate('ClaimTicket', { code: pendingTransfer });
+    }
     subscription = Linking.addEventListener('url', event => {
       void processCheckoutUrl(event.url);
     });
@@ -439,6 +460,11 @@ export default function App() {
                 name="AIEvents"
                 component={AIEventsScreen}
                 options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="ClaimTicket"
+                component={ClaimTicketScreen}
+                options={{ title: t('claim_ticket'), headerBackTitle: t('back') }}
               />
             </>
           )}
