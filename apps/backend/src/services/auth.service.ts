@@ -28,6 +28,7 @@ export class AuthService {
   private jwtSecret = config.JWT_SECRET;
   private jwtRefreshSecret = config.JWT_REFRESH_SECRET;
   private static readonly REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+  private static readonly REUSE_GRACE_MS = 60_000;
 
   private hashRefreshToken(token: string): string {
     return crypto.createHash('sha256').update(token).digest('hex');
@@ -259,6 +260,17 @@ export class AuthService {
       { algorithm: 'HS256', expiresIn: '7d' }
     );
 
+    // Prune rows that can never be presented again so the table does not grow
+    // unboundedly with active usage.
+    await prisma.refreshToken.deleteMany({
+      where: {
+        OR: [
+          { expiresAt: { lt: new Date() } },
+          { revoked: true, updatedAt: { lt: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
+        ],
+      },
+    }).catch(() => undefined);
+
     await prisma.refreshToken.create({
       data: {
         userId,
@@ -295,24 +307,30 @@ export class AuthService {
         throw new Error('Unknown refresh token');
       }
 
-      if (stored.revoked) {
-        await prisma.refreshToken.updateMany({
-          where: { userId: stored.userId, revoked: false },
-          data: { revoked: true },
-        });
-        throw new Error('Refresh token reuse detected');
-      }
-
       if (stored.expiresAt.getTime() < Date.now()) {
         throw new Error('Refresh token expired');
       }
 
-      const { count } = await prisma.refreshToken.updateMany({
-        where: { id: stored.id, revoked: false },
-        data: { revoked: true },
-      });
-      if (count === 0) {
-        throw new Error('Refresh token already used');
+      if (stored.revoked) {
+        // Concurrent-refresh grace: two parallel requests can present the same
+        // token within seconds of rotation (the mobile interceptor refreshes
+        // per 401). Treat very recent reuse as a race and issue a fresh pair
+        // below instead of revoking every session.
+        if (Date.now() - stored.updatedAt.getTime() > AuthService.REUSE_GRACE_MS) {
+          await prisma.refreshToken.updateMany({
+            where: { userId: stored.userId, revoked: false },
+            data: { revoked: true },
+          });
+          throw new Error('Refresh token reuse detected');
+        }
+      } else {
+        const { count } = await prisma.refreshToken.updateMany({
+          where: { id: stored.id, revoked: false },
+          data: { revoked: true },
+        });
+        if (count === 0) {
+          // Same race within the same instant — fall through and issue a pair.
+        }
       }
       
       // Find user

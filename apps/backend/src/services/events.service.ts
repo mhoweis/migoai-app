@@ -34,6 +34,12 @@ const normalizeDate = (date: Date | string | undefined): Date | undefined => {
   return isNaN(d.getTime()) ? undefined : d;
 };
 
+function startOfToday(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 export class EventService {
   async getEvents(filters: EventFilters): Promise<{
     events: any[];
@@ -492,17 +498,27 @@ export class EventService {
   
   async searchEvents(filters: any): Promise<any[]> {
     try {
+      const andClauses: Prisma.EventWhereInput[] = [];
       const where: Prisma.EventWhereInput = {
         status: 'ACTIVE',
         visibility: { in: ['PUBLIC', 'UNLISTED'] },
-        startDate: { gte: new Date() },
+        // Start-of-today, not "now": an event that began this evening is still
+        // happening and must not be dropped from results.
+        startDate: { gte: startOfToday() },
       };
       
       if (filters.categories && filters.categories.length > 0) {
         where.category = { in: filters.categories };
       }
       
-      if (filters.dateRange) {
+      if (filters.happeningNow) {
+        const now = new Date();
+        andClauses.push(
+          { startDate: { lte: now } },
+          { OR: [{ endDate: { gte: now } }, { endDate: null }] }
+        );
+        where.startDate = undefined;
+      } else if (filters.dateRange && (filters.dateRange.start || filters.dateRange.end)) {
         where.startDate = {};
         if (filters.dateRange.start) {
           where.startDate.gte = new Date(filters.dateRange.start);
@@ -512,30 +528,40 @@ export class EventService {
         }
       }
       
-      if (filters.priceRange) {
-        where.OR = [
-          { isFree: true },
-          {
-            AND: [
-              filters.priceRange.min !== undefined ? { priceFrom: { gte: new Prisma.Decimal(filters.priceRange.min) } } : {},
-              filters.priceRange.max !== undefined ? { priceFrom: { lte: new Prisma.Decimal(filters.priceRange.max) } } : {},
-            ]
-          }
-        ];
+      if (filters.priceRange && (filters.priceRange.min !== undefined || filters.priceRange.max !== undefined)) {
+        andClauses.push({
+          OR: [
+            { isFree: true },
+            {
+              AND: [
+                filters.priceRange.min !== undefined ? { priceFrom: { gte: new Prisma.Decimal(filters.priceRange.min) } } : {},
+                filters.priceRange.max !== undefined ? { priceFrom: { lte: new Prisma.Decimal(filters.priceRange.max) } } : {},
+              ]
+            }
+          ]
+        });
       }
       
       if (filters.location && filters.location.city) {
-        where.city = filters.location.city;
+        where.city = { contains: filters.location.city, mode: 'insensitive' };
       }
       
       if (filters.keywords && filters.keywords.length > 0) {
-        where.OR = filters.keywords.map((keyword: string) => ({
-          OR: [
-            { title: { contains: keyword } },
-            { description: { contains: keyword } },
-            { venueName: { contains: keyword } },
-          ]
-        }));
+        andClauses.push({
+          OR: filters.keywords.map((keyword: string) => ({
+            OR: [
+              { title: { contains: keyword, mode: 'insensitive' } },
+              { description: { contains: keyword, mode: 'insensitive' } },
+              { venueName: { contains: keyword, mode: 'insensitive' } },
+              { category: { contains: keyword, mode: 'insensitive' } },
+              { city: { contains: keyword, mode: 'insensitive' } },
+            ]
+          }))
+        });
+      }
+
+      if (andClauses.length > 0) {
+        where.AND = andClauses;
       }
       
       if (filters.requirements && filters.requirements.length > 0) {

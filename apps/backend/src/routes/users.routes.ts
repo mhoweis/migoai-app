@@ -29,12 +29,26 @@ const updateUserSchema = z
   })
   .strict();
 
-const isSelfOrAdmin = (req: AuthRequest, id: string): boolean =>
-  req.userId === id || req.user?.role === "ADMIN";
+const isSelfOrAdmin = async (req: AuthRequest, id: string): Promise<boolean> => {
+  if (req.userId === id) return true;
+  // The JWT role can be up to 15 min stale — re-check admin in the DB.
+  if (req.user?.role !== "ADMIN") return false;
+  const me = await prisma.user.findUnique({
+    where: { id: req.userId },
+    select: { role: true, isAdmin: true },
+  });
+  return me?.role === "ADMIN" || me?.isAdmin === true;
+};
 
 // Get all users (admin only)
 router.get("/", async (req: AuthRequest, res: Response) => {
-  if (req.user?.role !== "ADMIN") {
+  const me = req.userId
+    ? await prisma.user.findUnique({
+        where: { id: req.userId },
+        select: { role: true, isAdmin: true },
+      })
+    : null;
+  if (me?.role !== "ADMIN" && !me?.isAdmin) {
     return res.status(403).json({ error: "Insufficient permissions" });
   }
   try {
@@ -118,7 +132,7 @@ router.get("/me", async (req: AuthRequest, res: Response) => {
 router.get("/:id", async (req: AuthRequest, res: Response) => {
   try {
     const id = String(req.params.id);
-    if (!isSelfOrAdmin(req, id)) {
+    if (!(await isSelfOrAdmin(req, id))) {
       return res.status(403).json({ error: "Insufficient permissions" });
     }
 
@@ -147,7 +161,7 @@ router.get("/:id", async (req: AuthRequest, res: Response) => {
 router.put("/:id", async (req: AuthRequest, res: Response) => {
   try {
     const id = String(req.params.id);
-    if (!isSelfOrAdmin(req, id)) {
+    if (!(await isSelfOrAdmin(req, id))) {
       return res.status(403).json({ error: "Insufficient permissions" });
     }
 
@@ -180,13 +194,14 @@ router.put("/:id", async (req: AuthRequest, res: Response) => {
 router.delete("/:id", async (req: AuthRequest, res: Response) => {
   try {
     const id = String(req.params.id);
-    if (!isSelfOrAdmin(req, id)) {
+    if (!(await isSelfOrAdmin(req, id))) {
       return res.status(403).json({ error: "Insufficient permissions" });
     }
 
-    await prisma.user.delete({
-      where: { id },
-    });
+    await prisma.$transaction([
+      prisma.refreshToken.deleteMany({ where: { userId: id } }),
+      prisma.user.delete({ where: { id } }),
+    ]);
 
     res.json({ message: "User deleted successfully" });
   } catch (error) {
