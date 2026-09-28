@@ -1061,7 +1061,16 @@ export class EventService {
       canRsvp: (
         eventAny.status === 'ACTIVE'
         && eventAny.startDate > new Date()
+        && eventAny.isFree
         && !(eventAny.externalUrl && eventAny.bookingType === 'PAID' && !eventAny.isFree)
+        && ((eventAny.capacity || 0) === 0 || (eventAny.ticketsSold || 0) < eventAny.capacity)
+      ),
+      canBuy: (
+        eventAny.status === 'ACTIVE'
+        && eventAny.startDate > new Date()
+        && !eventAny.isFree
+        && Number(eventAny.priceFrom || 0) > 0
+        && !(eventAny.externalUrl && eventAny.bookingType === 'PAID')
         && ((eventAny.capacity || 0) === 0 || (eventAny.ticketsSold || 0) < eventAny.capacity)
       ),
       myBookingId: null,

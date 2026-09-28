@@ -111,6 +111,7 @@ export interface Event {
   };
   myBookingId?: string | null;
   canRsvp?: boolean;
+  canBuy?: boolean;
 
   // Timestamps
   createdAt: string;

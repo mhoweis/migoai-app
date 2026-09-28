@@ -15,7 +15,7 @@ import { authRouter } from './routes/auth.routes';
 import { eventsRouter } from './routes/events.routes';
 import { usersRouter } from './routes/users.routes';
 import { aiRouter } from './routes/ai.routes';
-import { paymentsRouter } from './routes/payments.routes';
+import { paymentsRouter, publicPaymentsRouter } from './routes/payments.routes';
 import externalEventsRouter from './routes/external-events.routes';
 import wishlistsRouter from './routes/wishlists.routes';
 import goRouter from './routes/go.routes';
@@ -84,6 +84,10 @@ app.use(cors(corsOptions));
 
 // Compression middleware
 app.use(compression());
+
+// Payment webhooks and mock checkout pages must receive requests before the
+// global JSON parser and do not require user authentication.
+app.use('/api/payments', publicPaymentsRouter);
 
 // Body parser middleware
 app.use(express.json({ limit: '10mb' }));

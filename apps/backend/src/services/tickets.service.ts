@@ -3,6 +3,7 @@ import { BookingStatus, Prisma } from '@prisma/client';
 import config from '../config/env';
 import prisma from '../database/prisma';
 import { AppError } from '../middlewares/error.middleware';
+import { getPaymentProvider } from './payments';
 
 const serviceError = (
   message: string,
@@ -95,6 +96,9 @@ class TicketsService {
         externalUrl: event.externalUrl,
       });
     }
+    if (!event.isFree) {
+      throw serviceError('This event requires paid checkout', 400, 'NOT_PURCHASABLE');
+    }
     if ((event.capacity || 0) > 0 && (event.ticketsSold || 0) + ticketCount > (event.capacity || 0)) {
       throw serviceError('Event is sold out', 409, 'SOLD_OUT');
     }
@@ -138,6 +142,242 @@ class TicketsService {
       }
       throw error;
     }
+  }
+
+  async createCheckout(
+    userId: string,
+    eventId: string,
+    input: { ticketCount: number; returnUrl: string },
+  ): Promise<{ bookingId: string; checkoutUrl: string; provider: string }> {
+    if (!Number.isInteger(input.ticketCount) || input.ticketCount < 1 || input.ticketCount > 4) {
+      throw serviceError('Ticket count must be between 1 and 4', 400, 'INVALID_TICKET_COUNT');
+    }
+
+    const [event, user] = await Promise.all([
+      prisma.event.findUnique({ where: { id: eventId } }),
+      prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } }),
+    ]);
+    if (!event) {
+      throw serviceError('Event not found', 404, 'EVENT_NOT_FOUND');
+    }
+    if (
+      event.status !== 'ACTIVE'
+      || event.startDate <= new Date()
+      || event.isFree
+      || Number(event.priceFrom || 0) <= 0
+      || Boolean(event.externalUrl && event.bookingType === 'PAID')
+    ) {
+      throw serviceError('This event is not available for payment', 400, 'NOT_PURCHASABLE');
+    }
+
+    const existing = await prisma.booking.findUnique({
+      where: { userId_eventId: { userId, eventId } },
+      select: { id: true, status: true },
+    });
+    if (existing?.status === BookingStatus.CONFIRMED || existing?.status === BookingStatus.CHECKED_IN) {
+      throw serviceError('You have already booked this event', 409, 'ALREADY_BOOKED');
+    }
+
+    const provider = getPaymentProvider();
+    const amount = Number(event.priceFrom) * input.ticketCount;
+    const successUrl = this.appendCheckoutParams(input.returnUrl, {
+      checkout: 'success',
+      bookingId: existing?.id || 'BOOKING_ID',
+    });
+    const cancelUrl = this.appendCheckoutParams(input.returnUrl, {
+      checkout: 'cancel',
+      bookingId: existing?.id || 'BOOKING_ID',
+    });
+
+    const booking = await prisma.$transaction(async tx => {
+      const currentEvent = await tx.event.findUnique({ where: { id: eventId } });
+      if (!currentEvent) {
+        throw serviceError('Event not found', 404, 'EVENT_NOT_FOUND');
+      }
+      const currentBooking = await tx.booking.findUnique({
+        where: { userId_eventId: { userId, eventId } },
+      });
+      if (
+        currentBooking?.status === BookingStatus.CONFIRMED
+        || currentBooking?.status === BookingStatus.CHECKED_IN
+      ) {
+        throw serviceError('You have already booked this event', 409, 'ALREADY_BOOKED');
+      }
+
+      const bookings = await tx.booking.findMany({
+        where: {
+          eventId,
+          status: {
+            in: [BookingStatus.PENDING, BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN],
+          },
+        },
+        select: { id: true, ticketCount: true, status: true, bookingDate: true },
+      });
+      const pendingCutoff = Date.now() - 30 * 60 * 1000;
+      const taken = bookings.reduce((sum, item) => {
+        if (item.id === currentBooking?.id) return sum;
+        if (
+          item.status === BookingStatus.PENDING
+          && item.bookingDate.getTime() < pendingCutoff
+        ) {
+          return sum;
+        }
+        return sum + item.ticketCount;
+      }, 0);
+      if ((currentEvent.capacity || 0) > 0 && taken + input.ticketCount > (currentEvent.capacity || 0)) {
+        throw serviceError('Event is sold out', 409, 'SOLD_OUT');
+      }
+
+      const data = {
+        ticketCount: input.ticketCount,
+        totalAmount: amount,
+        currency: currentEvent.currency,
+        status: BookingStatus.PENDING,
+        paymentMethod: provider.name,
+        qrCode: null,
+        transactionId: null,
+        notes: JSON.stringify({ successUrl, cancelUrl }),
+        attendeeName: user?.name || undefined,
+        attendeeEmail: user?.email || undefined,
+      };
+      if (currentBooking) {
+        return tx.booking.update({ where: { id: currentBooking.id }, data });
+      }
+      return tx.booking.create({ data: { ...data, userId, eventId } });
+    });
+
+    const session = await provider.createCheckout({
+      bookingId: booking.id,
+      userId,
+      eventId,
+      title: event.title,
+      amountMinor: Math.round(amount * 100),
+      currency: event.currency,
+      quantity: input.ticketCount,
+      customerEmail: user?.email || undefined,
+      successUrl: this.appendCheckoutParams(input.returnUrl, {
+        checkout: 'success',
+        bookingId: booking.id,
+      }),
+      cancelUrl: this.appendCheckoutParams(input.returnUrl, {
+        checkout: 'cancel',
+        bookingId: booking.id,
+      }),
+    });
+    await prisma.booking.update({
+      where: { id: booking.id },
+      data: {
+        transactionId: session.reference,
+        paymentMethod: session.provider,
+        notes: JSON.stringify({
+          successUrl: this.appendCheckoutParams(input.returnUrl, {
+            checkout: 'success',
+            bookingId: booking.id,
+          }),
+          cancelUrl: this.appendCheckoutParams(input.returnUrl, {
+            checkout: 'cancel',
+            bookingId: booking.id,
+          }),
+        }),
+      },
+    });
+    return {
+      bookingId: booking.id,
+      checkoutUrl: session.url,
+      provider: session.provider,
+    };
+  }
+
+  private appendCheckoutParams(
+    returnUrl: string,
+    params: Record<string, string>,
+  ): string {
+    const parsed = new URL(returnUrl);
+    Object.entries(params).forEach(([key, value]) => parsed.searchParams.set(key, value));
+    return parsed.toString();
+  }
+
+  async confirmPaidBooking(bookingId: string): Promise<any> {
+    return prisma.$transaction(async tx => {
+      const booking = await tx.booking.findUnique({
+        where: { id: bookingId },
+        include: { event: true },
+      });
+      if (!booking) {
+        throw serviceError('Booking not found', 404, 'BOOKING_NOT_FOUND');
+      }
+      if (
+        booking.status === BookingStatus.CONFIRMED
+        || booking.status === BookingStatus.CHECKED_IN
+      ) {
+        return booking;
+      }
+      if (booking.status !== BookingStatus.PENDING) {
+        throw serviceError('Booking is not pending payment', 400, 'BOOKING_NOT_PENDING');
+      }
+      const ticketsSold = (booking.event.ticketsSold || 0) + booking.ticketCount;
+      await tx.event.update({
+        where: { id: booking.eventId },
+        data: {
+          ticketsSold,
+          ticketsAvailable: (booking.event.capacity || 0) > 0
+            ? (booking.event.capacity || 0) - ticketsSold
+            : null,
+        },
+      });
+      const qrCode = this.signTicket(booking.id, booking.eventId, booking.userId);
+      return tx.booking.update({
+        where: { id: booking.id },
+        data: { status: BookingStatus.CONFIRMED, qrCode },
+        include: { event: true },
+      });
+    });
+  }
+
+  async confirmBooking(bookingId: string, userId: string): Promise<
+    { state: 'confirmed'; booking: any }
+    | { state: 'pending'; booking: any }
+  > {
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { event: true },
+    });
+    if (!booking || booking.userId !== userId) {
+      throw serviceError('Booking not found', 404, 'BOOKING_NOT_FOUND');
+    }
+    if (booking.status === BookingStatus.CONFIRMED || booking.status === BookingStatus.CHECKED_IN) {
+      return { state: 'confirmed', booking };
+    }
+    if (booking.status !== BookingStatus.PENDING || !booking.transactionId) {
+      throw serviceError('Booking is not pending payment', 400, 'BOOKING_NOT_PENDING');
+    }
+
+    const state = await getPaymentProvider().getState(booking.transactionId);
+    if (state === 'paid') {
+      return { state: 'confirmed', booking: await this.confirmPaidBooking(booking.id) };
+    }
+    if (state === 'failed') {
+      await prisma.booking.update({
+        where: { id: booking.id },
+        data: { status: BookingStatus.CANCELLED },
+      });
+      throw serviceError('Payment failed', 402, 'PAYMENT_FAILED');
+    }
+    return { state: 'pending', booking };
+  }
+
+  async getBookingByTransaction(reference: string): Promise<any | null> {
+    return prisma.booking.findFirst({
+      where: { transactionId: reference },
+      include: { event: true },
+    });
+  }
+
+  async markPaymentFailed(reference: string): Promise<void> {
+    await prisma.booking.updateMany({
+      where: { transactionId: reference, status: BookingStatus.PENDING },
+      data: { status: BookingStatus.CANCELLED },
+    });
   }
 
   async cancelRsvp(userId: string, bookingId: string): Promise<any> {

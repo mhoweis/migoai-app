@@ -14,6 +14,7 @@ const envSchema = z.object({
   // Optional with defaults
   COOKIE_SECRET: z.string().default('dev-cookie-secret'),
   CLIENT_URL: z.string().default('http://localhost:3000'),
+  APP_PUBLIC_URL: z.string().default(''),
   REDIS_URL: z.string().default('redis://localhost:6379'),
   
   // Rate limiting
@@ -58,6 +59,7 @@ const envSchema = z.object({
   GEMINI_API_KEY: z.string().optional(),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_PUBLISHABLE_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
 
   // Event Data APIs
   TICKETMASTER_API_KEY: z.string().optional(),
@@ -147,6 +149,7 @@ export default {
   PORT: parseInt(env.PORT, 10),
   APP_URL: getAppUrl(),
   CLIENT_URL: env.CLIENT_URL,
+  APP_PUBLIC_URL: env.APP_PUBLIC_URL,
   
   // Database
   DATABASE_URL: env.SUPABASE_DATABASE_URL,
@@ -182,6 +185,7 @@ export default {
   GEMINI_API_KEY: env.GEMINI_API_KEY || '',
   STRIPE_SECRET_KEY: env.STRIPE_SECRET_KEY || '',
   STRIPE_PUBLISHABLE_KEY: env.STRIPE_PUBLISHABLE_KEY || '',
+  STRIPE_WEBHOOK_SECRET: env.STRIPE_WEBHOOK_SECRET || '',
 
   // Event Data APIs
   TICKETMASTER_API_KEY: env.TICKETMASTER_API_KEY || '',
