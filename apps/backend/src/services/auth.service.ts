@@ -319,7 +319,7 @@ export class AuthService {
         if (Date.now() - stored.updatedAt.getTime() > AuthService.REUSE_GRACE_MS) {
           await prisma.refreshToken.updateMany({
             where: { userId: stored.userId, revoked: false },
-            data: { revoked: true },
+            data: { revoked: true, expiresAt: new Date() },
           });
           throw new Error('Refresh token reuse detected');
         }
@@ -368,7 +368,7 @@ export class AuthService {
       where: refreshToken
         ? { userId, token: this.hashRefreshToken(refreshToken) }
         : { userId },
-      data: { revoked: true },
+      data: { revoked: true, expiresAt: new Date() },
     });
 
     // Update user last active
