@@ -79,7 +79,7 @@ const TAB_ROUTE_MAP: Record<string, string> = {
   Events: 'EventsTab',
   Chat: 'ChatTab',
   Profile: 'ProfileTab',
-  Wallet: 'Wallet',
+  Wallet: 'WalletTab',
 };
 
 export function navigateToTab(

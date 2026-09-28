@@ -21,8 +21,8 @@ interface Result {
 
 type CheckInRoute = RouteProp<ProfileStackParamList, 'CheckIn'>;
 
-export default function CheckInScreen({ route }: { route: CheckInRoute }) {
-  const eventId = route.params?.eventId;
+export default function CheckInScreen({ route }: { route?: CheckInRoute }) {
+  const eventId = route?.params?.eventId;
   const [code, setCode] = useState('');
   const [result, setResult] = useState<Result | null>(null);
   const [attendance, setAttendance] = useState<{ confirmed: number; checkedIn: number; capacity: number } | null>(null);

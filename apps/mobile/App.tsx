@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Image, StyleSheet, View } from "react-native"; // Changed: Added Image
+import { Ionicons } from "@expo/vector-icons";
 import { useUserStore } from "./src/store/userStore";
 import { authService } from "./src/services/auth.service";
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -21,12 +22,28 @@ import AIEventsScreen from "./src/screens/AIEventsScreen";
 import ProfileScreen from "./src/screens/ProfileScreen";
 import ConnectionTestScreen from "./src/screens/ConnectionTestScreen";
 import LoadingScreen from "./src/screens/LoadingScreen";
+import WalletScreen from "./src/screens/WalletScreen";
+import CreateEventScreen from "./src/screens/CreateEventScreen";
+import MyEventsScreen from "./src/screens/MyEventsScreen";
+import CheckInScreen from "./src/screens/CheckInScreen";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 // Custom Tab Icon Component
 const CustomTabIcon = ({ routeName, focused }: { routeName: string, focused: boolean }) => {
+  if (routeName === "WalletTab") {
+    return (
+      <View style={styles.iconContainer}>
+        <Ionicons
+          name={focused ? "wallet" : "wallet-outline"}
+          size={24}
+          color={focused ? "#3b82f6" : "#9ca3af"}
+        />
+      </View>
+    );
+  }
+
   let iconSource;
   
   switch (routeName) {
@@ -70,6 +87,7 @@ function MainTabs() {
         ),
         tabBarActiveTintColor: "#3b82f6",
         tabBarInactiveTintColor: "#9ca3af",
+        tabBarLabelStyle: { fontSize: 11 },
         tabBarStyle: {
           borderTopWidth: 1,
           borderTopColor: "#e5e7eb",
@@ -93,6 +111,11 @@ function MainTabs() {
         name="ChatTab"
         component={ChatScreen}
         options={{ title: "AI Chat" }}
+      />
+      <Tab.Screen
+        name="WalletTab"
+        component={WalletScreen}
+        options={{ title: "Wallet" }}
       />
       <Tab.Screen
         name="ProfileTab"
@@ -122,6 +145,21 @@ export function ProfileStack() {
         component={ConnectionTestScreen}
         options={{ title: "Connection Test" }}
       />
+      <Stack.Screen
+        name="CreateEvent"
+        component={CreateEventScreen}
+        options={{ title: "Create an event", headerBackTitle: "Back" }}
+      />
+      <Stack.Screen
+        name="MyEvents"
+        component={MyEventsScreen}
+        options={{ title: "My events", headerBackTitle: "Back" }}
+      />
+      <Stack.Screen
+        name="CheckIn"
+        component={CheckInScreen}
+        options={{ title: "Check in", headerBackTitle: "Back" }}
+      />
     </Stack.Navigator>
   );
 }
@@ -136,6 +174,7 @@ function MainTabsWithProfileStack() {
         ),
         tabBarActiveTintColor: "#3b82f6",
         tabBarInactiveTintColor: "#9ca3af",
+        tabBarLabelStyle: { fontSize: 11 },
         tabBarStyle: {
           borderTopWidth: 1,
           borderTopColor: "#e5e7eb",
@@ -159,6 +198,11 @@ function MainTabsWithProfileStack() {
         name="ChatTab"
         component={ChatScreen}
         options={{ title: "AI Chat" }}
+      />
+      <Tab.Screen
+        name="WalletTab"
+        component={WalletScreen}
+        options={{ title: "Wallet" }}
       />
       <Tab.Screen
         name="ProfileTab"
