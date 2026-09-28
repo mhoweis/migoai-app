@@ -5,6 +5,7 @@ import {
   absoluteUrl,
   cleanDescription,
   cleanTitle,
+  htmlHeaders,
   http,
   isDiscoveryProviderDisabled,
   parseDubaiDate,
@@ -22,7 +23,9 @@ class AbuDhabiFestivalProvider implements EventProvider {
   async fetchEvents(window: SyncWindow): Promise<NormalizedEvent[]> {
     if (!this.isConfigured() || window.city.toLowerCase() !== 'abu dhabi') return [];
     try {
-      const html = (await http.get('https://www.abudhabifestival.ae/programme-tickets')).data;
+      const html = (await http.get('https://www.abudhabifestival.ae/programme-tickets', {
+        headers: htmlHeaders,
+      })).data;
       const $ = cheerio.load(html);
       const events: NormalizedEvent[] = [];
       $('.programme.w-dyn-item').each((_index, element) => {

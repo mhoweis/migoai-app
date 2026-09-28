@@ -1,9 +1,19 @@
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import config from '../../config/env';
 import logger from '../../utils/logger';
-import { cleanDescription, cleanTitle, http, isDiscoveryProviderDisabled, validDateRange } from './http';
+import {
+  cleanDescription,
+  cleanTitle,
+  htmlHeaders,
+  http,
+  isDiscoveryProviderDisabled,
+  validDateRange,
+} from './http';
 import { EventProvider, NormalizedEvent, SyncWindow } from './types';
 
 const indexDefault = 'prod104_vd_en';
+const execFileAsync = promisify(execFile);
 let discovered: { appId: string; apiKey: string } | undefined;
 
 class VisitDubaiProvider implements EventProvider {
@@ -53,8 +63,9 @@ class VisitDubaiProvider implements EventProvider {
       return { appId: config.VISIT_DUBAI_ALGOLIA_APP_ID, apiKey: config.VISIT_DUBAI_ALGOLIA_API_KEY };
     }
     if (discovered) return discovered;
-    const page = await http.get('https://www.visitdubai.com/en/festivals-and-events/dubai-events-calendar');
-    const nextData = page.data.match(/<script[^>]+id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i)?.[1];
+    const pageUrl = 'https://www.visitdubai.com/en/festivals-and-events/dubai-events-calendar';
+    const html = await this.fetchHtml(pageUrl);
+    const nextData = html.match(/<script[^>]+id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i)?.[1];
     if (!nextData) throw new Error('Visit Dubai __NEXT_DATA__ not found');
     const json = JSON.parse(nextData);
     let appId: string | undefined;
@@ -75,6 +86,20 @@ class VisitDubaiProvider implements EventProvider {
     if (!appId || !apiKey) throw new Error('Visit Dubai Algolia credentials not found');
     discovered = { appId, apiKey };
     return discovered;
+  }
+
+  private async fetchHtml(url: string): Promise<string> {
+    try {
+      const response = await http.get(url, { headers: htmlHeaders });
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status !== 403) throw error;
+      const headers = Object.entries(htmlHeaders).flatMap(([key, value]) => ['-H', `${key}: ${value}`]);
+      const { stdout } = await execFileAsync('curl', ['--http2', '--location', '--silent', '--show-error', '--compressed', ...headers, url], {
+        maxBuffer: 10 * 1024 * 1024,
+      });
+      return stdout;
+    }
   }
 
   private query(auth: { appId: string; apiKey: string }, page: number, filters: string) {
@@ -110,7 +135,9 @@ class VisitDubaiProvider implements EventProvider {
       country: 'United Arab Emirates',
       latitude: item._geoloc?.lat,
       longitude: item._geoloc?.lng,
-      coverImage: item.image?.startsWith('http') ? item.image : `https://www.visitdubai.com${item.image || ''}`,
+      coverImage: item.image
+        ? (item.image.startsWith('http') ? item.image : `https://www.visitdubai.com${item.image}`)
+        : undefined,
       externalUrl: item.url,
       isFree: item.free,
       category: Array.isArray(item.category) ? item.category[0] : item.category,

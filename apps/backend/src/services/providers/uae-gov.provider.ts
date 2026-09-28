@@ -39,9 +39,9 @@ class UaeGovProvider implements EventProvider {
               new URLSearchParams({
                 searchText: '',
                 categoryID: '',
-                emirateID: emirateId,
+                emirateID: `{${emirateId}}`,
                 eventDate: month.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-                ContextID: contextId,
+                ContextID: `{${contextId}}`,
                 lang: 'en',
                 'pagingDTO.CurrentPageNumber': '1',
                 'pagingDTO.PageCount': '50',
@@ -53,6 +53,7 @@ class UaeGovProvider implements EventProvider {
                   'X-Requested-With': 'XMLHttpRequest',
                   Referer: 'https://u.ae/en/media/events',
                 },
+                timeout: 30_000,
               },
             );
             const html = response.data?.pv;

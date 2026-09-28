@@ -5,6 +5,7 @@ import {
   absoluteUrl,
   cleanDescription,
   cleanTitle,
+  htmlHeaders,
   http,
   isDiscoveryProviderDisabled,
   numberValue,
@@ -75,7 +76,7 @@ class ExpoCityProvider implements EventProvider {
       credentials = { env: 'master-v2', space: 'r2cfrvo3y08m', token: config.EXPO_CITY_CONTENTFUL_TOKEN };
       return credentials;
     }
-    const page = await http.get(pageUrl);
+    const page = await http.get(pageUrl, { headers: htmlHeaders });
     const html = page.data as string;
     const find = (key: string) => html.match(new RegExp(`${key}\\s*:\\s*["']([^"']+)["']`))?.[1];
     const env = find('CF_ENV');

@@ -5,6 +5,7 @@ import {
   absoluteUrl,
   cleanDescription,
   cleanTitle,
+  htmlHeaders,
   http,
   isDiscoveryProviderDisabled,
   parseDubaiDate,
@@ -23,7 +24,7 @@ class ExpoCentreSharjahProvider implements EventProvider {
     if (!this.isConfigured() || window.city.toLowerCase() !== 'sharjah') return [];
     try {
       const [page, descriptions] = await Promise.all([
-        http.get('https://expo-centre.ae/events/'),
+        http.get('https://expo-centre.ae/events/', { headers: htmlHeaders }),
         this.loadDescriptions(),
       ]);
       const $ = cheerio.load(page.data);
