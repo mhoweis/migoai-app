@@ -22,6 +22,12 @@ import { Event } from '@migo/shared';
 import { api } from '../services/api';
 import { navigateToTab, navigationRef } from '../navigation/navigationRef';
 import { categoryLabel, formatEventDate, formatPrice, useLocale } from '../i18n';
+import { sourceBadge } from '../utils/trust';
+
+type WeekendDigestPreview = {
+  title: string;
+  sections: Array<{ events: Array<{ id: string; title: string; coverImage?: string | null; isFree: boolean }> }>;
+};
 
 const { width } = Dimensions.get('window');
 
@@ -31,7 +37,7 @@ interface Props {
 
 const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const { user, userLocation, setUserLocation } = useUserStore();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { savedEvents, savedIds, loadSavedEvents, toggleSaved } = useSavedEventsStore();
   const { upcomingTickets, loadTickets } = useWalletStore();
   const [refreshing, setRefreshing] = useState(false);
@@ -45,12 +51,24 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const [availableCities, setAvailableCities] = useState<Array<{ name: string; count: number }>>([]);
   const [selectedInterest, setSelectedInterest] = useState<string | null>(null);
   const [allEvents, setAllEvents] = useState<Event[]>([]);
+  const [weekendDigest, setWeekendDigest] = useState<WeekendDigestPreview | null>(null);
 
   useEffect(() => {
     loadEvents();
+    void loadWeekendDigest();
     loadSavedEvents();
     loadTickets();
-  }, [user?.interests, userLocation]);
+  }, [user?.interests, userLocation, locale]);
+
+  const loadWeekendDigest = async () => {
+    try {
+      const params = userLocation ? `?city=${encodeURIComponent(userLocation)}&lang=${locale}` : `?lang=${locale}`;
+      const response = await api.get(`/digest/weekend${params}`);
+      setWeekendDigest(response.data.data || null);
+    } catch {
+      setWeekendDigest(null);
+    }
+  };
 
   useEffect(() => {
     loadAvailableCities();
@@ -307,6 +325,9 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.topEventBadge}>
               <Text style={styles.topEventBadgeText}>{t('featured')}</Text>
             </View>
+            {sourceBadge((item as any).trust, locale)?.kind && ['official', 'venue'].includes(sourceBadge((item as any).trust, locale)?.kind || '') && (
+              <View style={styles.topTrustPill}><Ionicons name="shield-checkmark" size={11} color="#fff" /><Text style={styles.topTrustPillText}>{t('official')}</Text></View>
+            )}
             <View style={styles.topEventActions}>
               <TouchableOpacity
                 style={styles.topEventActionBtn}
@@ -382,6 +403,9 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.eventContent}>
           <View style={styles.eventHeader}>
           <Text style={styles.eventCategory}>{categoryLabel(item.category)}</Text>
+          {sourceBadge((item as any).trust, locale)?.kind && ['official', 'venue'].includes(sourceBadge((item as any).trust, locale)?.kind || '') && (
+            <View style={styles.trustPill}><Ionicons name="shield-checkmark" size={11} color="#166534" /><Text style={styles.trustPillText}>{t('official')}</Text></View>
+          )}
           </View>
           <Text style={styles.eventTitle} numberOfLines={2}>
             {item.title}
@@ -515,6 +539,31 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
         {/* User Interests */}
         {renderInterestPills()}
+
+        {weekendDigest && (
+          <TouchableOpacity
+            style={styles.weekendCard}
+            onPress={() => navigationRef.current?.navigate('WeekendDigest')}
+          >
+            <View style={styles.weekendCardHeader}>
+              <View>
+                <Text style={styles.weekendTitle}>{t('this_weekend')}</Text>
+                <Text style={styles.weekendSubtitle}>{weekendDigest.title}</Text>
+              </View>
+              <Ionicons name="arrow-forward-circle" size={28} color="#2563eb" />
+            </View>
+            <Text style={styles.weekendCount}>
+              {weekendDigest.sections.reduce((count, section) => count + section.events.length, 0)} {t('events')} · {t('free')}: {weekendDigest.sections.flatMap(section => section.events).filter(event => event.isFree).length}
+            </Text>
+            <View style={styles.weekendPosters}>
+              {weekendDigest.sections.flatMap(section => section.events).slice(0, 3).map(event => (
+                event.coverImage
+                  ? <Image key={event.id} source={{ uri: event.coverImage }} style={styles.weekendPoster} />
+                  : <View key={event.id} style={[styles.weekendPoster, styles.weekendPosterPlaceholder]}><Ionicons name="calendar-outline" size={20} color="#9ca3af" /></View>
+              ))}
+            </View>
+          </TouchableOpacity>
+        )}
 
         {/* Top 10 Upcoming Events - Horizontal Scroll */}
         <View style={styles.section}>
@@ -837,6 +886,22 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 32,
   },
+  weekendCard: {
+    marginHorizontal: 20,
+    marginBottom: 24,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+  },
+  weekendCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  weekendTitle: { fontSize: 20, fontWeight: '800', color: '#1e3a8a' },
+  weekendSubtitle: { marginTop: 4, color: '#1d4ed8' },
+  weekendCount: { marginTop: 10, color: '#374151', fontWeight: '600' },
+  weekendPosters: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  weekendPoster: { width: 72, height: 72, borderRadius: 10 },
+  weekendPosterPlaceholder: { backgroundColor: '#dbeafe', justifyContent: 'center', alignItems: 'center' },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -964,6 +1029,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  trustPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#dcfce7', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 10 },
+  trustPillText: { color: '#166534', fontSize: 10, fontWeight: '700' },
+  topTrustPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(22,101,52,0.85)', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 10 },
+  topTrustPillText: { color: '#fff', fontSize: 10, fontWeight: '700' },
   eventCategory: {
     fontSize: 12,
     color: '#6b7280',

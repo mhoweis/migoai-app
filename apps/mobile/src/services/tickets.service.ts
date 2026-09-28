@@ -67,6 +67,11 @@ export interface HostedEvent {
   invited: number;
 }
 
+export interface HostedEventsResponse {
+  events: HostedEvent[];
+  organizer: { isVerified: boolean };
+}
+
 export const ticketsService = {
   async rsvp(eventId: string, ticketCount = 1, inviteCode?: string): Promise<Ticket> {
     const response = await api.post<{ success: boolean; data: Ticket }>('/bookings', {
@@ -167,9 +172,12 @@ export const ticketsService = {
     return response.data.data;
   },
 
-  async myEvents(): Promise<HostedEvent[]> {
-    const response = await api.get<{ success: boolean; data: HostedEvent[] }>('/events/mine');
-    return response.data.data || [];
+  async myEvents(): Promise<HostedEventsResponse> {
+    const response = await api.get<{ success: boolean; data: HostedEventsResponse | HostedEvent[] }>('/events/mine');
+    const data = response.data.data;
+    return Array.isArray(data)
+      ? { events: data, organizer: { isVerified: false } }
+      : data || { events: [], organizer: { isVerified: false } };
   },
 
   async createEvent(payload: CreateEventPayload): Promise<unknown> {

@@ -22,6 +22,7 @@ import { Event } from '@migo/shared';
 import { useUserStore } from '../store/userStore';
 import { useSavedEventsStore } from '../store/savedEventsStore';
 import { categoryLabel, formatEventDate, formatPrice, useLocale } from '../i18n';
+import { sourceBadge } from '../utils/trust';
 
 // Event categories for filtering
 const EVENT_CATEGORIES = [
@@ -568,6 +569,12 @@ const EventsScreen = () => {
               <Ionicons name={getCategoryIcon(item.category || '')} size={14} color="#3b82f6" />
               <Text style={styles.categoryText}>{categoryLabel(item.category)}</Text>
             </View>
+            {sourceBadge((item as any).trust, 'en')?.kind && ['official', 'venue'].includes(sourceBadge((item as any).trust, 'en')?.kind || '') && (
+              <View style={styles.trustPill}>
+                <Ionicons name="shield-checkmark" size={12} color="#166534" />
+                <Text style={styles.trustPillText}>{t('official')}</Text>
+              </View>
+            )}
             {item.locationType === 'ONLINE' && (
               <View style={styles.onlineBadge}>
                 <Text style={styles.onlineText}>{t('online')}</Text>
@@ -1331,6 +1338,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#166534',
   },
+  trustPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#dcfce7', paddingHorizontal: 7, paddingVertical: 4, borderRadius: 10 },
+  trustPillText: { color: '#166534', fontSize: 11, fontWeight: '700' },
   eventTitle: {
     fontSize: 18,
     fontWeight: 'bold',

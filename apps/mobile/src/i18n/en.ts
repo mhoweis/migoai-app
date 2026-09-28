@@ -237,6 +237,16 @@ const en = {
   categories_theater: 'Theater',
   categories_comedy: 'Comedy',
   categories_other: 'Other',
+  official: 'Official',
+  verification_hint: 'Verified badge is granted by Migo after a review — contact us',
+  no_organizers: 'No organizers found',
+  events_hosted: 'events hosted',
+  verify_organizers: 'Verify organizers',
+  weekend_digest: 'Weekend digest',
+  share_this_weekend: 'Share this weekend',
+  refund_free_cancel_until_start: 'Free tickets can be cancelled until the event starts.',
+  refund_organizer_policy: 'Refunds are available up to 48 hours before the event starts.',
+  refund_per_provider: "Refunds follow the provider's policy.",
 } as const;
 
 export default en;

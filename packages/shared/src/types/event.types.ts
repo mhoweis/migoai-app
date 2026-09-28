@@ -112,6 +112,27 @@ export interface Event {
   myBookingId?: string | null;
   canRsvp?: boolean;
   canBuy?: boolean;
+  trust?: {
+    source: {
+      id: string;
+      label: string;
+      labelAr: string;
+      kind: string;
+      url: string;
+      refundPolicy: string;
+    };
+    organizer?: {
+      id: string;
+      name: string;
+      avatar?: string | null;
+      isVerified: boolean;
+      eventsHosted: number;
+    };
+    refund: string;
+    refundText: string;
+    refundKey: string;
+    isOfficial: boolean;
+  };
 
   // Timestamps
   createdAt: string;

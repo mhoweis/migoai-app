@@ -28,6 +28,7 @@ import { navigateToTab } from '../navigation/navigationRef';
 import { socialService, EventSocial, InviteLinks } from '../services/social.service';
 import { inviteRef } from '../utils/inviteRef';
 import { categoryLabel, formatEventDate, formatPrice, useLocale } from '../i18n';
+import { sourceBadge } from '../utils/trust';
 
 const { width } = Dimensions.get('window');
 
@@ -48,7 +49,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [inviteLinks, setInviteLinks] = useState<InviteLinks | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const { user } = useUserStore();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { savedIds, toggleSaved, loadSavedEvents } = useSavedEventsStore();
 
   useEffect(() => {
@@ -260,6 +261,24 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               )}
             </View>
             <Text style={styles.eventTitle}>{event.title}</Text>
+            {sourceBadge(event.trust, locale) && (
+              <View style={[styles.sourceChip, { backgroundColor: sourceBadge(event.trust, locale)?.backgroundColor }]}>
+                <Ionicons name="shield-checkmark" size={15} color={sourceBadge(event.trust, locale)?.color} />
+                <Text style={[styles.sourceChipText, { color: sourceBadge(event.trust, locale)?.color }]}>
+                  {sourceBadge(event.trust, locale)?.text}
+                </Text>
+              </View>
+            )}
+            {(event as any).trust?.organizer && (
+              <View style={styles.trustOrganizer}>
+                {(event as any).trust.organizer.avatar ? (
+                  <Image source={{ uri: (event as any).trust.organizer.avatar }} style={styles.organizerAvatar} />
+                ) : <Ionicons name="person-circle-outline" size={32} color="#9ca3af" />}
+                <Text style={styles.organizerName}>{(event as any).trust.organizer.name}</Text>
+                {(event as any).trust.organizer.isVerified && <Ionicons name="checkmark-circle" size={18} color="#2563eb" />}
+                <Text style={styles.hostedCount}>{(event as any).trust.organizer.eventsHosted} {t('events_hosted')}</Text>
+              </View>
+            )}
             {event.organizer && (
               <View style={styles.eventOrganizer}>
                 {event.organizer.avatarUrl ? (
@@ -429,6 +448,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       {/* Bottom Action Bar */}
       <View style={styles.bottomBar}>
         <View>
+          <Text style={styles.refundNote}>{t(`refund_${(event as any).trust?.refundKey || 'per_provider'}` as any)}</Text>
           <Text style={styles.bottomBarPrice}>
             {event.isFree || !event.priceFrom
               ? t('free')
@@ -640,6 +660,10 @@ const styles = StyleSheet.create({
     color: '#1f2937',
     marginBottom: 16,
   },
+  sourceChip: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, marginBottom: 12 },
+  sourceChipText: { fontSize: 13, fontWeight: '700' },
+  trustOrganizer: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  hostedCount: { color: '#6b7280', fontSize: 12 },
   eventOrganizer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -804,6 +828,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#3b82f6',
   },
+  refundNote: { color: '#6b7280', fontSize: 11, maxWidth: 150, marginBottom: 4 },
   bottomBarTickets: {
     fontSize: 12,
     color: '#6b7280',

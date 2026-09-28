@@ -23,12 +23,15 @@ type Navigation = NativeStackNavigationProp<ProfileStackParamList, 'MyEvents'>;
 export default function MyEventsScreen({ navigation }: { navigation: Navigation }) {
   const { t } = useLocale();
   const [events, setEvents] = useState<HostedEvent[]>([]);
+  const [organizerVerified, setOrganizerVerified] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const loadEvents = useCallback(async () => {
     setLoading(true);
     try {
-      setEvents(await ticketsService.myEvents());
+      const result = await ticketsService.myEvents();
+      setEvents(result.events);
+      setOrganizerVerified(result.organizer.isVerified);
     } catch {
       setEvents([]);
     } finally {
@@ -60,7 +63,18 @@ export default function MyEventsScreen({ navigation }: { navigation: Navigation 
         data={events}
         keyExtractor={(event: HostedEvent) => event.id}
         contentContainerStyle={events.length ? styles.list : styles.emptyList}
-        ListHeaderComponent={<Text style={styles.heading}>{t('my_events')}</Text>}
+        ListHeaderComponent={(
+          <View>
+            <View style={styles.headingRow}>
+              <Text style={styles.heading}>{t('my_events')}</Text>
+              {organizerVerified ? (
+                <Ionicons name="checkmark-circle" size={24} color="#2563eb" />
+              ) : (
+                <Text style={styles.verificationHint}>{t('verification_hint')}</Text>
+              )}
+            </View>
+          </View>
+        )}
         ListEmptyComponent={<Text style={styles.empty}>{t('no_hosted_events_help')}</Text>}
         renderItem={({ item }: { item: HostedEvent }) => (
           <View style={styles.card}>
@@ -94,6 +108,8 @@ const styles = StyleSheet.create({
   list: { padding: 20, gap: 14 },
   emptyList: { flexGrow: 1, padding: 20 },
   heading: { fontSize: 28, fontWeight: '700', color: '#111827', marginBottom: 4 },
+  headingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  verificationHint: { flex: 1, color: '#6b7280', fontSize: 12 },
   empty: { marginTop: 24, color: '#6b7280', textAlign: 'center' },
   card: { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: '#e5e7eb', padding: 16 },
   title: { fontSize: 18, fontWeight: '700', color: '#111827' },

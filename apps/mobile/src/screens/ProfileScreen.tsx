@@ -113,6 +113,10 @@ const ProfileScreen = () => {
     navigation.navigate('FindFriends');
   };
 
+  const handleNavigateToVerifyOrganizers = () => {
+    (navigation as any).navigate('VerifyOrganizers');
+  };
+
   const handleLocaleChange = async (next: 'en' | 'ar') => {
     await setLocale(next);
     if (user) {
@@ -206,6 +210,15 @@ const ProfileScreen = () => {
             </View>
             <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
           </TouchableOpacity>
+          {(user as any)?.role === 'ADMIN' || (user as any)?.isAdmin ? (
+            <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToVerifyOrganizers}>
+              <View style={styles.menuItemLeft}>
+                <Ionicons name="shield-checkmark-outline" size={24} color="#2563eb" />
+                <Text style={styles.menuItemText}>{t('verify_organizers')}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         <View style={styles.section}>

@@ -239,6 +239,16 @@ const ar: Record<keyof typeof en, string> = {
   categories_theater: 'مسرح',
   categories_comedy: 'كوميديا',
   categories_other: 'أخرى',
+  official: 'رسمي',
+  verification_hint: 'تمنح Migo شارة التحقق بعد المراجعة — تواصل معنا',
+  no_organizers: 'لم يتم العثور على منظّمين',
+  events_hosted: 'فعاليات مستضافة',
+  verify_organizers: 'التحقق من المنظّمين',
+  weekend_digest: 'ملخص عطلة نهاية الأسبوع',
+  share_this_weekend: 'شارك عطلة نهاية الأسبوع',
+  refund_free_cancel_until_start: 'يمكن إلغاء التذاكر المجانية حتى بدء الفعالية.',
+  refund_organizer_policy: 'تتوفر المبالغ المستردة حتى 48 ساعة قبل بدء الفعالية.',
+  refund_per_provider: 'تخضع المبالغ المستردة لسياسة الجهة المقدمة.',
 };
 
 export default ar;

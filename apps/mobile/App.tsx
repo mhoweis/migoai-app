@@ -28,6 +28,8 @@ import MyEventsScreen from "./src/screens/MyEventsScreen";
 import CheckInScreen from "./src/screens/CheckInScreen";
 import FindFriendsScreen from "./src/screens/FindFriendsScreen";
 import ClaimTicketScreen from "./src/screens/ClaimTicketScreen";
+import WeekendDigestScreen from "./src/screens/WeekendDigestScreen";
+import VerifyOrganizersScreen from "./src/screens/VerifyOrganizersScreen";
 import { inviteRef } from "./src/utils/inviteRef";
 import { ticketsService } from "./src/services/tickets.service";
 import { navigateToTab } from "./src/navigation/navigationRef";
@@ -174,6 +176,11 @@ export function ProfileStack() {
         name="FindFriends"
         component={FindFriendsScreen}
         options={{ title: t('find_friends'), headerBackTitle: t('back') }}
+      />
+      <Stack.Screen
+        name="VerifyOrganizers"
+        component={VerifyOrganizersScreen}
+        options={{ title: t('verify_organizers'), headerBackTitle: t('back') }}
       />
     </Stack.Navigator>
   );
@@ -465,6 +472,11 @@ export default function App() {
                 name="ClaimTicket"
                 component={ClaimTicketScreen}
                 options={{ title: t('claim_ticket'), headerBackTitle: t('back') }}
+              />
+              <Stack.Screen
+                name="WeekendDigest"
+                component={WeekendDigestScreen}
+                options={{ title: t('weekend_digest'), headerBackTitle: t('back') }}
               />
             </>
           )}
