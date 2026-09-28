@@ -21,6 +21,7 @@ import wishlistsRouter from './routes/wishlists.routes';
 import goRouter from './routes/go.routes';
 import { adminRouter } from './routes/admin.routes';
 import placesRouter from './routes/places.routes';
+import bookingsRouter from './routes/bookings.routes';
 
 // Import middleware
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
@@ -129,6 +130,7 @@ app.use('/api/events', eventsRouter); // Assuming events are public for browsing
 // Protected routes (authentication required)
 app.use('/api/users', authenticate, usersRouter);
 app.use('/api/payments', authenticate, paymentsRouter);
+app.use('/api/bookings', authenticate, bookingsRouter);
 app.use('/api/external-events', externalEventsRouter);
 app.use('/api/wishlists', wishlistsRouter);
 

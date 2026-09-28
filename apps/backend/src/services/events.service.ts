@@ -924,7 +924,7 @@ export class EventService {
       };
       baseSelect.bookings = {
         where: { userId },
-        select: { id: true, status: true },
+        select: { id: true, status: true, ticketCount: true, qrCode: true },
       };
     }
     
@@ -1039,6 +1039,12 @@ export class EventService {
           id: booking.id,
           status: booking.status,
           ticketCount: booking.ticketCount || 1,
+        };
+        formatted.myBooking = {
+          id: booking.id,
+          status: booking.status,
+          ticketCount: booking.ticketCount || 1,
+          qrCode: booking.qrCode,
         };
       }
     }

@@ -1,7 +1,7 @@
 // src/routes/events.routes.ts - COMPLETE FIXED VERSION
 import { Router, Request, Response } from "express";
 import { eventService, EventFilters } from "../services/events.service";
-import { authenticate, AuthRequest } from "../middlewares/auth.middleware";
+import { authenticate, AuthRequest, optionalAuthenticate } from "../middlewares/auth.middleware";
 import { asyncHandler } from "../middlewares/error.middleware";
 import { z } from "zod";
 
@@ -110,7 +110,7 @@ router.get("/weekend", asyncHandler(async (req: Request, res: Response) => {
 }));
 
 // Get event by ID
-router.get("/:id", asyncHandler(async (req: AuthRequest, res: Response) => {
+router.get("/:id", optionalAuthenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const userId = req.userId;
   

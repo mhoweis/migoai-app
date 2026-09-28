@@ -1,82 +1,51 @@
-import { Router, Request, Response } from 'express';
-import prisma from '../database/prisma';
+import { Router, Response } from 'express';
+import { z } from 'zod';
+import { AuthRequest, requireOrganizer } from '../middlewares/auth.middleware';
+import { asyncHandler } from '../middlewares/error.middleware';
+import ticketsService from '../services/tickets.service';
 
 const router = Router();
 
-// Get all bookings
-router.get('/', async (req: Request, res: Response) => {
-  try {
-    const bookings = await prisma.booking.findMany({
-      include: {
-        user: {
-          select: { id: true, name: true, email: true }
-        },
-        event: {
-          select: { id: true, title: true, date: true }
-        }
-      },
-      orderBy: {
-        bookingDate: 'desc'
-      }
-    });
-    res.json(bookings);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch bookings' });
-  }
+const rsvpSchema = z.object({
+  eventId: z.string().min(1),
+  ticketCount: z.coerce.number().int().min(1).max(4).default(1),
+  attendeeName: z.string().trim().min(1).optional(),
+  attendeeEmail: z.string().email().optional(),
 });
 
-// Create booking
-router.post('/', async (req: Request, res: Response) => {
-  try {
-    const { userId, eventId, ticketCount, totalAmount } = req.body;
+router.post('/', asyncHandler(async (req: AuthRequest, res: Response) => {
+  const input = rsvpSchema.parse(req.body);
+  const booking = await ticketsService.createRsvp(req.userId!, input.eventId, input);
+  res.status(201).json({ success: true, data: booking });
+}));
 
-    const booking = await prisma.booking.create({
-      data: {
-        userId,
-        eventId,
-        ticketCount,
-        totalAmount,
-        status: 'confirmed'
-      },
-      include: {
-        user: true,
-        event: true
-      }
-    });
+router.get('/me', asyncHandler(async (req: AuthRequest, res: Response) => {
+  const tickets = await ticketsService.listMyTickets(req.userId!);
+  res.json({ success: true, data: tickets });
+}));
 
-    res.status(201).json({
-      message: 'Booking created successfully',
-      booking
-    });
-  } catch (error) {
-    console.error('Booking error:', error);
-    res.status(500).json({ error: 'Failed to create booking' });
-  }
-});
+router.post('/check-in', requireOrganizer, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const input = z.object({ code: z.string().min(1) }).parse(req.body);
+  const result = await ticketsService.checkIn(input.code, req.userId!);
+  res.json({ success: true, data: result });
+}));
 
-// Update booking status
-router.patch('/:id/status', async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
+router.get('/events/:eventId/attendance', requireOrganizer, asyncHandler(async (
+  req: AuthRequest,
+  res: Response,
+) => {
+  const result = await ticketsService.eventAttendance(req.params.eventId, req.userId!);
+  res.json({ success: true, data: result });
+}));
 
-    const validStatuses = ['pending', 'confirmed', 'cancelled'];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ error: 'Invalid status' });
-    }
+router.post('/:id/cancel', asyncHandler(async (req: AuthRequest, res: Response) => {
+  const booking = await ticketsService.cancelRsvp(req.userId!, req.params.id);
+  res.json({ success: true, data: booking });
+}));
 
-    const booking = await prisma.booking.update({
-      where: { id },
-      data: { status }
-    });
+router.get('/:id', asyncHandler(async (req: AuthRequest, res: Response) => {
+  const booking = await ticketsService.getBooking(req.params.id, req.userId!, req.user?.role || 'USER');
+  res.json({ success: true, data: booking });
+}));
 
-    res.json({
-      message: 'Booking status updated',
-      booking
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to update booking' });
-  }
-});
-
-export { router as bookingsRouter };
+export default router;
