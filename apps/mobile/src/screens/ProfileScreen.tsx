@@ -98,6 +98,14 @@ const ProfileScreen = () => {
     navigation.navigate('ConnectionTest');
   };
 
+  const handleNavigateToCreateEvent = () => {
+    navigation.navigate('CreateEvent');
+  };
+
+  const handleNavigateToMyEvents = () => {
+    navigation.navigate('MyEvents');
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView>
@@ -159,7 +167,27 @@ const ProfileScreen = () => {
             </View>
             <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
           </TouchableOpacity>
+        </View>
 
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Host</Text>
+          <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToCreateEvent}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="add-circle-outline" size={24} color="#2563eb" />
+              <Text style={styles.menuItemText}>Create an event</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToMyEvents}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="calendar-outline" size={24} color="#2563eb" />
+              <Text style={styles.menuItemText}>My events</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.section}>
           <TouchableOpacity style={styles.menuItem} onPress={logout}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="log-out-outline" size={24} color="#ef4444" />
@@ -241,6 +269,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 2,
+  },
+  sectionTitle: {
+    paddingHorizontal: 20,
+    paddingBottom: 4,
+    color: '#6b7280',
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
   },
   userInfo: {
     flexDirection: 'row',

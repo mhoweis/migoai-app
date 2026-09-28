@@ -19,6 +19,9 @@ import ConnectionTestScreen from '../screens/ConnectionTestScreen';
 import WalletScreen from '../screens/WalletScreen';
 import PlacesScreen from '../screens/PlacesScreen';
 import PlaceDetailScreen, { PlaceDetailParams } from '../screens/PlaceDetailScreen';
+import CreateEventScreen from '../screens/CreateEventScreen';
+import MyEventsScreen from '../screens/MyEventsScreen';
+import CheckInScreen from '../screens/CheckInScreen';
 
 // Param list types — exported so screens can type their navigation props
 export type HomeStackParamList = {
@@ -44,6 +47,9 @@ export type ProfileStackParamList = {
   ProfileMain: undefined;
   Interests: undefined;
   ConnectionTest: undefined;
+  CreateEvent: undefined;
+  MyEvents: undefined;
+  CheckIn: { eventId?: string };
 };
 
 export type WalletStackParamList = {
@@ -166,6 +172,21 @@ function ProfileStackNavigator() {
         name="ConnectionTest"
         component={ConnectionTestScreen}
         options={{ title: 'Connection Test', headerBackTitle: 'Back' }}
+      />
+      <ProfileStack.Screen
+        name="CreateEvent"
+        component={CreateEventScreen}
+        options={{ title: 'Create an event', headerBackTitle: 'Back' }}
+      />
+      <ProfileStack.Screen
+        name="MyEvents"
+        component={MyEventsScreen}
+        options={{ title: 'My events', headerBackTitle: 'Back' }}
+      />
+      <ProfileStack.Screen
+        name="CheckIn"
+        component={CheckInScreen}
+        options={{ title: 'Check in', headerBackTitle: 'Back' }}
       />
     </ProfileStack.Navigator>
   );
