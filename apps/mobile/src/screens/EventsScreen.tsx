@@ -21,6 +21,7 @@ import { api } from '../services/api';
 import { Event } from '@migo/shared';
 import { useUserStore } from '../store/userStore';
 import { useSavedEventsStore } from '../store/savedEventsStore';
+import { categoryLabel, formatEventDate, formatPrice, useLocale } from '../i18n';
 
 // Event categories for filtering
 const EVENT_CATEGORIES = [
@@ -41,6 +42,7 @@ const EventsScreen = () => {
   const navigation = useNavigation();
   const route = useRoute<any>();
   const { userLocation } = useUserStore();
+  const { t } = useLocale();
   const { savedIds, toggleSaved, loadSavedEvents } = useSavedEventsStore();
   const [events, setEvents] = useState<Event[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
@@ -84,7 +86,7 @@ const EventsScreen = () => {
   const handleShare = async (item: Event) => {
     try {
       await Share.share({
-        message: `Check out "${item.title}" on Migo!\n${item.venueName || item.city || ''} — ${new Date(item.startDate).toLocaleDateString()}`,
+        message: `Check out "${item.title}" on Migo!\n${item.venueName || item.city || ''} — ${formatEventDate(item.startDate)}`,
       });
     } catch {}
   };
@@ -503,7 +505,7 @@ const EventsScreen = () => {
 
   const getActiveDateLabel = (): string => {
     if (!dateFrom && !dateTo) return '';
-    const fmt = (d: string) => new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    const fmt = (d: string) => formatEventDate(d);
     if (dateFrom && dateTo) return `${fmt(dateFrom)} – ${fmt(dateTo)}`;
     if (dateFrom) return `From ${fmt(dateFrom)}`;
     return `Until ${fmt(dateTo)}`;
@@ -511,12 +513,12 @@ const EventsScreen = () => {
 
   const renderEventItem = ({ item }: { item: Event }) => {
     const priceDisplay = item.isFree || !item.priceFrom ? (
-      <Text style={styles.eventPrice}>FREE</Text>
+      <Text style={styles.eventPrice}>{t('free')}</Text>
     ) : (
       <View style={styles.priceContainerList}>
-        <Text style={styles.priceStartingList}>Starting </Text>
+        <Text style={styles.priceStartingList}>{t('starting')} </Text>
         <Text style={styles.eventPrice}>
-          {item.currency || 'AED'} {Number(item.priceFrom).toFixed(0)}
+          {formatPrice(Number(item.priceFrom), item.currency || 'AED')}
         </Text>
       </View>
     );
@@ -564,36 +566,36 @@ const EventsScreen = () => {
           <View style={styles.eventHeader}>
             <View style={styles.categoryBadge}>
               <Ionicons name={getCategoryIcon(item.category || '')} size={14} color="#3b82f6" />
-              <Text style={styles.categoryText}>{item.category || 'Event'}</Text>
+              <Text style={styles.categoryText}>{categoryLabel(item.category)}</Text>
             </View>
             {item.locationType === 'ONLINE' && (
               <View style={styles.onlineBadge}>
-                <Text style={styles.onlineText}>Online</Text>
+                <Text style={styles.onlineText}>{t('online')}</Text>
               </View>
             )}
           </View>
 
           <Text style={styles.eventTitle}>{item.title}</Text>
           <Text style={styles.eventDescription} numberOfLines={2}>
-            {item.description || item.shortDescription || 'No description available'}
+            {item.description || item.shortDescription || t('no_events_help')}
           </Text>
 
           <View style={styles.eventDetails}>
             <View style={styles.detailItem}>
               <Ionicons name="calendar-outline" size={16} color="#6b7280" />
               <Text style={styles.detailText}>
-                {new Date(item.startDate).toLocaleDateString()} • {new Date(item.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {formatEventDate(item.startDate, { withTime: true })}
               </Text>
             </View>
 
             <View style={styles.detailItem}>
               <Ionicons name="location-outline" size={16} color="#6b7280" />
-              <Text style={styles.detailText}>{item.city || item.venueName || 'Location TBA'}</Text>
+              <Text style={styles.detailText}>{item.city || item.venueName || t('location_tba')}</Text>
             </View>
 
             <View style={styles.detailItem}>
               <Ionicons name="people-outline" size={16} color="#6b7280" />
-              <Text style={styles.detailText}>{item.capacity ? `${item.capacity} capacity` : 'Venue'}</Text>
+              <Text style={styles.detailText}>{item.capacity ? `${item.capacity} ${t('capacity')}` : t('venue')}</Text>
             </View>
           </View>
 
@@ -603,7 +605,7 @@ const EventsScreen = () => {
               style={styles.rsvpButton}
               onPress={() => (navigation as any).navigate('EventDetail', { eventId: item.id })}
             >
-              <Text style={styles.rsvpButtonText}>View Details</Text>
+              <Text style={styles.rsvpButtonText}>{t('view_details')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -755,7 +757,7 @@ const EventsScreen = () => {
                   isDisabled && styles.categoryChipTextDisabled
                 ]}
               >
-                {item}
+                {categoryLabel(item)}
                 {count > 0 && <Text style={styles.categoryChipCount}> ({count})</Text>}
               </Text>
             </TouchableOpacity>
@@ -770,10 +772,10 @@ const EventsScreen = () => {
       !isPresetActive('today') && !isPresetActive('tomorrow') && !isPresetActive('weekend');
 
     const dateOptions = [
-      { key: 'today', label: 'Today', preset: 'today' as const },
-      { key: 'tomorrow', label: 'Tomorrow', preset: 'tomorrow' as const },
-      { key: 'weekend', label: 'This Weekend', preset: 'weekend' as const },
-      { key: 'custom', label: 'Custom', preset: null },
+      { key: 'today', label: t('today'), preset: 'today' as const },
+      { key: 'tomorrow', label: t('tomorrow'), preset: 'tomorrow' as const },
+      { key: 'weekend', label: t('this_weekend'), preset: 'weekend' as const },
+      { key: 'custom', label: t('custom'), preset: null },
     ];
 
     return (
@@ -806,7 +808,7 @@ const EventsScreen = () => {
         {(dateFrom || dateTo) && (
           <TouchableOpacity style={styles.dateChipClear} onPress={() => applyDatePreset('clear')}>
             <Ionicons name="close-circle" size={15} color="#ef4444" />
-            <Text style={styles.dateChipClearText}>Clear</Text>
+            <Text style={styles.dateChipClearText}>{t('clear')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -815,7 +817,7 @@ const EventsScreen = () => {
 
   const renderSortOptions = () => (
     <View style={styles.sortContainer}>
-      <Text style={styles.sortLabel}>Sort by:</Text>
+      <Text style={styles.sortLabel}>{t('sort_by')}</Text>
       <TouchableOpacity
         style={[
           styles.sortButton,
@@ -829,7 +831,7 @@ const EventsScreen = () => {
             sortBy === 'date' && styles.sortButtonTextActive
           ]}
         >
-          Date
+          {t('sort_date')}
         </Text>
       </TouchableOpacity>
       <TouchableOpacity
@@ -845,7 +847,7 @@ const EventsScreen = () => {
             sortBy === 'price' && styles.sortButtonTextActive
           ]}
         >
-          Price
+          {t('sort_price')}
         </Text>
       </TouchableOpacity>
     </View>
@@ -856,7 +858,7 @@ const EventsScreen = () => {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#3b82f6" />
-          <Text style={styles.loadingText}>Loading events...</Text>
+          <Text style={styles.loadingText}>{t('loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -866,7 +868,7 @@ const EventsScreen = () => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Discover Events</Text>
+      <Text style={styles.headerTitle}>{t('discover_events')}</Text>
         <TouchableOpacity
           style={styles.filterButton}
           onPress={() => setFiltersVisible(!filtersVisible)}
@@ -893,7 +895,7 @@ const EventsScreen = () => {
         <View style={styles.venueBanner}>
           <Ionicons name="location" size={16} color="#1d4ed8" />
           <Text style={styles.venueBannerText} numberOfLines={1}>
-            Showing events at <Text style={styles.venueBannerName}>{venueFilter}</Text>
+            {t('showing_events_at', { venue: venueFilter })}
           </Text>
           <TouchableOpacity onPress={() => setVenueFilter('')}>
             <Ionicons name="close-circle" size={18} color="#1d4ed8" />
@@ -906,7 +908,7 @@ const EventsScreen = () => {
         <View style={styles.dateBanner}>
           <Ionicons name="calendar" size={16} color="#7c3aed" />
           <Text style={styles.dateBannerText} numberOfLines={1}>
-            Events: <Text style={styles.dateBannerRange}>{getActiveDateLabel()}</Text>
+            {t('events_range', { range: getActiveDateLabel() })}
           </Text>
           <TouchableOpacity onPress={() => { setDateFrom(''); setDateTo(''); }}>
             <Ionicons name="close-circle" size={18} color="#7c3aed" />
@@ -919,7 +921,7 @@ const EventsScreen = () => {
         <Ionicons name="search" size={20} color="#9ca3af" style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search events, locations, categories..."
+          placeholder={t('search_events')}
           value={searchQuery}
           onChangeText={setSearchQuery}
           autoCapitalize="none"
@@ -975,13 +977,13 @@ const EventsScreen = () => {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="calendar-outline" size={64} color="#d1d5db" />
-            <Text style={styles.emptyTitle}>No events found</Text>
+            <Text style={styles.emptyTitle}>{t('no_events_found')}</Text>
             <Text style={styles.emptyText}>
               {(dateFrom || dateTo)
-                ? 'No events in this date range. Try a different range.'
+                ? t('no_events_help')
                 : searchQuery
-                ? 'Try a different search'
-                : 'Check back later for new events!'}
+                ? t('no_events_help')
+                : t('no_events_help')}
             </Text>
           </View>
         }

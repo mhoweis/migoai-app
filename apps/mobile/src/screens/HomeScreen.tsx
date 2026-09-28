@@ -21,6 +21,7 @@ import { useWalletStore } from '../store/walletStore';
 import { Event } from '@migo/shared';
 import { api } from '../services/api';
 import { navigateToTab, navigationRef } from '../navigation/navigationRef';
+import { categoryLabel, formatEventDate, formatPrice, useLocale } from '../i18n';
 
 const { width } = Dimensions.get('window');
 
@@ -30,6 +31,7 @@ interface Props {
 
 const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const { user, userLocation, setUserLocation } = useUserStore();
+  const { t } = useLocale();
   const { savedEvents, savedIds, loadSavedEvents, toggleSaved } = useSavedEventsStore();
   const { upcomingTickets, loadTickets } = useWalletStore();
   const [refreshing, setRefreshing] = useState(false);
@@ -283,9 +285,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const renderTopEventCard = ({ item }: { item: Event }) => {
-    const eventDate = new Date(item.startDate);
-    const formattedDate = eventDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const formattedTime = eventDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    const formattedDate = formatEventDate(item.startDate, { withTime: true });
 
     const saved = savedIds.has(item.id);
 
@@ -305,7 +305,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           {/* Top row: badge + action buttons */}
           <View style={styles.topEventTopRow}>
             <View style={styles.topEventBadge}>
-              <Text style={styles.topEventBadgeText}>FEATURED</Text>
+              <Text style={styles.topEventBadgeText}>{t('featured')}</Text>
             </View>
             <View style={styles.topEventActions}>
               <TouchableOpacity
@@ -334,7 +334,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.topEventMeta}>
               <Ionicons name="calendar-outline" size={12} color="#fff" />
               <Text style={styles.topEventMetaText}>
-                {formattedDate} • {formattedTime}
+                {formattedDate}
               </Text>
             </View>
             <View style={styles.topEventMeta}>
@@ -350,17 +350,16 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const renderEventCard = (item: Event, isToday = false) => {
-    const eventDate = new Date(item.startDate);
-    const formattedDate = eventDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const formattedDate = formatEventDate(item.startDate);
 
     // Format price with "Starting from" text
     const priceDisplay = item.isFree || !item.priceFrom ? (
-      <Text style={styles.eventPrice}>FREE</Text>
+      <Text style={styles.eventPrice}>{t('free')}</Text>
     ) : (
       <View style={styles.priceContainer}>
-        <Text style={styles.priceStarting}>Starting </Text>
+        <Text style={styles.priceStarting}>{t('starting')} </Text>
         <Text style={styles.eventPrice}>
-          {item.currency || 'AED'} {Number(item.priceFrom).toFixed(0)}
+          {formatPrice(Number(item.priceFrom), item.currency || 'AED')}
         </Text>
       </View>
     );
@@ -382,7 +381,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         )}
         <View style={styles.eventContent}>
           <View style={styles.eventHeader}>
-            <Text style={styles.eventCategory}>{item.category || 'Event'}</Text>
+          <Text style={styles.eventCategory}>{categoryLabel(item.category)}</Text>
           </View>
           <Text style={styles.eventTitle} numberOfLines={2}>
             {item.title}
@@ -403,7 +402,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
               <View style={styles.eventTickets}>
                 <Ionicons name="people-outline" size={14} color="#10b981" />
                 <Text style={styles.eventTicketsText}>
-                  {item.capacity} capacity
+                  {item.capacity} {t('capacity')}
                 </Text>
               </View>
             )}
@@ -453,7 +452,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           onPress={handleResetFilter}
         >
           <Ionicons name="apps-outline" size={14} color={selectedInterest === null ? '#fff' : '#3b82f6'} />
-          <Text style={[styles.interestPillText, selectedInterest !== null && { color: '#3b82f6' }]}>All</Text>
+          <Text style={[styles.interestPillText, selectedInterest !== null && { color: '#3b82f6' }]}>{t('all')}</Text>
         </TouchableOpacity>
 
         {user.interests.map((interest) => (
@@ -496,10 +495,10 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>
-              Hello, {user?.name?.split(' ')[0] || 'Guest'}! 👋
+              {t('home_greeting', { name: user?.name?.split(' ')[0] || t('welcome') })} 👋
             </Text>
             <Text style={styles.subtitle}>
-              Discover events that match your interests
+              {t('home_subtitle')}
             </Text>
           </View>
           <TouchableOpacity
@@ -520,9 +519,9 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         {/* Top 10 Upcoming Events - Horizontal Scroll */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Top Upcoming Events</Text>
+            <Text style={styles.sectionTitle}>{t('top_upcoming_events')}</Text>
             <TouchableOpacity onPress={navigateToEvents}>
-              <Text style={styles.seeAll}>See All</Text>
+              <Text style={styles.seeAll}>{t('see_all')}</Text>
             </TouchableOpacity>
           </View>
           <FlatList
@@ -538,9 +537,9 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         {/* This Week's Events */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>This Week For You</Text>
+            <Text style={styles.sectionTitle}>{t('this_week_for_you')}</Text>
             <TouchableOpacity onPress={() => navigateToEventsWithFilter('this-week')}>
-              <Text style={styles.seeAll}>See All</Text>
+              <Text style={styles.seeAll}>{t('see_all')}</Text>
             </TouchableOpacity>
           </View>
           {filteredThisWeek.length > 0 ? (
@@ -549,13 +548,13 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.emptyState}>
               <Ionicons name="calendar-outline" size={48} color="#d1d5db" />
               <Text style={styles.emptyStateText}>
-                No events this week matching your interests
+                {t('no_events_help')}
               </Text>
               <TouchableOpacity 
                 style={styles.exploreButton}
                 onPress={navigateToEvents}
               >
-                <Text style={styles.exploreButtonText}>Explore All Events</Text>
+                <Text style={styles.exploreButtonText}>{t('explore_all_events')}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -565,10 +564,10 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         {topVenues.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Top Venues</Text>
+              <Text style={styles.sectionTitle}>{t('top_venues')}</Text>
               <TouchableOpacity onPress={() => setShowAllVenues((v) => !v)}>
                 <Text style={styles.seeAll}>
-                  {showAllVenues ? 'Show Less' : `See All (${topVenues.length})`}
+                  {showAllVenues ? t('show_less') : `${t('see_all')} (${topVenues.length})`}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -596,10 +595,10 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         {/* Today's Events */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Today's Picks</Text>
+            <Text style={styles.sectionTitle}>{t('todays_picks')}</Text>
             <View style={styles.todayBadge}>
               <Ionicons name="flash" size={12} color="#fff" />
-              <Text style={styles.todayBadgeText}>LIVE</Text>
+              <Text style={styles.todayBadgeText}>{t('live')}</Text>
             </View>
           </View>
           {filteredToday.length > 0 ? (
@@ -608,10 +607,10 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.emptyState}>
               <Ionicons name="time-outline" size={48} color="#d1d5db" />
               <Text style={styles.emptyStateText}>
-                No events today matching your interests
+                {t('no_events_help')}
               </Text>
               <Text style={styles.emptyStateSubtext}>
-                Check back tomorrow or explore all events
+                {t('explore_all_events')}
               </Text>
             </View>
           )}
@@ -621,9 +620,9 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         {upcomingTickets().length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Your Tickets</Text>
+              <Text style={styles.sectionTitle}>{t('your_tickets')}</Text>
               <TouchableOpacity onPress={() => navigateToTab('Wallet')}>
-                <Text style={styles.seeAll}>View Wallet</Text>
+                <Text style={styles.seeAll}>{t('view_wallet')}</Text>
               </TouchableOpacity>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
@@ -634,13 +633,13 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
                   onPress={() => navigateToTab('Wallet')}
                 >
                   <View style={[styles.ticketPreviewTop, { backgroundColor: ticket.category === 'Music' ? '#6d28d9' : ticket.category === 'Sports' ? '#065f46' : '#3b82f6' }]}>
-                    <Text style={styles.ticketPreviewCategory}>{ticket.category || 'Event'}</Text>
+                    <Text style={styles.ticketPreviewCategory}>{categoryLabel(ticket.category)}</Text>
                     <Text style={styles.ticketPreviewTitle} numberOfLines={2}>{ticket.eventTitle}</Text>
                   </View>
                   <View style={styles.ticketPreviewBottom}>
                     <Ionicons name="calendar-outline" size={12} color="#6b7280" />
                     <Text style={styles.ticketPreviewDate}>
-                      {new Date(ticket.eventDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      {formatEventDate(ticket.eventDate)}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -653,9 +652,9 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         {savedEvents.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Your Saved Events</Text>
+              <Text style={styles.sectionTitle}>{t('your_saved_events')}</Text>
               <TouchableOpacity onPress={() => navigateToTab('Events')}>
-                <Text style={styles.seeAll}>See All</Text>
+                <Text style={styles.seeAll}>{t('see_all')}</Text>
               </TouchableOpacity>
             </View>
             {savedEvents.slice(0, 4).map((event) => renderEventCard(event))}
@@ -671,8 +670,8 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             <Ionicons name="sparkles" size={24} color="#fff" />
           </View>
           <View style={styles.aiAssistantText}>
-            <Text style={styles.aiAssistantTitle}>Need help finding events?</Text>
-            <Text style={styles.aiAssistantSubtitle}>Chat with our AI assistant</Text>
+            <Text style={styles.aiAssistantTitle}>{t('need_help')}</Text>
+            <Text style={styles.aiAssistantSubtitle}>{t('chat_with_ai')}</Text>
           </View>
           <Ionicons name="chevron-forward" size={24} color="#3b82f6" />
         </TouchableOpacity>
@@ -688,7 +687,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Location</Text>
+              <Text style={styles.modalTitle}>{t('select_location')}</Text>
               <TouchableOpacity onPress={() => setShowLocationModal(false)}>
                 <Ionicons name="close" size={24} color="#6b7280" />
               </TouchableOpacity>
@@ -740,7 +739,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
               {availableCities.length === 0 && (
                 <View style={styles.noCitiesContainer}>
                   <Ionicons name="location-outline" size={48} color="#d1d5db" />
-                  <Text style={styles.noCitiesText}>Loading cities...</Text>
+                  <Text style={styles.noCitiesText}>{t('loading_cities')}</Text>
                 </View>
               )}
             </ScrollView>

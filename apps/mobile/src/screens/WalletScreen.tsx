@@ -18,6 +18,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { navigateToTab } from '../navigation/navigationRef';
 import { Ticket, ticketsService } from '../services/tickets.service';
 import { socialService } from '../services/social.service';
+import { formatEventDate, useLocale, categoryLabel } from '../i18n';
 
 const categoryColors: Record<string, string> = {
   Music: '#6d28d9',
@@ -44,7 +45,7 @@ const formatDate = (value: string) => {
   })} at ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
 };
 
-function TicketCard({ ticket, onCancel }: { ticket: Ticket; onCancel: (ticket: Ticket) => void }) {
+function TicketCard({ ticket, onCancel, t }: { ticket: Ticket; onCancel: (ticket: Ticket) => void; t: ReturnType<typeof useLocale>['t'] }) {
   const color = ticketColor(ticket.event.category || undefined);
   const sendToWhatsApp = async () => {
     try {
@@ -52,7 +53,7 @@ function TicketCard({ ticket, onCancel }: { ticket: Ticket; onCancel: (ticket: T
       const text = `My ticket for ${ticket.event.title} — ${formatDate(ticket.event.startDate)}. Get yours: ${invite.shareUrl}`;
       await Linking.openURL(`https://wa.me/?text=${encodeURIComponent(text)}`);
     } catch {
-      Alert.alert('Unable to share', 'Please try again.');
+      Alert.alert(t('unable_to_share'), t('please_try_again'));
     }
   };
   return (
@@ -66,21 +67,21 @@ function TicketCard({ ticket, onCancel }: { ticket: Ticket; onCancel: (ticket: T
       )}
       <View style={styles.cardBody}>
         <View style={styles.cardHeading}>
-          <Text style={styles.category}>{ticket.event.category || 'Event'}</Text>
+          <Text style={styles.category}>{categoryLabel(ticket.event.category)}</Text>
           <View style={[styles.statusBadge, ticket.status === 'CHECKED_IN' && styles.usedBadge]}>
-            <Text style={styles.statusText}>{ticket.status === 'CHECKED_IN' ? 'Used' : 'Valid'}</Text>
+            <Text style={styles.statusText}>{ticket.status === 'CHECKED_IN' ? t('checked_in') : t('confirmed')}</Text>
           </View>
         </View>
         <Text style={styles.title}>{ticket.event.title}</Text>
-        <Text style={styles.meta}>{formatDate(ticket.event.startDate)}</Text>
+        <Text style={styles.meta}>{formatEventDate(ticket.event.startDate, { withTime: true })}</Text>
         <Text style={styles.meta}>
-          {ticket.event.venueName || 'Venue TBA'}{ticket.event.city ? ` · ${ticket.event.city}` : ''}
+          {ticket.event.venueName || t('location_tba')}{ticket.event.city ? ` · ${ticket.event.city}` : ''}
         </Text>
-        <Text style={styles.quantity}>{ticket.ticketCount} × General admission</Text>
+        <Text style={styles.quantity}>{ticket.ticketCount} × {t('event')}</Text>
         <Text style={styles.price}>
           {Number(ticket.totalAmount || 0) > 0
             ? `${ticket.currency || ticket.event.currency || 'AED'} ${Number(ticket.totalAmount).toFixed(2)} paid`
-            : 'Free'}
+            : t('free')}
         </Text>
         {ticket.qrCode ? (
           <View style={styles.qrSection}>
@@ -91,13 +92,13 @@ function TicketCard({ ticket, onCancel }: { ticket: Ticket; onCancel: (ticket: T
         {ticket.status === 'CONFIRMED' && (
           <TouchableOpacity style={styles.shareTicketButton} onPress={sendToWhatsApp}>
             <Ionicons name="logo-whatsapp" size={16} color="#16a34a" />
-            <Text style={styles.shareTicketText}>Send to WhatsApp</Text>
+            <Text style={styles.shareTicketText}>{t('send_to_whatsapp')}</Text>
           </TouchableOpacity>
         )}
         {ticket.status === 'CONFIRMED' && (
           <TouchableOpacity style={styles.cancelButton} onPress={() => onCancel(ticket)}>
             <Ionicons name="close-circle-outline" size={16} color="#dc2626" />
-            <Text style={styles.cancelText}>Cancel ticket</Text>
+            <Text style={styles.cancelText}>{t('cancel_ticket')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -106,6 +107,7 @@ function TicketCard({ ticket, onCancel }: { ticket: Ticket; onCancel: (ticket: T
 }
 
 export default function WalletScreen() {
+  const { t } = useLocale();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -128,17 +130,17 @@ export default function WalletScreen() {
   }, [loadTickets]));
 
   const cancelTicket = (ticket: Ticket) => {
-    Alert.alert('Cancel ticket', `Cancel your ticket for ${ticket.event.title}?`, [
-      { text: 'Keep ticket', style: 'cancel' },
+    Alert.alert(t('cancel_ticket'), t('cancel_ticket_help', { title: ticket.event.title }), [
+      { text: t('cancel'), style: 'cancel' },
       {
-        text: 'Cancel ticket',
+        text: t('cancel_ticket'),
         style: 'destructive',
         onPress: async () => {
           try {
             await ticketsService.cancelTicket(ticket.id);
             await loadTickets();
           } catch {
-            Alert.alert('Unable to cancel', 'Please try again.');
+            Alert.alert(t('unable_cancel'), t('please_try_again'));
           }
         },
       },
@@ -156,22 +158,22 @@ export default function WalletScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Wallet</Text>
+        <Text style={styles.headerTitle}>{t('wallet')}</Text>
         <Ionicons name="wallet-outline" size={25} color="#2563eb" />
       </View>
       <FlatList<Ticket>
         data={tickets}
         keyExtractor={(ticket: Ticket) => ticket.id}
-        renderItem={({ item }: { item: Ticket }) => <TicketCard ticket={item} onCancel={cancelTicket} />}
+        renderItem={({ item }: { item: Ticket }) => <TicketCard ticket={item} onCancel={cancelTicket} t={t} />}
         contentContainerStyle={tickets.length ? styles.list : styles.emptyList}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadTickets(true)} />}
         ListEmptyComponent={(
           <View style={styles.empty}>
             <Ionicons name="ticket-outline" size={58} color="#9ca3af" />
-            <Text style={styles.emptyTitle}>No tickets yet</Text>
-            <Text style={styles.emptyText}>RSVP to an event to see it here</Text>
+            <Text style={styles.emptyTitle}>{t('no_tickets')}</Text>
+            <Text style={styles.emptyText}>{t('no_tickets_help')}</Text>
             <TouchableOpacity style={styles.eventsButton} onPress={() => navigateToTab('Events')}>
-              <Text style={styles.eventsButtonText}>Browse events</Text>
+              <Text style={styles.eventsButtonText}>{t('events')}</Text>
             </TouchableOpacity>
           </View>
         )}

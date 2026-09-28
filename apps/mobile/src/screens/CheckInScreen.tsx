@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ticketsService } from '../services/tickets.service';
 import type { ProfileStackParamList } from '../navigation/MainTabNavigator';
 import type { RouteProp } from '@react-navigation/native';
+import { formatEventDate, useLocale } from '../i18n';
 
 interface Result {
   kind: 'admitted' | 'used' | 'invalid';
@@ -22,6 +23,7 @@ interface Result {
 type CheckInRoute = RouteProp<ProfileStackParamList, 'CheckIn'>;
 
 export default function CheckInScreen({ route }: { route?: CheckInRoute }) {
+  const { t } = useLocale();
   const eventId = route?.params?.eventId;
   const [code, setCode] = useState('');
   const [result, setResult] = useState<Result | null>(null);
@@ -55,7 +57,7 @@ export default function CheckInScreen({ route }: { route?: CheckInRoute }) {
       const response = await ticketsService.checkIn(trimmed);
       setResult({
         kind: 'admitted',
-        message: `Admitted — ${response.attendee?.name || 'Guest'}, ${response.ticketCount} ticket${response.ticketCount === 1 ? '' : 's'}`,
+        message: `${t('check_in_success')} — ${response.attendee?.name || 'Guest'}, ${response.ticketCount} ${t('event')}`,
       });
     } catch (error) {
       const responseError = error as { response?: { status?: number; data?: { code?: string; error?: unknown } } };
@@ -67,9 +69,9 @@ export default function CheckInScreen({ route }: { route?: CheckInRoute }) {
         const usedAt = typeof errorDetails === 'object' && errorDetails !== null && 'checkedInAt' in errorDetails
           ? String(errorDetails.checkedInAt)
           : null;
-        setResult({ kind: 'used', message: usedAt ? `Already used at ${new Date(usedAt).toLocaleTimeString()}` : 'Already used' });
+        setResult({ kind: 'used', message: usedAt ? `${t('checked_in')} ${formatEventDate(usedAt, { withTime: true })}` : t('checked_in') });
       } else {
-        setResult({ kind: 'invalid', message: 'Invalid ticket' });
+        setResult({ kind: 'invalid', message: t('check_in_invalid') });
       }
     } finally {
       setSubmitting(false);
@@ -79,22 +81,22 @@ export default function CheckInScreen({ route }: { route?: CheckInRoute }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.heading}>Check in attendees</Text>
+      <Text style={styles.heading}>{t('check_in')}</Text>
       {Platform.OS === 'web' ? (
         <View style={styles.manual}>
           <TextInput
             style={styles.input}
-            placeholder="Paste ticket code"
+            placeholder={t('paste_ticket_code')}
             value={code}
             onChangeText={setCode}
             autoCapitalize="characters"
           />
-          <Button title={submitting ? 'Checking…' : 'Check ticket'} onPress={() => submitCode(code)} disabled={submitting} />
+          <Button title={submitting ? t('loading') : t('check_in')} onPress={() => submitCode(code)} disabled={submitting} />
         </View>
       ) : (
         <View style={styles.cameraWrap}>
           {!permission?.granted ? (
-            <Button title="Allow camera access" onPress={requestPermission} />
+            <Button title={t('scan_qr')} onPress={requestPermission} />
           ) : (
             <CameraView
               style={styles.camera}
@@ -107,7 +109,7 @@ export default function CheckInScreen({ route }: { route?: CheckInRoute }) {
       {submitting && <ActivityIndicator color="#2563eb" style={styles.spinner} />}
       {result && <Text style={[styles.result, result.kind === 'admitted' ? styles.success : styles.failure]}>{result.message}</Text>}
       {attendance && (
-        <Text style={styles.attendance}>Live attendance: {attendance.checkedIn} / {attendance.confirmed + attendance.checkedIn} checked in</Text>
+        <Text style={styles.attendance}>{t('checked_in')}: {attendance.checkedIn} / {attendance.confirmed + attendance.checkedIn}</Text>
       )}
     </SafeAreaView>
   );

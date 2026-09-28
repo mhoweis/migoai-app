@@ -11,8 +11,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { socialService, SocialUser } from '../services/social.service';
+import { useLocale } from '../i18n';
 
 export default function FindFriendsScreen() {
+  const { t } = useLocale();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SocialUser[]>([]);
   const [following, setFollowing] = useState<SocialUser[]>([]);
@@ -62,7 +64,7 @@ export default function FindFriendsScreen() {
       <TextInput
         value={query}
         onChangeText={setQuery}
-        placeholder="Search people"
+        placeholder={t('search_people')}
         placeholderTextColor="#9ca3af"
         style={styles.search}
         autoCapitalize="none"
@@ -71,13 +73,13 @@ export default function FindFriendsScreen() {
       <FlatList
         data={people}
         keyExtractor={(person: SocialUser) => person.id}
-        ListEmptyComponent={!loading ? <Text style={styles.empty}>{query ? 'No people found.' : 'You are not following anyone yet.'}</Text> : null}
+        ListEmptyComponent={!loading ? <Text style={styles.empty}>{query ? t('no_friends') : t('following')}</Text> : null}
         renderItem={({ item }: { item: SocialUser }) => (
           <View style={styles.row}>
             {item.avatar ? <Image source={{ uri: item.avatar }} style={styles.avatar} /> : <View style={styles.avatarFallback}><Text style={styles.initial}>{(item.name || '?')[0]}</Text></View>}
-            <Text style={styles.name}>{item.name || 'Migo user'}</Text>
+            <Text style={styles.name}>{item.name || 'Migo'}</Text>
             <TouchableOpacity style={[styles.button, item.isFollowing && styles.following]} onPress={() => toggle(item)}>
-              <Text style={[styles.buttonText, item.isFollowing && styles.followingText]}>{item.isFollowing ? 'Following' : 'Follow'}</Text>
+              <Text style={[styles.buttonText, item.isFollowing && styles.followingText]}>{item.isFollowing ? t('following') : t('follow')}</Text>
             </TouchableOpacity>
           </View>
         )}

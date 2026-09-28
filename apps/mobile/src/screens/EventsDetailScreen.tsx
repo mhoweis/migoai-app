@@ -27,6 +27,7 @@ import { ticketsService } from '../services/tickets.service';
 import { navigateToTab } from '../navigation/navigationRef';
 import { socialService, EventSocial, InviteLinks } from '../services/social.service';
 import { inviteRef } from '../utils/inviteRef';
+import { categoryLabel, formatEventDate, formatPrice, useLocale } from '../i18n';
 
 const { width } = Dimensions.get('window');
 
@@ -47,6 +48,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [inviteLinks, setInviteLinks] = useState<InviteLinks | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const { user } = useUserStore();
+  const { t } = useLocale();
   const { savedIds, toggleSaved, loadSavedEvents } = useSavedEventsStore();
 
   useEffect(() => {
@@ -64,11 +66,11 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       if (response.data.success) {
         setEvent(response.data.data);
       } else {
-        setError('Event not found');
+        setError(t('no_events_found'));
       }
     } catch (err) {
       console.error('Error fetching event:', err);
-      setError('Failed to load event details');
+      setError(t('please_try_again'));
     } finally {
       setLoading(false);
     }
@@ -99,7 +101,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       await Linking.openURL(links.whatsappUrl);
       setShareOpen(false);
     } catch {
-      Alert.alert('Unable to share', 'Please try again.');
+      Alert.alert(t('unable_to_share'), t('please_try_again'));
     }
   };
 
@@ -108,13 +110,13 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       const links = await ensureInvite();
       if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
         await navigator.clipboard.writeText(links.shareUrl);
-        Alert.alert('Link copied', 'The event link is ready to share.');
+        Alert.alert(t('link_copied'), t('link_ready'));
       } else {
-        Alert.alert('Copy link', links.shareUrl);
+        Alert.alert(t('copy_link'), links.shareUrl);
       }
       setShareOpen(false);
     } catch {
-      Alert.alert('Unable to share', 'Please try again.');
+      Alert.alert(t('unable_to_share'), t('please_try_again'));
     }
   };
 
@@ -124,7 +126,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       await Share.share({ message: `${event!.title} — Join me on Migo: ${links.shareUrl}`, url: links.shareUrl });
       setShareOpen(false);
     } catch {
-      Alert.alert('Unable to share', 'Please try again.');
+      Alert.alert(t('unable_to_share'), t('please_try_again'));
     }
   };
 
@@ -133,7 +135,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     // Server-side redirect: resolves the supplier, wraps once, logs the click.
     const bookingUrl = getBookingUrl(event.id, 'detail');
     Linking.openURL(bookingUrl).catch(() =>
-      Alert.alert('Error', 'Unable to open booking page. Please try again.')
+      Alert.alert(t('error'), t('unable_booking'))
     );
   };
 
@@ -142,9 +144,9 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     try {
       await ticketsService.rsvp(event.id, 1, inviteRef.consume());
       await fetchEvent();
-      Alert.alert('You’re in!', 'Your ticket is ready in Wallet.', [
-        { text: 'View Ticket', onPress: () => navigateToTab('Wallet') },
-        { text: 'Invite friends', onPress: () => { void shareWhatsApp(); } },
+      Alert.alert(t('youre_in'), t('ticket_ready'), [
+        { text: t('view_ticket'), onPress: () => navigateToTab('Wallet') },
+        { text: t('invite_friends'), onPress: () => { void shareWhatsApp(); } },
       ]);
     } catch (error) {
       const responseError = error as {
@@ -154,9 +156,9 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       if (responseError.response?.status === 409 && code === 'ALREADY_BOOKED') {
         navigateToTab('Wallet');
       } else if (responseError.response?.status === 409 && code === 'SOLD_OUT') {
-        Alert.alert('Sold out', 'This event no longer has available tickets.');
+        Alert.alert(t('sold_out'), t('sold_out_help'));
       } else {
-        Alert.alert('Unable to RSVP', 'Please try again.');
+        Alert.alert(t('unable_rsvp'), t('please_try_again'));
       }
     }
   };
@@ -177,7 +179,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       }
     } catch (checkoutError) {
       console.error('Checkout failed:', checkoutError);
-      Alert.alert('Unable to start checkout', 'Please try again.');
+      Alert.alert(t('unable_checkout'), t('please_try_again'));
     } finally {
       setCheckoutLoading(false);
     }
@@ -188,7 +190,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#3b82f6" />
-          <Text style={styles.loadingText}>Loading event...</Text>
+          <Text style={styles.loadingText}>{t('loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -199,12 +201,12 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <Ionicons name="alert-circle-outline" size={64} color="#ef4444" />
-          <Text style={styles.errorText}>{error || 'Event not found'}</Text>
+          <Text style={styles.errorText}>{error || t('no_events_found')}</Text>
           <TouchableOpacity
             style={styles.retryButton}
             onPress={fetchEvent}
           >
-            <Text style={styles.retryButtonText}>Try Again</Text>
+            <Text style={styles.retryButtonText}>{t('please_try_again')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -250,10 +252,10 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           {/* Event Header */}
           <View style={styles.eventHeader}>
             <View style={styles.eventCategoryContainer}>
-              <Text style={styles.eventCategory}>{event.category || 'Event'}</Text>
+              <Text style={styles.eventCategory}>{categoryLabel(event.category)}</Text>
               {event.locationType === 'ONLINE' && (
                 <View style={styles.featuredBadge}>
-                  <Text style={styles.featuredBadgeText}>ONLINE</Text>
+                  <Text style={styles.featuredBadgeText}>{t('online')}</Text>
                 </View>
               )}
             </View>
@@ -279,22 +281,22 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
           {/* Event Details */}
           <View style={styles.detailsSection}>
-            <Text style={styles.sectionTitle}>Event Details</Text>
+            <Text style={styles.sectionTitle}>{t('about')}</Text>
             <Text style={styles.description}>
-              {event.description || event.shortDescription || 'No description available'}
+              {event.description || event.shortDescription || t('no_events_help')}
             </Text>
 
             <View style={styles.detailsGrid}>
               <View style={styles.detailItem}>
                 <Ionicons name="calendar-outline" size={20} color="#3b82f6" />
                 <View style={styles.detailText}>
-                  <Text style={styles.detailLabel}>Date & Time</Text>
+                    <Text style={styles.detailLabel}>{t('events')}</Text>
                   <Text style={styles.detailValue}>
-                    {new Date(event.startDate).toLocaleDateString()} • {new Date(event.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {formatEventDate(event.startDate, { withTime: true })}
                   </Text>
                   {event.endDate && (
                     <Text style={styles.detailValueSecondary}>
-                      Until: {new Date(event.endDate).toLocaleDateString()}
+                      {formatEventDate(event.endDate)}
                     </Text>
                   )}
                 </View>
@@ -303,9 +305,9 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <View style={styles.detailItem}>
                 <Ionicons name="location-outline" size={20} color="#3b82f6" />
                 <View style={styles.detailText}>
-                  <Text style={styles.detailLabel}>Location</Text>
+                    <Text style={styles.detailLabel}>{t('venue')}</Text>
                   <Text style={styles.detailValue}>
-                    {event.venueName || 'Venue TBA'}
+                    {event.venueName || t('location_tba')}
                   </Text>
                   {event.city && event.country && (
                     <Text style={styles.detailValueSecondary}>
@@ -319,9 +321,9 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 <View style={styles.detailItem}>
                   <Ionicons name="people-outline" size={20} color="#3b82f6" />
                   <View style={styles.detailText}>
-                    <Text style={styles.detailLabel}>Capacity</Text>
+                    <Text style={styles.detailLabel}>{t('capacity')}</Text>
                     <Text style={styles.detailValue}>
-                      {event.capacity} people
+                      {event.capacity} {t('capacity')}
                     </Text>
                   </View>
                 </View>
@@ -330,15 +332,15 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <View style={styles.detailItem}>
                 <Ionicons name="cash-outline" size={20} color="#3b82f6" />
                 <View style={styles.detailText}>
-                  <Text style={styles.detailLabel}>Price</Text>
+                    <Text style={styles.detailLabel}>{t('sort_price')}</Text>
                   <Text style={[styles.detailValue, styles.price]}>
                     {event.isFree || !event.priceFrom
-                      ? 'FREE'
-                      : `${event.currency || 'AED'} ${Number(event.priceFrom).toFixed(2)}`}
+                      ? t('free')
+                      : formatPrice(Number(event.priceFrom), event.currency || 'AED')}
                   </Text>
                   {event.priceTo && event.priceFrom !== event.priceTo && (
                     <Text style={styles.detailValueSecondary}>
-                      Up to {event.currency || 'AED'} {Number(event.priceTo).toFixed(2)}
+                      {formatPrice(Number(event.priceTo), event.currency || 'AED')}
                     </Text>
                   )}
                 </View>
@@ -354,7 +356,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   ))}
                 </View>
                 <Text style={styles.socialText}>
-                  {social.goingCount} going{social.friendsGoing.length ? ` · ${social.friendsGoing[0].name || 'A friend'}${social.friendsGoing.length > 1 ? ` and ${social.friendsGoing.length - 1} friends` : ''} going` : ''}
+                  {t('going_count', { count: social.goingCount })}{social.friendsGoing.length ? ` · ${t('friends_going', { name: social.friendsGoing[0].name || t('event'), count: Math.max(1, social.friendsGoing.length - 1) })}` : ''}
                 </Text>
               </View>
             )}
@@ -363,7 +365,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           {/* Map */}
           {(event.latitude && event.longitude) || event.venueName || event.address ? (
             <View style={styles.mapSection}>
-              <Text style={styles.sectionTitle}>Location on Map</Text>
+              <Text style={styles.sectionTitle}>{t('location_on_map')}</Text>
               {event.latitude && event.longitude ? (
                 <EventMap
                   latitude={event.latitude}
@@ -392,7 +394,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                       {[event.city, event.country].filter(Boolean).join(', ')}
                     </Text>
                   )}
-                  <Text style={styles.mapFallbackLink}>Open in Google Maps</Text>
+                  <Text style={styles.mapFallbackLink}>{t('open_google_maps')}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -401,7 +403,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           {/* Address */}
           {event.address && (
             <View style={styles.addressSection}>
-              <Text style={styles.sectionTitle}>Address</Text>
+              <Text style={styles.sectionTitle}>{t('address')}</Text>
               <Text style={styles.addressText}>{event.address}</Text>
             </View>
           )}
@@ -411,12 +413,12 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <TouchableOpacity
               style={styles.externalLinkButton}
               onPress={() => Linking.openURL(getBookingUrl(event.id, 'detail_link')).catch(() =>
-                Alert.alert('Error', 'Unable to open link.')
+                Alert.alert(t('error'), t('please_try_again'))
               )}
             >
               <Ionicons name="link-outline" size={20} color="#3b82f6" />
               <Text style={styles.externalLinkText}>
-                View on {supplierLabel(event)}
+                {t('book_on', { supplier: supplierLabel(event) })}
               </Text>
               <Ionicons name="chevron-forward" size={20} color="#3b82f6" />
             </TouchableOpacity>
@@ -429,11 +431,11 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         <View>
           <Text style={styles.bottomBarPrice}>
             {event.isFree || !event.priceFrom
-              ? 'FREE'
-              : `${event.currency || 'AED'} ${Number(event.priceFrom).toFixed(2)}`}
+              ? t('free')
+              : formatPrice(Number(event.priceFrom), event.currency || 'AED')}
           </Text>
           {event.capacity && (
-            <Text style={styles.bottomBarTickets}>Capacity: {event.capacity}</Text>
+            <Text style={styles.bottomBarTickets}>{t('capacity')}: {event.capacity}</Text>
           )}
         </View>
         <TouchableOpacity
@@ -450,14 +452,14 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         >
           <Text style={styles.bookButtonText}>
             {event.myBookingId
-              ? 'View Ticket'
+              ? t('view_ticket')
               : event.canRsvp
-                ? 'Get Free Ticket'
+                ? t('get_free_ticket')
                 : event.canBuy
-                  ? `Buy Ticket · ${event.currency || 'AED'} ${Number(event.priceFrom || 0).toFixed(2)}`
+                ? `${t('buy_ticket')} · ${formatPrice(Number(event.priceFrom || 0), event.currency || 'AED')}`
                 : event.externalUrl
-                  ? `Book on ${supplierLabel(event)}`
-                  : 'Book Now'}
+                  ? t('book_on', { supplier: supplierLabel(event) })
+                  : t('book_now')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -470,12 +472,12 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         <View style={styles.modalBackdrop}>
           <View style={styles.checkoutSheet}>
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Share event</Text>
+              <Text style={styles.sheetTitle}>{t('share')}</Text>
               <TouchableOpacity onPress={() => setShareOpen(false)}><Ionicons name="close" size={24} color="#6b7280" /></TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.shareAction} onPress={shareWhatsApp}><Ionicons name="logo-whatsapp" size={22} color="#16a34a" /><Text style={styles.shareActionText}>Share on WhatsApp</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.shareAction} onPress={copyShareLink}><Ionicons name="copy-outline" size={22} color="#2563eb" /><Text style={styles.shareActionText}>Copy link</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.shareAction} onPress={shareMore}><Ionicons name="share-social-outline" size={22} color="#6b7280" /><Text style={styles.shareActionText}>More…</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.shareAction} onPress={shareWhatsApp}><Ionicons name="logo-whatsapp" size={22} color="#16a34a" /><Text style={styles.shareActionText}>{t('share_on_whatsapp')}</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.shareAction} onPress={copyShareLink}><Ionicons name="copy-outline" size={22} color="#2563eb" /><Text style={styles.shareActionText}>{t('copy_link')}</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.shareAction} onPress={shareMore}><Ionicons name="share-social-outline" size={22} color="#6b7280" /><Text style={styles.shareActionText}>{t('more')}</Text></TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -488,14 +490,14 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         <View style={styles.modalBackdrop}>
           <View style={styles.checkoutSheet}>
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Buy tickets</Text>
+              <Text style={styles.sheetTitle}>{t('buy_tickets')}</Text>
               <TouchableOpacity onPress={() => setCheckoutOpen(false)} disabled={checkoutLoading}>
                 <Ionicons name="close" size={24} color="#6b7280" />
               </TouchableOpacity>
             </View>
             <Text style={styles.sheetEventTitle}>{event.title}</Text>
             <View style={styles.quantityRow}>
-              <Text style={styles.quantityLabel}>Quantity</Text>
+              <Text style={styles.quantityLabel}>{t('quantity')}</Text>
               <View style={styles.stepper}>
                 <TouchableOpacity
                   style={styles.stepperButton}
@@ -515,7 +517,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </View>
             </View>
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Total</Text>
+              <Text style={styles.totalLabel}>{t('total')}</Text>
               <Text style={styles.totalValue}>
                 {event.currency || 'AED'} {(Number(event.priceFrom || 0) * ticketCount).toFixed(2)}
               </Text>
@@ -528,7 +530,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               {checkoutLoading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.payButtonText}>Pay</Text>
+                <Text style={styles.payButtonText}>{t('pay')}</Text>
               )}
             </TouchableOpacity>
           </View>

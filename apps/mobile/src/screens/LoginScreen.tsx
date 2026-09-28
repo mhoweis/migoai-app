@@ -16,6 +16,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUserStore } from '../store/userStore';
 import { authService } from '../services/auth.service';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { setLocale, STORAGE_KEY, useLocale } from '../i18n';
 
 interface Props {
   navigation: any;
@@ -28,12 +30,13 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { setUser, setFirstLogin } = useUserStore();
+  const { locale, t } = useLocale();
 
   const handleLogin = async () => {
     if (!identifier.trim() || !password) {
-      const message = 'Please enter your email or phone number and password';
+      const message = t('login_required');
       setErrorMessage(message);
-      Alert.alert('Error', message);
+      Alert.alert(t('login_error'), message);
       return;
     }
 
@@ -49,7 +52,11 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
       
       console.log('Login successful');
       
-      // Update user store with response
+      const storedLocale = await AsyncStorage.getItem(STORAGE_KEY);
+      const serverLocale = response.user.preferences?.locale;
+      if (!storedLocale && (serverLocale === 'en' || serverLocale === 'ar')) {
+        await setLocale(serverLocale);
+      }
       setUser(response.user);
       setFirstLogin(response.isFirstLogin);
       
@@ -58,18 +65,18 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
     } catch (error: any) {
       console.error('Login failed:', error);
       
-      let errorMessage = 'Login failed. Please try again.';
+      let errorMessage = t('please_try_again');
       
       if (error.message.includes('Invalid credentials')) {
-        errorMessage = 'Invalid email or password';
+        errorMessage = t('login_invalid_credentials');
       } else if (error.message.includes('User not found')) {
-        errorMessage = 'No account found with this email';
+        errorMessage = t('login_user_not_found');
       } else if (error.message.includes('Network error')) {
-        errorMessage = 'Cannot connect to server. Please check your connection.';
+        errorMessage = t('login_network_error');
       }
       
       setErrorMessage(errorMessage);
-      Alert.alert('Login Failed', errorMessage);
+      Alert.alert(t('login_failed'), errorMessage);
       
     } finally {
       setLoading(false);
@@ -77,11 +84,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleSocialLogin = async (provider: 'google' | 'apple' | 'facebook') => {
-    Alert.alert(
-      'Coming Soon',
-      `${provider} login will be available soon!`,
-      [{ text: 'OK' }]
-    );
+    Alert.alert(t('coming_soon'), t('social_login_soon', { provider }), [{ text: t('ok') }]);
     
     // For future implementation:
     // 1. Use Firebase or other OAuth provider
@@ -90,15 +93,17 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleForgotPassword = () => {
-    Alert.alert(
-      'Forgot Password',
-      'Please contact support or use the password reset feature on our website.',
-      [{ text: 'OK' }]
-    );
+    Alert.alert(t('forgot_password'), t('forgot_password_help'), [{ text: t('ok') }]);
   };
 
   return (
     <SafeAreaView style={styles.container}>
+      <TouchableOpacity
+        style={styles.languageToggle}
+        onPress={() => void setLocale(locale === 'ar' ? 'en' : 'ar')}
+      >
+        <Text style={styles.languageToggleText}>{locale === 'ar' ? t('english') : t('arabic')}</Text>
+      </TouchableOpacity>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -115,8 +120,8 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
               style={styles.logo}
               resizeMode="contain"
             />
-            <Text style={styles.title}>Welcome</Text>
-            <Text style={styles.subtitle}>Sign in to continue exploring events</Text>
+            <Text style={styles.title}>{t('welcome')}</Text>
+            <Text style={styles.subtitle}>{t('sign_in_continue')}</Text>
           </View>
 
           <View style={styles.form}>
@@ -124,7 +129,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
               {/*<Icon name="mail-outline" size={20} color="#9ca3af" style={styles.inputIcon} />*/}
               <TextInput
                 style={styles.input}
-                placeholder="Email address or phone number"
+                placeholder={t('email_or_phone')}
                 value={identifier}
                 onChangeText={(value) => {
                   setIdentifier(value);
@@ -142,7 +147,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
               {/*<Icon name="lock-closed-outline" size={20} color="#9ca3af" style={styles.inputIcon} />*/}
               <TextInput
                 style={styles.input}
-                placeholder="Password"
+                placeholder={t('password')}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
@@ -182,7 +187,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
               onPress={handleForgotPassword}
               disabled={loading}
             >
-              <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+              <Text style={styles.forgotPasswordText}>{t('forgot_password')}?</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -195,14 +200,14 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
               ) : (
                 <>
                   {/*<Icon name="log-in-outline" size={20} color="#fff" style={styles.loginIcon} />*/}
-                  <Text style={styles.loginButtonText}>Sign In</Text>
+                  <Text style={styles.loginButtonText}>{t('sign_in')}</Text>
                 </>
               )}
             </TouchableOpacity>
 
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>Or continue with</Text>
+              <Text style={styles.dividerText}>{t('sign_in')}</Text>
               <View style={styles.dividerLine} />
             </View>
 
@@ -244,12 +249,12 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
             </View>
 
             <View style={styles.footer}>
-              <Text style={styles.footerText}>Don't have an account? </Text>
+              <Text style={styles.footerText}>{t('already_have_account')} </Text>
               <TouchableOpacity 
                 onPress={() => navigation.navigate('Register')}
                 disabled={loading}
               >
-                <Text style={styles.footerLink}>Sign Up</Text>
+                <Text style={styles.footerLink}>{t('register')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -263,6 +268,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  languageToggle: {
+    position: 'absolute',
+    top: 18,
+    right: 20,
+    zIndex: 2,
+  },
+  languageToggleText: {
+    color: '#2563eb',
+    fontWeight: '700',
   },
   keyboardView: {
     flex: 1,

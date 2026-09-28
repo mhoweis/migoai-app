@@ -20,6 +20,7 @@ import { useUserStore } from '../store/userStore';
 import { chatService } from '../services/chat.service';
 import { api } from '../services/api';
 import { eventService } from '../services/event.service';
+import { useLocale } from '../i18n';
 
 interface Message {
   id: string;
@@ -45,10 +46,11 @@ interface SuggestedEvent {
 const ChatScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { user } = useUserStore();
+  const { t } = useLocale();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: `Hello${user?.name ? ` ${user.name.split(' ')[0]}` : ''}! I'm Migo AI, your personal event assistant. How can I help you find amazing events today?`,
+      text: t('chat_greeting', { name: user?.name ? ` ${user.name.split(' ')[0]}` : '' }),
       sender: 'ai',
       timestamp: new Date(),
     },
@@ -98,7 +100,7 @@ const ChatScreen: React.FC = () => {
     if (type === 'self') {
       return {
         id: Date.now().toString(),
-        text: "I'm Migo AI — your personal event discovery assistant! I help you find events tailored to your interests and location, suggest things to do this weekend, compare event options, and plan outings. Just ask me anything about events, venues, or what's happening near you!",
+        text: t('chat_self_reply'),
         sender: 'ai',
         timestamp: new Date(),
       };
@@ -106,8 +108,8 @@ const ChatScreen: React.FC = () => {
     // interests
     const interests = user?.interests ?? [];
     const text = interests.length > 0
-      ? `Your current interests are: ${interests.join(', ')}.\n\nWould you like to update them?`
-      : "I don't see any interests saved for your profile yet. Would you like to set them up?";
+      ? t('chat_interests_reply', { interests: interests.join(', ') })
+      : t('chat_no_interests_reply');
     return {
       id: Date.now().toString(),
       text,
@@ -131,7 +133,7 @@ const ChatScreen: React.FC = () => {
     if (user?.interests && user.interests.length > 0) {
       const interestsMessage: Message = {
         id: 'interests-info',
-        text: `I see you're interested in: ${user.interests.join(', ')}. I'll keep this in mind when suggesting events!`,
+        text: t('chat_interest_notice', { interests: user.interests.join(', ') }),
         sender: 'ai',
         timestamp: new Date(),
       };
@@ -231,7 +233,7 @@ const ChatScreen: React.FC = () => {
       // Add error message
       const errorMessage: Message = {
         id: (Date.now() + 2).toString(),
-        text: "Sorry, I'm having trouble connecting to the AI service. Please try again.",
+        text: t('chat_offline'),
         sender: 'ai',
         timestamp: new Date(),
         isError: true,
@@ -240,9 +242,9 @@ const ChatScreen: React.FC = () => {
       setMessages(prev => [...prev, errorMessage]);
       
       Alert.alert(
-        'Connection Error',
-        'Unable to connect to AI service. Please check your internet connection and try again.',
-        [{ text: 'OK' }]
+        t('chat_connection_error'),
+        t('chat_connection_help'),
+        [{ text: t('ok') }]
       );
     }
   };
@@ -252,16 +254,16 @@ const ChatScreen: React.FC = () => {
     
     switch (action) {
       case 'events-nearby':
-        quickMessage = "What events are happening near me this weekend?";
+        quickMessage = t('this_week_for_you');
         break;
       case 'by-interests':
-        quickMessage = "Suggest events based on my interests";
+        quickMessage = t('home_subtitle');
         break;
       case 'free-events':
-        quickMessage = "Show me free events in my area";
+        quickMessage = t('free');
         break;
       case 'popular':
-        quickMessage = "What are the most popular events right now?";
+        quickMessage = t('top_upcoming_events');
         break;
       default:
         quickMessage = action;
@@ -277,9 +279,9 @@ const ChatScreen: React.FC = () => {
   const handleSaveEvent = async (eventId: string) => {
     try {
       await eventService.bookmarkEvent(eventId);
-      Alert.alert('Saved', 'Event added to your bookmarks.');
+      Alert.alert(t('chat_saved'), t('chat_saved_help'));
     } catch {
-      Alert.alert('Could not save', 'Bookmarking is unavailable right now.');
+      Alert.alert(t('chat_save_failed'), t('chat_save_failed_help'));
     }
   };
 
@@ -315,7 +317,7 @@ const ChatScreen: React.FC = () => {
                 onPress={() => (navigation as any).push('Interests')}
               >
                 <Ionicons name="heart-outline" size={16} color="#fff" />
-                <Text style={styles.updateInterestsButtonText}>Update Interests</Text>
+          <Text style={styles.updateInterestsButtonText}>{t('update_interests')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -377,14 +379,14 @@ const ChatScreen: React.FC = () => {
             onPress={() => handleEventPress(item.id)}
           >
             <Ionicons name="ticket-outline" size={14} color="#fff" />
-            <Text style={styles.eventCardActionPrimaryText}>Book / Details</Text>
+            <Text style={styles.eventCardActionPrimaryText}>{t('view_details')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.eventCardActionSecondary}
             onPress={() => handleSaveEvent(item.id)}
           >
             <Ionicons name="bookmark-outline" size={14} color="#3b82f6" />
-            <Text style={styles.eventCardActionSecondaryText}>Save</Text>
+            <Text style={styles.eventCardActionSecondaryText}>{t('save')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -414,14 +416,14 @@ const ChatScreen: React.FC = () => {
 
   const renderQuickActions = () => (
     <View style={styles.quickActionsContainer}>
-      <Text style={styles.quickActionsTitle}>Quick Actions</Text>
+      <Text style={styles.quickActionsTitle}>{t('more')}</Text>
       <View style={styles.quickActionsGrid}>
         <TouchableOpacity
           style={styles.quickActionButton}
           onPress={() => handleQuickAction('events-nearby')}
         >
           <Ionicons name="navigate" size={20} color="#3b82f6" />
-          <Text style={styles.quickActionText}>Nearby</Text>
+          <Text style={styles.quickActionText}>{t('location_tba')}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity
@@ -429,7 +431,7 @@ const ChatScreen: React.FC = () => {
           onPress={() => handleQuickAction('by-interests')}
         >
           <Ionicons name="heart" size={20} color="#3b82f6" />
-          <Text style={styles.quickActionText}>For You</Text>
+          <Text style={styles.quickActionText}>{t('home_subtitle')}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity
@@ -437,7 +439,7 @@ const ChatScreen: React.FC = () => {
           onPress={() => handleQuickAction('free-events')}
         >
           <Ionicons name="wallet" size={20} color="#3b82f6" />
-          <Text style={styles.quickActionText}>Free</Text>
+          <Text style={styles.quickActionText}>{t('free')}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity
@@ -445,7 +447,7 @@ const ChatScreen: React.FC = () => {
           onPress={() => handleQuickAction('popular')}
         >
           <Ionicons name="trending-up" size={20} color="#3b82f6" />
-          <Text style={styles.quickActionText}>Popular</Text>
+          <Text style={styles.quickActionText}>{t('featured')}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -465,18 +467,18 @@ const ChatScreen: React.FC = () => {
               <Ionicons name="sparkles" size={24} color="#3b82f6" />
             </View>
             <View>
-              <Text style={styles.headerTitle}>Migo AI Assistant</Text>
+              <Text style={styles.headerTitle}>{t('chat_title')}</Text>
               <Text style={styles.headerSubtitle}>
-                {isTyping ? 'AI is typing...' : 'Your personal event guide'}
+                {isTyping ? t('loading') : t('chat_subtitle')}
               </Text>
             </View>
           </View>
           <TouchableOpacity
             style={styles.infoButton}
             onPress={() => Alert.alert(
-              'About Migo AI',
-              'Migo AI helps you discover events based on your interests, location, and preferences. All suggestions are personalized and safe.',
-              [{ text: 'Got it' }]
+              t('chat_title'),
+              t('chat_subtitle'),
+              [{ text: t('ok') }]
             )}
           >
             <Ionicons name="information-circle-outline" size={24} color="#6b7280" />
@@ -494,9 +496,9 @@ const ChatScreen: React.FC = () => {
             showsVerticalScrollIndicator={false}
             ListHeaderComponent={
               <View style={styles.welcomeSection}>
-                <Text style={styles.welcomeTitle}>Welcome to Migo AI</Text>
+                <Text style={styles.welcomeTitle}>{t('welcome')}</Text>
                 <Text style={styles.welcomeText}>
-                  Ask me about events, get personalized recommendations, or use quick actions below.
+                  {t('chat_subtitle')}
                 </Text>
                 {renderQuickActions()}
               </View>
@@ -510,7 +512,7 @@ const ChatScreen: React.FC = () => {
                       <View style={styles.typingDot} />
                       <View style={styles.typingDot} />
                     </View>
-                    <Text style={styles.typingText}>Migo AI is thinking...</Text>
+                    <Text style={styles.typingText}>{t('loading')}</Text>
                   </View>
                 )}
                 
@@ -522,7 +524,7 @@ const ChatScreen: React.FC = () => {
                       activeOpacity={0.7}
                     >
                       <Text style={styles.suggestedEventsTitle}>
-                        Suggested Events ({suggestedEvents.length})
+                        {t('top_upcoming_events')} ({suggestedEvents.length})
                       </Text>
                       <Ionicons
                         name={eventsExpanded ? 'chevron-up' : 'chevron-down'}
@@ -552,7 +554,7 @@ const ChatScreen: React.FC = () => {
                             });
                           }}
                         >
-                          <Text style={styles.viewAllButtonText}>View All Events</Text>
+                          <Text style={styles.viewAllButtonText}>{t('events')}</Text>
                           <Ionicons name="arrow-forward" size={16} color="#3b82f6" />
                         </TouchableOpacity>
                       </>
@@ -574,7 +576,7 @@ const ChatScreen: React.FC = () => {
               style={styles.textInput}
               value={inputText}
               onChangeText={setInputText}
-              placeholder="Ask about events, recommendations, or planning..."
+              placeholder={t('chat_placeholder')}
               placeholderTextColor="#9ca3af"
               multiline
               maxLength={500}

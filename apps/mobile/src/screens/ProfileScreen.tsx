@@ -20,12 +20,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUserStore } from '../store/userStore';
 import { ProfileStackParamList } from '../navigation/MainTabNavigator';
 import { navigationRef } from '../navigation/navigationRef';
+import { authService } from '../services/auth.service';
+import { setLocale, useLocale } from '../i18n';
 
 type ProfileScreenNavigationProp = NavigationProp<ProfileStackParamList, 'ProfileMain'>;
 
 const ProfileScreen = () => {
   const navigation = useNavigation<ProfileScreenNavigationProp>();
   const { user, logout, updateProfile, setUser } = useUserStore();
+  const { locale, t } = useLocale();
 
   const [showNameModal, setShowNameModal] = useState(false);
   const [editName, setEditName] = useState('');
@@ -110,11 +113,18 @@ const ProfileScreen = () => {
     navigation.navigate('FindFriends');
   };
 
+  const handleLocaleChange = async (next: 'en' | 'ar') => {
+    await setLocale(next);
+    if (user) {
+      void authService.updateLocale(next).then(updated => setUser(updated)).catch(() => undefined);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView>
         <View style={styles.header}>
-          <Text style={styles.title}>Profile</Text>
+          <Text style={styles.title}>{t('profile')}</Text>
         </View>
 
         {/* ── User Info ── */}
@@ -151,7 +161,7 @@ const ProfileScreen = () => {
           <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToWallet}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="wallet-outline" size={24} color="#3b82f6" />
-              <Text style={styles.menuItemText}>My Wallet</Text>
+              <Text style={styles.menuItemText}>{t('my_wallet')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
           </TouchableOpacity>
@@ -159,7 +169,7 @@ const ProfileScreen = () => {
           <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToInterests}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="heart-outline" size={24} color="#4b5563" />
-              <Text style={styles.menuItemText}>Update Interests</Text>
+              <Text style={styles.menuItemText}>{t('update_interests')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
           </TouchableOpacity>
@@ -167,32 +177,32 @@ const ProfileScreen = () => {
           <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToConnectionTest}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="wifi-outline" size={24} color="#4b5563" />
-              <Text style={styles.menuItemText}>Connection Test</Text>
+              <Text style={styles.menuItemText}>{t('connection_test')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
           </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Host</Text>
+          <Text style={styles.sectionTitle}>{t('host')}</Text>
           <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToCreateEvent}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="add-circle-outline" size={24} color="#2563eb" />
-              <Text style={styles.menuItemText}>Create an event</Text>
+              <Text style={styles.menuItemText}>{t('create_event')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToMyEvents}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="calendar-outline" size={24} color="#2563eb" />
-              <Text style={styles.menuItemText}>My events</Text>
+              <Text style={styles.menuItemText}>{t('my_events')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToFindFriends}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="people-outline" size={24} color="#2563eb" />
-              <Text style={styles.menuItemText}>Find friends</Text>
+              <Text style={styles.menuItemText}>{t('find_friends')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
           </TouchableOpacity>
@@ -202,9 +212,27 @@ const ProfileScreen = () => {
           <TouchableOpacity style={styles.menuItem} onPress={logout}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="log-out-outline" size={24} color="#ef4444" />
-              <Text style={[styles.menuItemText, { color: '#ef4444' }]}>Log Out</Text>
+              <Text style={[styles.menuItemText, { color: '#ef4444' }]}>{t('log_out')}</Text>
             </View>
           </TouchableOpacity>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{t('language')}</Text>
+          <View style={styles.languageToggle}>
+            <TouchableOpacity
+              style={[styles.languageOption, locale === 'en' && styles.languageOptionActive]}
+              onPress={() => void handleLocaleChange('en')}
+            >
+              <Text style={[styles.languageOptionText, locale === 'en' && styles.languageOptionTextActive]}>{t('english')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.languageOption, locale === 'ar' && styles.languageOptionActive]}
+              onPress={() => void handleLocaleChange('ar')}
+            >
+              <Text style={[styles.languageOptionText, locale === 'ar' && styles.languageOptionTextActive]}>{t('arabic')}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
 
@@ -217,12 +245,12 @@ const ProfileScreen = () => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Edit Name</Text>
+            <Text style={styles.modalTitle}>{t('edit_name')}</Text>
             <TextInput
               style={styles.nameInput}
               value={editName}
               onChangeText={setEditName}
-              placeholder="Enter your name"
+              placeholder={t('enter_name')}
               placeholderTextColor="#9ca3af"
               autoFocus
               returnKeyType="done"
@@ -233,7 +261,7 @@ const ProfileScreen = () => {
                 style={styles.cancelBtn}
                 onPress={() => setShowNameModal(false)}
               >
-                <Text style={styles.cancelBtnText}>Cancel</Text>
+                <Text style={styles.cancelBtnText}>{t('cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.saveBtn}
@@ -243,7 +271,7 @@ const ProfileScreen = () => {
                 {isSaving ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={styles.saveBtnText}>Save</Text>
+                  <Text style={styles.saveBtnText}>{t('save')}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -288,6 +316,29 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     textTransform: 'uppercase',
+  },
+  languageToggle: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginBottom: 8,
+    borderRadius: 8,
+    backgroundColor: '#f3f4f6',
+    overflow: 'hidden',
+  },
+  languageOption: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  languageOptionActive: {
+    backgroundColor: '#2563eb',
+  },
+  languageOptionText: {
+    color: '#374151',
+    fontWeight: '600',
+  },
+  languageOptionTextActive: {
+    color: '#fff',
   },
   userInfo: {
     flexDirection: 'row',

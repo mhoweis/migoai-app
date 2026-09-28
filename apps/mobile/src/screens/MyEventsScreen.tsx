@@ -16,10 +16,12 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HostedEvent, ticketsService } from '../services/tickets.service';
 import { socialService } from '../services/social.service';
 import type { ProfileStackParamList } from '../navigation/MainTabNavigator';
+import { formatEventDate, useLocale } from '../i18n';
 
 type Navigation = NativeStackNavigationProp<ProfileStackParamList, 'MyEvents'>;
 
 export default function MyEventsScreen({ navigation }: { navigation: Navigation }) {
+  const { t } = useLocale();
   const [events, setEvents] = useState<HostedEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -44,7 +46,7 @@ export default function MyEventsScreen({ navigation }: { navigation: Navigation 
       const text = `${event.title} — ${new Date(event.startDate).toLocaleString()}. Join me on Migo: ${invite.shareUrl}`;
       await Linking.openURL(invite.whatsappUrl || `https://wa.me/?text=${encodeURIComponent(text)}`);
     } catch {
-      Alert.alert('Unable to share', 'Please try again.');
+      Alert.alert(t('unable_to_share'), t('please_try_again'));
     }
   };
 
@@ -58,25 +60,25 @@ export default function MyEventsScreen({ navigation }: { navigation: Navigation 
         data={events}
         keyExtractor={(event: HostedEvent) => event.id}
         contentContainerStyle={events.length ? styles.list : styles.emptyList}
-        ListHeaderComponent={<Text style={styles.heading}>My events</Text>}
-        ListEmptyComponent={<Text style={styles.empty}>You have not created any events yet.</Text>}
+        ListHeaderComponent={<Text style={styles.heading}>{t('my_events')}</Text>}
+        ListEmptyComponent={<Text style={styles.empty}>{t('no_hosted_events_help')}</Text>}
         renderItem={({ item }: { item: HostedEvent }) => (
           <View style={styles.card}>
             <Text style={styles.title}>{item.title}</Text>
-            <Text style={styles.date}>{new Date(item.startDate).toLocaleString()} · {item.city || 'UAE'}</Text>
+            <Text style={styles.date}>{formatEventDate(item.startDate, { withTime: true })} · {item.city || 'UAE'}</Text>
             <Text style={styles.attendance}>
-              {item.confirmed} confirmed · {item.checkedIn} checked in
-              {` · ${item.invited} invited`}
-              {item.capacity ? ` · ${item.capacity} capacity` : ' · Unlimited'}
+              {item.confirmed} {t('confirmed')} · {item.checkedIn} {t('checked_in')}
+              {` · ${item.invited} ${t('invited')}`}
+              {item.capacity ? ` · ${item.capacity} ${t('capacity')}` : ''}
             </Text>
             <View style={styles.actions}>
               <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('CheckIn', { eventId: item.id })}>
                 <Ionicons name="qr-code-outline" size={17} color="#fff" />
-                <Text style={styles.actionText}>Check in</Text>
+                <Text style={styles.actionText}>{t('check_in')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.shareButton} onPress={() => shareEvent(item)}>
                 <Ionicons name="share-outline" size={17} color="#2563eb" />
-                <Text style={styles.shareText}>Share</Text>
+                <Text style={styles.shareText}>{t('share')}</Text>
               </TouchableOpacity>
             </View>
           </View>

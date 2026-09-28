@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { authService } from '../services/auth.service';
 import { useUserStore } from '../store/userStore';
+import { useLocale } from '../i18n';
 
 type SignupMode = 'phone' | 'email';
 
@@ -31,10 +32,11 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { setUser, setFirstLogin } = useUserStore();
+  const { t } = useLocale();
 
   const showError = (message: string) => {
     setErrorMessage(message);
-    Alert.alert('Signup failed', message);
+    Alert.alert(t('signup_failed'), message);
   };
 
   const finishSignup = (response: Awaited<ReturnType<typeof authService.register>>) => {
@@ -50,9 +52,9 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const sendOtp = async () => {
-    if (!name.trim()) return showError('Please enter your full name');
+    if (!name.trim()) return showError(t('full_name'));
     if (!/^\+[1-9]\d{6,14}$/.test(phone.replace(/[\s()-]/g, ''))) {
-      return showError('Enter your phone number with country code, such as +971501234567');
+      return showError(t('phone_number'));
     }
 
     setLoading(true);
@@ -60,7 +62,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     try {
       await authService.sendPhoneSignupOtp({ phone, name: name.trim() });
       setOtpSent(true);
-      Alert.alert('Code sent', 'Enter the 6-digit code sent to your phone.');
+      Alert.alert(t('code_sent'), t('code_sent_help'));
     } catch (error: any) {
       showError(error.message);
     } finally {
@@ -69,7 +71,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const verifyOtp = async () => {
-    if (!/^\d{6}$/.test(otp.trim())) return showError('Enter the 6-digit verification code');
+    if (!/^\d{6}$/.test(otp.trim())) return showError(t('verification_code'));
 
     setLoading(true);
     setErrorMessage(null);
@@ -87,12 +89,12 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const registerWithEmail = async () => {
-    if (!name.trim()) return showError('Please enter your full name');
+    if (!name.trim()) return showError(t('full_name'));
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      return showError('Please enter a valid email address');
+      return showError(t('email_address'));
     }
-    if (password.length < 6) return showError('Password must be at least 6 characters');
-    if (password !== confirmPassword) return showError('Passwords do not match');
+    if (password.length < 6) return showError(t('password_too_short'));
+    if (password !== confirmPassword) return showError(t('password_mismatch'));
 
     setLoading(true);
     setErrorMessage(null);
@@ -122,8 +124,8 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         >
           <View style={styles.header}>
             <Image source={require('../../assets/icon.png')} style={styles.logo} resizeMode="contain" />
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Join Migo to discover amazing events</Text>
+            <Text style={styles.title}>{t('create_account')}</Text>
+            <Text style={styles.subtitle}>{t('sign_in_continue')}</Text>
           </View>
 
           <View style={styles.modeSelector}>
@@ -132,7 +134,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               onPress={() => switchMode('phone')}
             >
               <Text style={[styles.modeText, mode === 'phone' && styles.modeTextActive]}>
-                Phone & OTP
+                {t('phone_number')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -140,7 +142,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               onPress={() => switchMode('email')}
             >
               <Text style={[styles.modeText, mode === 'email' && styles.modeTextActive]}>
-                Email
+                {t('email_address')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -148,7 +150,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.input}
-              placeholder="Full name"
+              placeholder={t('full_name')}
               value={name}
               onChangeText={setName}
               autoCapitalize="words"
@@ -161,7 +163,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               <View style={styles.inputContainer}>
                 <TextInput
                   style={styles.input}
-                  placeholder="Phone number, e.g. +971501234567"
+                  placeholder={t('phone_number')}
                   value={phone}
                   onChangeText={(value) => {
                     setPhone(value);
@@ -179,7 +181,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 <View style={styles.inputContainer}>
                   <TextInput
                     style={styles.input}
-                    placeholder="6-digit verification code"
+                    placeholder={t('verification_code')}
                     value={otp}
                     onChangeText={setOtp}
                     keyboardType="number-pad"
@@ -191,8 +193,8 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               )}
               <Text style={styles.hint}>
                 {otpSent
-                  ? 'The code expires in 10 minutes.'
-                  : 'No password needed. We will text you a verification code.'}
+                  ? t('code_sent_help')
+                  : t('send_code')}
               </Text>
               <TouchableOpacity
                 style={[styles.primaryButton, loading && styles.buttonDisabled]}
@@ -203,13 +205,13 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   <ActivityIndicator color="#fff" />
                 ) : (
                   <Text style={styles.primaryButtonText}>
-                    {otpSent ? 'Verify & Create Account' : 'Send Verification Code'}
+                    {otpSent ? t('create_account') : t('send_code')}
                   </Text>
                 )}
               </TouchableOpacity>
               {otpSent && (
                 <TouchableOpacity onPress={sendOtp} disabled={loading}>
-                  <Text style={styles.resendText}>Send a new code</Text>
+                  <Text style={styles.resendText}>{t('send_code')}</Text>
                 </TouchableOpacity>
               )}
             </>
@@ -218,7 +220,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               <View style={styles.inputContainer}>
                 <TextInput
                   style={styles.input}
-                  placeholder="Email address"
+                  placeholder={t('email_address')}
                   value={email}
                   onChangeText={setEmail}
                   keyboardType="email-address"
@@ -229,7 +231,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               <View style={styles.inputContainer}>
                 <TextInput
                   style={styles.input}
-                  placeholder="Password"
+                  placeholder={t('password')}
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
@@ -246,7 +248,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               <View style={styles.inputContainer}>
                 <TextInput
                   style={styles.input}
-                  placeholder="Confirm password"
+                  placeholder={t('confirm_password')}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   secureTextEntry={!showPassword}
@@ -254,7 +256,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   autoComplete="password-new"
                 />
               </View>
-              <Text style={styles.hint}>Password must be at least 6 characters.</Text>
+              <Text style={styles.hint}>{t('password_requirements')}</Text>
               <TouchableOpacity
                 style={[styles.primaryButton, loading && styles.buttonDisabled]}
                 onPress={registerWithEmail}
@@ -263,7 +265,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 {loading ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.primaryButtonText}>Create Account with Email</Text>
+                    <Text style={styles.primaryButtonText}>{t('create_account')}</Text>
                 )}
               </TouchableOpacity>
             </>
@@ -272,14 +274,12 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           {errorMessage && <Text style={styles.errorMessage}>{errorMessage}</Text>}
 
           <Text style={styles.termsText}>
-            By creating an account, you agree to our{' '}
-            <Text style={styles.link}>Terms of Service</Text> and{' '}
-            <Text style={styles.link}>Privacy Policy</Text>
+            {t('create_account')} · Migo
           </Text>
           <View style={styles.loginRow}>
-            <Text style={styles.secondaryText}>Already have an account? </Text>
+            <Text style={styles.secondaryText}>{t('already_have_account')} </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-              <Text style={styles.link}>Sign In</Text>
+              <Text style={styles.link}>{t('sign_in')}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
