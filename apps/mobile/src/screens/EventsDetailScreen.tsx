@@ -10,7 +10,6 @@ import {
   Image,
   Share,
   Alert,
-  Dimensions,
   ActivityIndicator,
   Linking,
   Modal,
@@ -34,8 +33,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import GradientButton from '../components/GradientButton';
 import { gradients, radius, shadow, spacing, type } from '../theme';
 import { DetailSkeleton } from '../components/Skeleton';
-
-const { width } = Dimensions.get('window');
 
 interface Props {
   route: any;
@@ -462,7 +459,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
       {/* Bottom Action Bar */}
       <View style={styles.bottomBar}>
-        <View>
+        <View style={styles.bottomBarInfo}>
           <Text style={styles.refundNote}>{t(`refund_${(event as any).trust?.refundKey || 'per_provider'}` as any)}</Text>
           <Text style={styles.bottomBarPrice}>
             {event.isFree || !event.priceFrom
@@ -474,6 +471,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           ) : null}
         </View>
         <GradientButton
+          style={styles.bottomBarButton}
           label={
             event.myBookingId
               ? t('view_ticket')
@@ -849,12 +847,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  bottomBarInfo: {
+    flexShrink: 1,
+    marginRight: 12,
+  },
+  bottomBarButton: {
+    flex: 1,
+    minWidth: 150,
+    maxWidth: 320,
+  },
   bottomBarPrice: {
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.primary,
   },
-  refundNote: { color: colors.textMuted, fontSize: 11, maxWidth: 150, marginBottom: 4 },
+  refundNote: { color: colors.textMuted, fontSize: 11, marginBottom: 4 },
   bottomBarTickets: {
     fontSize: 12,
     color: colors.textMuted,

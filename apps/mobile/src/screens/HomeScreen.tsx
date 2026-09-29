@@ -10,7 +10,7 @@ import {
   Image,
   FlatList,
   RefreshControl,
-  Dimensions,
+  useWindowDimensions,
   Platform,
   Modal,
   Share,
@@ -36,14 +36,13 @@ type WeekendDigestPreview = {
   sections: Array<{ events: Array<{ id: string; title: string; coverImage?: string | null; isFree: boolean }> }>;
 };
 
-const { width } = Dimensions.get('window');
-const TOP_CARD_WIDTH = Math.min(width * 0.75, 360);
-
 interface Props {
   navigation: any;
 }
 
 const HomeScreen: React.FC<Props> = ({ navigation }) => {
+  const { width } = useWindowDimensions();
+  const topCardWidth = Math.min(width * 0.75, 360);
   const { user, userLocation, setUserLocation } = useUserStore();
   const { t, locale } = useLocale();
   const { savedEvents, savedIds, loadSavedEvents, toggleSaved } = useSavedEventsStore();
@@ -59,12 +58,12 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const snapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleTopScroll = (offsetX: number) => {
-    const index = Math.round(offsetX / (TOP_CARD_WIDTH + 16));
+    const index = Math.round(offsetX / (topCardWidth + 16));
     setActiveTopIndex(index);
     if (Platform.OS !== 'web') return;
     if (snapTimer.current) clearTimeout(snapTimer.current);
     snapTimer.current = setTimeout(() => {
-      const target = index * (TOP_CARD_WIDTH + 16);
+      const target = index * (topCardWidth + 16);
       if (Math.abs(target - offsetX) > 1) topListRef.current?.scrollToOffset({ offset: target, animated: true });
     }, 140);
   };
@@ -331,7 +330,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
     return (
       <PressableScale
-        style={styles.topEventCard}
+        style={[styles.topEventCard, { width: topCardWidth }]}
         onPress={() => navigation.navigate('EventDetail', { eventId: item.id })}
       >
         {item.coverImage ? (
@@ -590,14 +589,14 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             keyExtractor={(item) => item.id}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.topEventsContainer}
-            snapToInterval={TOP_CARD_WIDTH + 16}
+            snapToInterval={topCardWidth + 16}
             decelerationRate="fast"
             scrollEventThrottle={16}
             onScroll={(e) => handleTopScroll(e.nativeEvent.contentOffset.x)}
             ListEmptyComponent={loading ? (
               <View style={styles.topEventsSkeletonRow}>
-                <Skeleton style={styles.topEventSkeleton} />
-                <Skeleton style={styles.topEventSkeleton} />
+                <Skeleton style={[styles.topEventSkeleton, { width: topCardWidth }]} />
+                <Skeleton style={[styles.topEventSkeleton, { width: topCardWidth }]} />
               </View>
             ) : null}
           />
@@ -954,7 +953,6 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   topEventCard: {
-    width: TOP_CARD_WIDTH,
     height: 220,
     borderRadius: radius.lg,
     overflow: 'hidden',
@@ -962,7 +960,7 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   topEventsSkeletonRow: { flexDirection: 'row', gap: 16 },
-  topEventSkeleton: { width: TOP_CARD_WIDTH, height: 220, borderRadius: radius.lg },
+  topEventSkeleton: { height: 220, borderRadius: radius.lg },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 14 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.border },
   dotActive: { width: 20, backgroundColor: colors.primary },

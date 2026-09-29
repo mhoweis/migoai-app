@@ -5,7 +5,7 @@ import { navigationRef } from "./src/navigation/navigationRef";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { Alert, Image, Linking, Platform, StyleSheet, View } from "react-native";
+import { Alert, Image, Linking, Platform, StyleSheet, useWindowDimensions, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useUserStore } from "./src/store/userStore";
 import { authService } from "./src/services/auth.service";
@@ -251,6 +251,17 @@ function MainTabsWithProfileStack() {
   );
 }
 
+function AppFrame({ children }: { children: React.ReactNode }) {
+  const { width } = useWindowDimensions();
+  const constrained = Platform.OS === 'web' && width >= 900;
+
+  return (
+    <View style={styles.frameBackdrop}>
+      <View style={[styles.frame, constrained && styles.frameConstrained]}>{children}</View>
+    </View>
+  );
+}
+
 export default function App() {
   const { user, firstLogin, loadUserFromStorage, setUser, setFirstLogin } = useUserStore();
   const [appLoading, setAppLoading] = useState(true);
@@ -439,68 +450,84 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <NavigationContainer ref={navigationRef}>
-        <Stack.Navigator initialRouteName={!user ? "Register" : undefined}>
-          {!user ? (
-            // Auth Screens
-            <>
-              <Stack.Screen
-                name="Register"
-                component={RegisterScreen}
-                options={{ headerShown: false }}
-              />
-              <Stack.Screen
-                name="Login"
-                component={LoginScreen}
-                options={{ headerShown: false }}
-              />
+        <AppFrame>
+          <Stack.Navigator initialRouteName={!user ? "Register" : undefined}>
+            {!user ? (
+              // Auth Screens
+              <>
+                <Stack.Screen
+                  name="Register"
+                  component={RegisterScreen}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="Login"
+                  component={LoginScreen}
+                  options={{ headerShown: false }}
+                />
 
-            </>
-          ) : firstLogin ? (
-            // First Login - Interests Selection
-            <Stack.Screen
-              name="Interests"
-              component={InterestsScreen}
-              options={{ headerShown: false }}
-            />
-          ) : (
-            // Main App
-            <>
+              </>
+            ) : firstLogin ? (
+              // First Login - Interests Selection
               <Stack.Screen
-                name="Main"
-                component={MainTabsWithProfileStack}
+                name="Interests"
+                component={InterestsScreen}
                 options={{ headerShown: false }}
               />
-              <Stack.Screen
-                name="EventDetail"
-                component={EventDetailScreen}
-                options={{
-                  headerShown: false,
-                }}
-              />
-              <Stack.Screen
-                name="AIEvents"
-                component={AIEventsScreen}
-                options={{ headerShown: false }}
-              />
-              <Stack.Screen
-                name="ClaimTicket"
-                component={ClaimTicketScreen}
-                options={{ title: t('claim_ticket'), headerBackTitle: t('back') }}
-              />
-              <Stack.Screen
-                name="WeekendDigest"
-                component={WeekendDigestScreen}
-                options={{ title: t('weekend_digest'), headerBackTitle: t('back') }}
-              />
-            </>
-          )}
-        </Stack.Navigator>
+            ) : (
+              // Main App
+              <>
+                <Stack.Screen
+                  name="Main"
+                  component={MainTabsWithProfileStack}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="EventDetail"
+                  component={EventDetailScreen}
+                  options={{
+                    headerShown: false,
+                  }}
+                />
+                <Stack.Screen
+                  name="AIEvents"
+                  component={AIEventsScreen}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="ClaimTicket"
+                  component={ClaimTicketScreen}
+                  options={{ title: t('claim_ticket'), headerBackTitle: t('back') }}
+                />
+                <Stack.Screen
+                  name="WeekendDigest"
+                  component={WeekendDigestScreen}
+                  options={{ title: t('weekend_digest'), headerBackTitle: t('back') }}
+                />
+              </>
+            )}
+          </Stack.Navigator>
+        </AppFrame>
       </NavigationContainer>
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
+  frameBackdrop: {
+    flex: 1,
+    backgroundColor: colors.bg,
+    alignItems: 'center',
+  },
+  frame: {
+    flex: 1,
+    width: '100%',
+  },
+  frameConstrained: {
+    maxWidth: 820,
+    ...shadow.card,
+    backgroundColor: colors.surface,
+  },
   iconContainer: {
     width: 38,
     height: 30,

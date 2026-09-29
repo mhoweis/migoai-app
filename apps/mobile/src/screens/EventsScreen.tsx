@@ -518,11 +518,11 @@ const EventsScreen = () => {
 
   const renderEventItem = ({ item }: { item: Event }) => {
     const priceDisplay = item.isFree || !item.priceFrom ? (
-      <Text style={styles.eventPrice}>{t('free')}</Text>
+      <Text style={styles.eventPrice} numberOfLines={1}>{t('free')}</Text>
     ) : (
       <View style={styles.priceContainerList}>
         <Text style={styles.priceStartingList}>{t('starting')} </Text>
-        <Text style={styles.eventPrice}>
+        <Text style={styles.eventPrice} numberOfLines={1}>
           {formatPrice(Number(item.priceFrom), item.currency || 'AED')}
         </Text>
       </View>
@@ -1309,6 +1309,8 @@ const styles = StyleSheet.create({
   },
   eventFooter: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
     justifyContent: 'space-between',
     alignItems: 'center',
   },
@@ -1322,6 +1324,7 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   eventPrice: {
+    flexShrink: 1,
     fontSize: 18,
     fontWeight: 'bold',
     color: colors.primary,
