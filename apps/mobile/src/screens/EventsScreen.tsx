@@ -82,8 +82,10 @@ const EventsScreen = () => {
   const [dynamicCities, setDynamicCities] = useState<Array<{ name: string; count: number }>>([]);
   const [dynamicVenues, setDynamicVenues] = useState<Array<{ name: string; count: number }>>([]);
   const [dynamicCategories, setDynamicCategories] = useState<Array<{ name: string; count: number }>>([]);
+  const [dynamicSources, setDynamicSources] = useState<Array<{ id: string; label: string; count: number }>>([]);
   // venueFilter: set when navigating from Home's Top Venues section
   const [venueFilter, setVenueFilter] = useState<string>(route.params?.venueFilter || '');
+  const [sourceFilter, setSourceFilter] = useState<string>('');
   // dateFilter: set when navigating from AI Chat or via quick presets
   const [dateFrom, setDateFrom] = useState<string>(route.params?.dateFrom || '');
   const [dateTo, setDateTo] = useState<string>(route.params?.dateTo || '');
@@ -104,6 +106,14 @@ const EventsScreen = () => {
       .toLowerCase()
       .trim()
       .replace(/\s+/g, ' '); // Replace multiple spaces with single space
+  };
+
+  const getEventSource = (event: Event): { id?: string; label?: string } => {
+    const eventAny = event as any;
+    return eventAny.source || eventAny.trust?.source || {
+      id: eventAny.externalSource,
+      label: eventAny.externalSource,
+    };
   };
 
   // Fetch events when selected city changes
@@ -228,12 +238,12 @@ const EventsScreen = () => {
   // Apply filters when any filter changes
   useEffect(() => {
     applyFilters();
-  }, [events, searchQuery, selectedCategory, sortBy, venueFilter, dateFrom, dateTo]);
+  }, [events, searchQuery, selectedCategory, sortBy, venueFilter, sourceFilter, dateFrom, dateTo]);
 
   // Update dynamic filter options based on current filters
   useEffect(() => {
     updateDynamicFilters();
-  }, [events, dateFrom, dateTo, selectedCity, selectedCategory, venueFilter, searchQuery]);
+  }, [events, dateFrom, dateTo, selectedCity, selectedCategory, venueFilter, sourceFilter, searchQuery]);
 
   const fetchEvents = async () => {
     try {
@@ -248,38 +258,35 @@ const EventsScreen = () => {
         params.city = selectedCity;
       }
 
-      const response = await api.get('/events', {
-        params,
-      });
+      const allEvents: Event[] = [];
+      let page = 1;
+      let hasNext = true;
+      while (hasNext && page <= 10) {
+        const response = await api.get('/events', {
+          params: { ...params, page },
+        });
+        console.log('Events API response:', response.data);
+        if (!response.data.success) break;
 
-      console.log('Events API response:', response.data);
-
-      if (response.data.success) {
-        // Backend returns: { success: true, data: { events: [...], pagination: {...} } }
         const eventsData = response.data.data?.events || response.data.data;
-
-        // Ensure we have an array
-        if (Array.isArray(eventsData)) {
-          // Filter out fully-past events: keep events that start today or later,
-          // or events that have already started but still have a future end date.
-          const todayStart = new Date();
-          todayStart.setHours(0, 0, 0, 0);
-          const currentEvents = eventsData.filter((event: any) => {
-            const start = new Date(event.startDate);
-            const end = event.endDate ? new Date(event.endDate) : null;
-            if (start >= todayStart) return true;
-            if (end && end >= todayStart) return true;
-            return false;
-          });
-          setEvents(currentEvents);
-        } else {
-          console.error('Events data is not an array:', eventsData);
-          setEvents([]);
-        }
-      } else {
-        console.error('API returned success: false');
-        setEvents([]);
+        if (!Array.isArray(eventsData)) break;
+        allEvents.push(...eventsData);
+        hasNext = response.data.data?.pagination?.hasNext === true;
+        page += 1;
       }
+
+      // Filter out fully-past events: keep events that start today or later,
+      // or events that have already started but still have a future end date.
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const currentEvents = allEvents.filter((event: any) => {
+        const start = new Date(event.startDate);
+        const end = event.endDate ? new Date(event.endDate) : null;
+        if (start >= todayStart) return true;
+        if (end && end >= todayStart) return true;
+        return false;
+      });
+      setEvents(currentEvents);
     } catch (error) {
       console.error('Failed to fetch events:', error);
       setEvents([]);
@@ -340,6 +347,10 @@ const EventsScreen = () => {
       filtered = filtered.filter(event => event.category === selectedCategory);
     }
 
+    if (sourceFilter) {
+      filtered = filtered.filter(event => getEventSource(event).id === sourceFilter);
+    }
+
     // Calculate available cities from filtered events (excluding the currently selected city)
     const cityMap = new Map<string, number>();
     filtered.forEach(event => {
@@ -376,6 +387,23 @@ const EventsScreen = () => {
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count);
     setDynamicCategories(categories);
+
+    const sourceMap = new Map<string, { label: string; count: number }>();
+    filtered.forEach(event => {
+      const source = getEventSource(event);
+      if (source.id && source.label) {
+        const current = sourceMap.get(source.id);
+        sourceMap.set(source.id, {
+          label: source.label,
+          count: (current?.count || 0) + 1,
+        });
+      }
+    });
+    setDynamicSources(
+      Array.from(sourceMap.entries())
+        .map(([id, value]) => ({ id, ...value }))
+        .sort((a, b) => b.count - a.count)
+    );
   };
 
   const applyFilters = () => {
@@ -432,6 +460,10 @@ const EventsScreen = () => {
       filtered = filtered.filter(event =>
         event.category === selectedCategory
       );
+    }
+
+    if (sourceFilter) {
+      filtered = filtered.filter(event => getEventSource(event).id === sourceFilter);
     }
 
     // Apply sorting
@@ -736,6 +768,26 @@ const EventsScreen = () => {
     );
   };
 
+  const renderSourceFilter = () => (
+    <View style={styles.sourceFilterContainer}>
+      <Text style={styles.filterLabel}>{t('source')}</Text>
+      <FlatList
+        horizontal
+        data={dynamicSources}
+        keyExtractor={(item) => item.id}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.sourceChipsContainer}
+        renderItem={({ item }) => (
+          <Chip
+            label={`${item.label}${item.count > 0 ? ` (${item.count})` : ''}`}
+            selected={sourceFilter === item.id}
+            onPress={() => setSourceFilter(sourceFilter === item.id ? '' : item.id)}
+          />
+        )}
+      />
+    </View>
+  );
+
   const renderDateFilter = () => {
     const isCustomActive = !!(dateFrom || dateTo) &&
       !isPresetActive('today') && !isPresetActive('tomorrow') && !isPresetActive('weekend');
@@ -895,6 +947,9 @@ const EventsScreen = () => {
 
           {/* Venue Filter */}
           {renderVenueFilter()}
+
+          {/* Source Filter */}
+          {renderSourceFilter()}
 
           {/* Category Filters */}
           {renderCategoryFilter()}
@@ -1104,6 +1159,19 @@ const styles = StyleSheet.create({
   },
   venueChipsContainer: {
     paddingVertical: 4,
+  },
+  sourceFilterContainer: {
+    paddingHorizontal: 8,
+    paddingBottom: 8,
+  },
+  sourceChipsContainer: {
+    paddingVertical: 4,
+  },
+  filterLabel: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 2,
   },
   venueChip: {
     paddingHorizontal: 16,

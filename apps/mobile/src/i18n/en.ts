@@ -99,6 +99,7 @@ const en = {
   location_on_map: 'Location on Map',
   open_google_maps: 'Open in Google Maps',
   approximate_location: 'Approximate — tap to open in Google Maps',
+  source: 'Source',
   get_free_ticket: 'Get Free Ticket',
   view_ticket: 'View Ticket',
   buy_ticket: 'Buy Ticket',

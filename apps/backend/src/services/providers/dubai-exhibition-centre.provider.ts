@@ -85,6 +85,9 @@ class DubaiExhibitionCentreProvider implements EventProvider {
     const industries = this.strings(item.industry);
     const audience = typeof item.audience === 'string' ? item.audience : undefined;
     const location = this.strings(item.newEventVenue)[0] || cleanTitle(item.location);
+    const address = location
+      ? `${location}, Dubai Exhibition Centre, Expo City Dubai`
+      : 'Dubai Exhibition Centre, Expo City Dubai';
 
     return {
       externalId: String(item.id),
@@ -93,8 +96,8 @@ class DubaiExhibitionCentreProvider implements EventProvider {
       description: cleanDescription(`${title} at Dubai Exhibition Centre, Expo City Dubai`),
       startDate,
       endDate,
-      venueName: (location ? `Dubai Exhibition Centre – ${location}` : 'Dubai Exhibition Centre').slice(0, 255),
-      address: 'Dubai Exhibition Centre, Expo City Dubai',
+      venueName: 'Dubai Exhibition Centre',
+      address,
       city: 'Dubai',
       country: 'United Arab Emirates',
       coverImage: item.featuredImage?.url || item.featuredImage?.cropUrl,
