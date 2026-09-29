@@ -59,6 +59,14 @@ const sources: Record<string, SourceInfo> = {
     url: 'https://www.dwtc.com',
     refundPolicy: 'external',
   },
+  'dubai-exhibition-centre': {
+    id: 'dubai-exhibition-centre',
+    label: 'Dubai Exhibition Centre',
+    labelAr: 'مركز دبي للمعارض',
+    kind: 'venue',
+    url: 'https://www.dubaiexhibitioncentre.com',
+    refundPolicy: 'external',
+  },
   'expo-centre-sharjah': {
     id: 'expo-centre-sharjah',
     label: 'Expo Centre Sharjah',

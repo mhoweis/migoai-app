@@ -7,6 +7,7 @@ import { mockProvider } from './providers/mock.provider';
 import { ticketmasterProvider } from './providers/ticketmaster.provider';
 import { expoCityProvider } from './providers/expo-city.provider';
 import { dwtcProvider } from './providers/dwtc.provider';
+import { dubaiExhibitionCentreProvider } from './providers/dubai-exhibition-centre.provider';
 import { visitDubaiProvider } from './providers/visit-dubai.provider';
 import { visitAbuDhabiProvider } from './providers/visit-abu-dhabi.provider';
 import { lumaProvider } from './providers/luma.provider';
@@ -40,6 +41,7 @@ export class EventSyncService {
     eventbriteProvider,
     expoCityProvider,
     dwtcProvider,
+    dubaiExhibitionCentreProvider,
     visitDubaiProvider,
     visitAbuDhabiProvider,
     lumaProvider,
