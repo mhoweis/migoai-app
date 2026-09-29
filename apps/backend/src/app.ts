@@ -6,6 +6,7 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import compression from 'compression';
+import path from 'path';
 
 // Load environment variables
 dotenv.config();
@@ -24,6 +25,7 @@ import { adminRouter } from './routes/admin.routes';
 import placesRouter from './routes/places.routes';
 import bookingsRouter from './routes/bookings.routes';
 import digestRouter, { digestHtmlRouter } from './routes/digest.routes';
+import { uploadRouter } from './routes/upload.routes';
 
 // Import middleware
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
@@ -135,6 +137,10 @@ app.use('/e', shareRouter);
 app.use('/digest', digestHtmlRouter);
 app.use('/api/events', eventsRouter); // Assuming events are public for browsing
 app.use('/api/digest', digestRouter);
+app.use('/api/uploads', express.static(path.resolve(__dirname, '../uploads'), {
+  maxAge: '7d',
+  immutable: true,
+}));
 
 // Protected routes (authentication required)
 app.use('/api/users', authenticate, usersRouter);
@@ -145,6 +151,7 @@ app.use('/api/wishlists', wishlistsRouter);
 
 // Places — Google Maps venue discovery (auth enforced inside the router)
 app.use('/api/places', placesRouter);
+app.use('/api/upload', uploadRouter);
 
 // Admin (authentication + ADMIN role enforced inside the router)
 app.use('/api/admin', adminRouter);

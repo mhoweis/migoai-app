@@ -54,6 +54,10 @@ export interface PlaceSearchInput {
 }
 
 export const placesService = {
+  async geocode(venue: string, address: string, city: string): Promise<{ latitude: number; longitude: number } | null> {
+    const response = await api.get('/places/geocode', { params: { venue, address, city } });
+    return response.data.data || null;
+  },
   /**
    * Starts a search. Results are usually cached and come back immediately;
    * a cache miss returns status 'pending' and must be polled.

@@ -5,6 +5,12 @@
 import { EventCategory, BookingType, LocationType, EventStatus, EventVisibility } from '../constants';
 import { SocialLinks } from './common.types';
 
+export interface EventScheduleDay {
+  date: string;
+  startTime: string;
+  endTime?: string;
+}
+
 export interface Event {
   id: string;
   title: string;
@@ -56,6 +62,8 @@ export interface Event {
   hasWiFi: boolean;
   facilities?: string[];
   dressCode?: string;
+  schedule?: EventScheduleDay[];
+  notes?: string;
   ageRestriction?: number;
   ageGroup?: string;
 

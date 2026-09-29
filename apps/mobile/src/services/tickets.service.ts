@@ -1,4 +1,5 @@
 import { api } from './api';
+import type { EventScheduleDay } from '@migo/shared';
 
 export interface Ticket {
   id: string;
@@ -54,6 +55,9 @@ export interface CreateEventPayload {
   ticketUrl?: string;
   capacity?: number;
   coverImage?: string;
+  notes?: string;
+  schedule?: EventScheduleDay[];
+  dressCode?: string;
 }
 
 export interface HostedEvent {

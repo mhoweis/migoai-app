@@ -2,6 +2,7 @@ import React from 'react';
 import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colors, radius } from '../theme';
 import { useLocale } from '../i18n';
+import { CITY_COORDINATES } from '../utils/cityCoordinates';
 
 interface EventMapProps {
   latitude?: number;
@@ -21,9 +22,10 @@ export default function EventMap({
 }: EventMapProps) {
   const { locale } = useLocale();
   const hasCoordinates = latitude !== undefined && longitude !== undefined;
+  const cityCenter = CITY_COORDINATES.dubai;
   const embedUrl = hasCoordinates
     ? `https://www.google.com/maps?q=${latitude},${longitude}&z=15&output=embed&hl=${locale}`
-    : `https://www.google.com/maps?q=${encodeURIComponent(query || title)}&z=14&output=embed`;
+    : `https://www.google.com/maps?q=${encodeURIComponent(query || `${cityCenter.latitude},${cityCenter.longitude}` || title)}&z=14&output=embed`;
   const mapUrl = `https://www.google.com/maps/search/?api=1&query=${
     hasCoordinates ? `${latitude},${longitude}` : encodeURIComponent(query || title)
   }`;

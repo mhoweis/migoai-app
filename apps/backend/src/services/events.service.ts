@@ -935,6 +935,8 @@ export class EventService {
       hasWiFi: true,
       facilities: true,
       dressCode: true,
+      schedule: true,
+      notes: true,
       ageRestriction: true,
       status: true,
       visibility: true,
@@ -1087,6 +1089,8 @@ export class EventService {
       hasWiFi: eventAny.hasWiFi,
       facilities: eventAny.facilities || [],
       dressCode: eventAny.dressCode,
+      schedule: eventAny.schedule || undefined,
+      notes: eventAny.notes || undefined,
       ageRestriction: eventAny.ageRestriction,
 
       // Status & visibility
@@ -1218,6 +1222,8 @@ export class EventService {
         hasWiFi: eventData.hasWiFi || false,
         ageRestriction: eventData.ageRestriction,
         dressCode: eventData.dressCode,
+        schedule: eventData.schedule,
+        notes: eventData.notes,
         visibility: EventVisibility.PUBLIC,
         source: 'migo',
         slug,
@@ -1300,6 +1306,9 @@ export class EventService {
         ...(updateData.images !== undefined && { images: updateData.images }),
         ...(updateData.facilities !== undefined && { facilities: updateData.facilities }),
         ...(updateData.tags !== undefined && { tags: updateData.tags }),
+        ...(updateData.dressCode !== undefined && { dressCode: updateData.dressCode }),
+        ...(updateData.schedule !== undefined && { schedule: updateData.schedule }),
+        ...(updateData.notes !== undefined && { notes: updateData.notes }),
       };
       if (updateData.title) {
         updatedData.slug = this.generateSlug(updateData.title);

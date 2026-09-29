@@ -379,6 +379,24 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </View>
               </View>
             </View>
+            {event.schedule && event.schedule.length > 1 ? (
+              <View style={styles.metadataCard}>
+                <Text style={styles.sectionTitle}>{t('schedule')}</Text>
+                {event.schedule.map(day => (
+                  <View key={day.date} style={styles.scheduleRow}>
+                    <Text style={styles.scheduleDate}>{day.date}</Text>
+                    <Text style={styles.detailValue}>{day.startTime}{day.endTime ? ` – ${day.endTime}` : ''}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+            {event.dressCode ? <Text style={styles.metadataText}>{t('dress_code')}: {t(`dress_${event.dressCode}` as any)}</Text> : null}
+            {event.notes ? (
+              <View style={styles.notesCard}>
+                <Text style={styles.sectionTitle}>{t('notes_from_organizer')}</Text>
+                <Text style={styles.description}>{event.notes}</Text>
+              </View>
+            ) : null}
             {social && social.goingCount > 0 && (
               <View style={styles.socialRow}>
                 <View style={styles.socialAvatars}>
@@ -698,6 +716,22 @@ const styles = StyleSheet.create({
   detailsGrid: {
     gap: 16,
   },
+  metadataCard: {
+    marginTop: 22,
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: colors.surfaceAlt,
+  },
+  scheduleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 7,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  scheduleDate: { color: colors.textSecondary, fontSize: 13 },
+  metadataText: { marginTop: 16, color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
+  notesCard: { marginTop: 18, padding: 14, borderRadius: 14, backgroundColor: colors.surfaceAlt },
   socialRow: { flexDirection: 'row', alignItems: 'center', marginTop: 18 },
   socialAvatars: { flexDirection: 'row', alignItems: 'center', minWidth: 48 },
   socialAvatar: { width: 30, height: 30, borderRadius: 15, borderWidth: 2, borderColor: colors.textInverse },

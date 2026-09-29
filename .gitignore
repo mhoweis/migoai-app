@@ -15,3 +15,5 @@ screenshots/
 .DS_Store
 logs/
 *.log
+apps/backend/uploads/*
+!apps/backend/uploads/.gitkeep

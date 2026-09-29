@@ -201,6 +201,8 @@ model Event {
   hasWiFi                   Boolean             @default(false) @map("has_wifi")
   facilities                Json? // Changed from String[]
   dressCode                 String?             @map("dress_code") @db.VarChar(100)
+  schedule                  Json?
+  notes                     String?             @db.Text
   ageRestriction            Int?                @map("age_restriction")
   ageGroup                  String?             @map("age_group") @db.VarChar(50)
   

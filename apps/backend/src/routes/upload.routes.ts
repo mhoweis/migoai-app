@@ -1,9 +1,37 @@
-// src/routes/upload.routes.ts
 import { Router } from 'express';
-const router = Router();
+import path from 'path';
+import fs from 'fs';
+import crypto from 'crypto';
+import multer from 'multer';
+import { authenticate, AuthRequest } from '../middlewares/auth.middleware';
 
-router.post('/', (req, res) => {
-  res.json({ message: 'Upload endpoint - coming soon' });
+const router = Router();
+const uploadsDir = path.resolve(__dirname, '../../uploads');
+fs.mkdirSync(uploadsDir, { recursive: true });
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (!/^image\/(jpeg|jpg|png|gif|webp)$/.test(file.mimetype)) {
+      cb(new Error('Only image files are allowed'));
+      return;
+    }
+    cb(null, true);
+  },
+});
+
+router.post('/image', authenticate, upload.single('image'), async (req: AuthRequest, res) => {
+  if (!req.file) {
+    res.status(400).json({ success: false, error: 'Image file is required' });
+    return;
+  }
+  const extension = path.extname(req.file.originalname).toLowerCase() || `.${req.file.mimetype.split('/')[1]}`;
+  const filename = `${crypto.randomUUID()}${extension}`;
+  await fs.promises.writeFile(path.join(uploadsDir, filename), req.file.buffer);
+  const protocol = String(req.get('x-forwarded-proto') || req.protocol).split(',')[0].trim();
+  const host = String(req.get('x-forwarded-host') || req.get('host'));
+  res.json({ success: true, data: { url: `${protocol}://${host}/api/uploads/${filename}` } });
 });
 
 export { router as uploadRouter };
