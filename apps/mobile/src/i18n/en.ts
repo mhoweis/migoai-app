@@ -180,6 +180,7 @@ const en = {
   from_date: 'From date',
   to_date: 'To date',
   apply_to_all_days: 'Apply to all days',
+  city: 'City',
   find_on_map: 'Find on map',
   venue_not_found: "We couldn't find this venue — tap the map to pin its location",
   pinned_coordinates: 'Pinned: {{latitude}}, {{longitude}}',

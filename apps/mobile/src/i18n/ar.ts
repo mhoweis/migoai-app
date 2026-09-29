@@ -182,6 +182,7 @@ const ar: Record<keyof typeof en, string> = {
   from_date: 'من تاريخ',
   to_date: 'إلى تاريخ',
   apply_to_all_days: 'تطبيق على جميع الأيام',
+  city: 'المدينة',
   find_on_map: 'البحث على الخريطة',
   venue_not_found: 'تعذّر العثور على المكان — اضغط على الخريطة لتحديد موقعه',
   pinned_coordinates: 'محدد: {{latitude}}، {{longitude}}',

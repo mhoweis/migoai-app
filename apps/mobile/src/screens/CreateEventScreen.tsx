@@ -131,20 +131,20 @@ export default function CreateEventScreen({ navigation }: { navigation: Navigati
         {multiDay ? <><Text style={styles.label}>{t('to_date')}</Text><DateField value={toDate} onChange={value => { setToDate(value); regenerateDays(fromDate, value); }} placeholder={t('end_date')} minimumDate={fromDate || today} />{days.map((day, index) => <View key={day.date} style={styles.dayRow}><Text style={styles.dayLabel}>{day.date}</Text><TimeField value={day.startTime} onChange={value => setDays(current => current.map((entry, i) => i === index ? { ...entry, startTime: value } : entry))} placeholder={t('start_time')} /><TimeField value={day.endTime || ''} onChange={value => setDays(current => current.map((entry, i) => i === index ? { ...entry, endTime: value } : entry))} placeholder={t('end_time')} /></View>)}{days.length > 1 ? <TouchableOpacity style={styles.secondaryButton} onPress={() => setDays(current => current.map(day => ({ ...day, startTime: current[0].startTime, endTime: current[0].endTime })))}><Text style={styles.secondaryText}>{t('apply_to_all_days')}</Text></TouchableOpacity> : null}</> : null}
         <TextInput style={styles.input} placeholder={t('venue_name')} value={form.venueName} onChangeText={(value: string) => set('venueName', value)} />
         <TextInput style={styles.input} placeholder={t('address')} value={form.address} onChangeText={(value: string) => set('address', value)} />
-        <Text style={styles.label}>{t('location_tba')}</Text>
+        <Text style={styles.label}>{t('city')}</Text>
         <View style={styles.chips}>{cities.map(city => (
           <TouchableOpacity key={city} style={[styles.chip, form.city === city && styles.selectedChip]} onPress={() => set('city', city)}>
             <Text style={[styles.chipText, form.city === city && styles.selectedChipText]}>{city}</Text>
           </TouchableOpacity>
         ))}</View>
-        <View style={styles.toggleRow}>
-          <Text style={styles.label}>{t('free')}</Text>
-          <Switch value={form.isFree} onValueChange={(value: boolean) => set('isFree', value)} />
-        </View>
         <TouchableOpacity style={styles.secondaryButton} onPress={async () => { try { const result = await placesService.geocode(form.venueName, form.address, form.city); if (result) { setLatitude(result.latitude); setLongitude(result.longitude); setGeocodeFailed(false); } else setGeocodeFailed(true); } catch { setGeocodeFailed(true); } }}><Text style={styles.secondaryText}>{t('find_on_map')}</Text></TouchableOpacity>
         {geocodeFailed ? <Text style={styles.notice}>{t('venue_not_found')}</Text> : null}
         <LocationPicker city={form.city} latitude={latitude} longitude={longitude} onChange={coords => { setLatitude(coords.latitude); setLongitude(coords.longitude); setGeocodeFailed(false); }} />
         {latitude !== undefined && longitude !== undefined ? <Text style={styles.hint}>{t('pinned_coordinates', { latitude: latitude.toFixed(4), longitude: longitude.toFixed(4) })}</Text> : null}
+        <View style={styles.toggleRow}>
+          <Text style={styles.label}>{t('free')}</Text>
+          <Switch value={form.isFree} onValueChange={(value: boolean) => set('isFree', value)} />
+        </View>
         {!form.isFree && (
           <>
             <TextInput style={styles.input} placeholder={t('price_aed')} keyboardType="decimal-pad" value={form.price} onChangeText={(value: string) => set('price', value)} />

@@ -26,7 +26,7 @@ router.post('/image', authenticate, upload.single('image'), async (req: AuthRequ
     res.status(400).json({ success: false, error: 'Image file is required' });
     return;
   }
-  const extension = path.extname(req.file.originalname).toLowerCase() || `.${req.file.mimetype.split('/')[1]}`;
+  const extension = `.${req.file.mimetype.split('/')[1].replace('jpeg', 'jpg')}`;
   const filename = `${crypto.randomUUID()}${extension}`;
   await fs.promises.writeFile(path.join(uploadsDir, filename), req.file.buffer);
   const protocol = String(req.get('x-forwarded-proto') || req.protocol).split(',')[0].trim();
