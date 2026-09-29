@@ -27,6 +27,8 @@ import { sourceBadge } from '../utils/trust';
 import { LinearGradient } from 'expo-linear-gradient';
 import Chip from '../components/Chip';
 import { gradients, radius, shadow, spacing, type } from '../theme';
+import { PressableScale } from '../components/PressableScale';
+import { Skeleton } from '../components/Skeleton';
 
 type WeekendDigestPreview = {
   title: string;
@@ -34,6 +36,7 @@ type WeekendDigestPreview = {
 };
 
 const { width } = Dimensions.get('window');
+const TOP_CARD_WIDTH = Math.min(width * 0.75, 360);
 
 interface Props {
   navigation: any;
@@ -50,6 +53,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const [filteredThisWeek, setFilteredThisWeek] = useState<Event[]>([]);
   const [filteredToday, setFilteredToday] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTopIndex, setActiveTopIndex] = useState(0);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showAllVenues, setShowAllVenues] = useState(false);
   const [availableCities, setAvailableCities] = useState<Array<{ name: string; count: number }>>([]);
@@ -312,7 +316,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
     const saved = savedIds.has(item.id);
 
     return (
-      <TouchableOpacity
+      <PressableScale
         style={styles.topEventCard}
         onPress={() => navigation.navigate('EventDetail', { eventId: item.id })}
       >
@@ -323,7 +327,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             <Ionicons name="image-outline" size={48} color={colors.border} />
           </View>
         )}
-        <View style={styles.topEventOverlay}>
+        <LinearGradient colors={['rgba(15,18,34,0.15)', 'rgba(15,18,34,0.05)', 'rgba(15,18,34,0.85)']} style={styles.topEventOverlay}>
           {/* Top row: badge + action buttons */}
           <View style={styles.topEventTopRow}>
             <View style={styles.topEventBadge}>
@@ -369,8 +373,8 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
               </Text>
             </View>
           </View>
-        </View>
-      </TouchableOpacity>
+        </LinearGradient>
+      </PressableScale>
     );
   };
 
@@ -517,27 +521,30 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             <Ionicons name="chevron-down" size={16} color={colors.textInverse} style={{ marginLeft: 4 }} />
           </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.homeSearch} onPress={navigateToEvents} accessibilityRole="button">
-          <Ionicons name="search" size={20} color={colors.textMuted} />
-          <Text style={styles.homeSearchText}>{t('search_events')}</Text>
-        </TouchableOpacity>
         </LinearGradient>
+        <PressableScale style={styles.homeSearch} onPress={navigateToEvents} accessibilityRole="button" scaleTo={0.98}>
+          <Ionicons name="search" size={20} color={colors.primary} />
+          <Text style={styles.homeSearchText} numberOfLines={1}>{t('search_events')}</Text>
+          <View style={styles.homeSearchAction}>
+            <Ionicons name="options-outline" size={16} color={colors.textInverse} />
+          </View>
+        </PressableScale>
 
         {/* User Interests */}
         {renderInterestPills()}
 
         {weekendDigest && (
-          <TouchableOpacity
+          <PressableScale
             style={styles.weekendCardRing}
             onPress={() => navigationRef.current?.navigate('WeekendDigest')}
           >
-          <View style={styles.weekendCard}>
+          <LinearGradient colors={gradients.primary} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.weekendCard}>
             <View style={styles.weekendCardHeader}>
               <View>
                 <Text style={styles.weekendTitle}>{t('this_weekend')}</Text>
                 <Text style={styles.weekendSubtitle}>{weekendDigest.title}</Text>
               </View>
-              <Ionicons name="arrow-forward-circle" size={28} color={colors.primary} />
+              <Ionicons name="arrow-forward-circle" size={32} color={colors.textInverse} />
             </View>
             <Text style={styles.weekendCount}>
               {weekendDigest.sections.reduce((count, section) => count + section.events.length, 0)} {t('events')} · {t('free')}: {weekendDigest.sections.flatMap(section => section.events).filter(event => event.isFree).length}
@@ -549,8 +556,8 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
                   : <View key={event.id} style={[styles.weekendPoster, styles.weekendPosterPlaceholder]}><Ionicons name="calendar-outline" size={20} color={colors.textMuted} /></View>
               ))}
             </View>
-          </View>
-          </TouchableOpacity>
+          </LinearGradient>
+          </PressableScale>
         )}
 
         {/* Top 10 Upcoming Events - Horizontal Scroll */}
@@ -568,7 +575,24 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             keyExtractor={(item) => item.id}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.topEventsContainer}
+            snapToInterval={TOP_CARD_WIDTH + 16}
+            decelerationRate="fast"
+            scrollEventThrottle={16}
+            onScroll={(e) => setActiveTopIndex(Math.round(e.nativeEvent.contentOffset.x / (TOP_CARD_WIDTH + 16)))}
+            ListEmptyComponent={loading ? (
+              <View style={styles.topEventsSkeletonRow}>
+                <Skeleton style={styles.topEventSkeleton} />
+                <Skeleton style={styles.topEventSkeleton} />
+              </View>
+            ) : null}
           />
+          {filteredTopEvents.length > 1 && (
+            <View style={styles.dots}>
+              {filteredTopEvents.slice(0, 10).map((event, index) => (
+                <View key={event.id} style={[styles.dot, index === Math.min(activeTopIndex, 9) && styles.dotActive]} />
+              ))}
+            </View>
+          )}
         </View>
 
         {/* This Week's Events */}
@@ -825,8 +849,9 @@ const styles = StyleSheet.create({
   },
   locationDisplayHero: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.pill },
   locationTextHero: { fontSize: 14, fontWeight: '600', color: colors.textInverse, marginLeft: 4 },
-  homeSearch: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginHorizontal: 20, marginBottom: -48, paddingHorizontal: 16, height: 52, borderRadius: radius.pill, backgroundColor: colors.surface, ...shadow.card },
-  homeSearchText: { ...type.body, color: colors.textMuted },
+  homeSearch: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginHorizontal: 20, marginTop: -28, paddingLeft: 18, paddingRight: 6, height: 56, borderRadius: radius.pill, backgroundColor: colors.surface, ...shadow.card },
+  homeSearchText: { ...type.body, color: colors.textMuted, flex: 1 },
+  homeSearchAction: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   locationText: {
     fontSize: 14,
     fontWeight: '600',
@@ -835,7 +860,7 @@ const styles = StyleSheet.create({
   },
   interestsScroll: {
     paddingLeft: 20,
-    marginTop: 60,
+    marginTop: 20,
     marginBottom: 20,
   },
   interestsContainer: {
@@ -882,20 +907,14 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 32,
   },
-  weekendCard: {
-    marginHorizontal: 20,
-    marginBottom: 24,
-    padding: 16,
-    borderRadius: radius.lg - 1,
-    backgroundColor: colors.surface,
-  },
-  weekendCardRing: { marginHorizontal: 20, marginBottom: 24, padding: 1, borderRadius: radius.lg, backgroundColor: colors.primary, ...shadow.card },
+  weekendCard: { padding: 18, borderRadius: radius.lg },
+  weekendCardRing: { marginHorizontal: 20, marginBottom: 24, borderRadius: radius.lg, ...shadow.card },
   weekendCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  weekendTitle: { fontSize: 20, fontWeight: '800', color: colors.primaryDark },
-  weekendSubtitle: { marginTop: 4, color: colors.primaryDark },
-  weekendCount: { marginTop: 10, color: colors.textSecondary, fontWeight: '600' },
-  weekendPosters: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  weekendPoster: { width: 72, height: 72, borderRadius: 10 },
+  weekendTitle: { fontSize: 22, fontWeight: '800', color: colors.textInverse, letterSpacing: -0.3 },
+  weekendSubtitle: { marginTop: 4, color: 'rgba(255,255,255,0.85)' },
+  weekendCount: { marginTop: 10, color: colors.textInverse, fontWeight: '700' },
+  weekendPosters: { flexDirection: 'row', gap: 8, marginTop: 14 },
+  weekendPoster: { width: 72, height: 72, borderRadius: 12, borderWidth: 2, borderColor: 'rgba(255,255,255,0.7)' },
   weekendPosterPlaceholder: { backgroundColor: colors.primarySoft, justifyContent: 'center', alignItems: 'center' },
   sectionHeader: {
     flexDirection: 'row',
@@ -919,12 +938,18 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   topEventCard: {
-    width: width * 0.75,
-    height: 200,
-    borderRadius: 16,
+    width: TOP_CARD_WIDTH,
+    height: 220,
+    borderRadius: radius.lg,
     overflow: 'hidden',
     position: 'relative',
+    ...shadow.card,
   },
+  topEventsSkeletonRow: { flexDirection: 'row', gap: 16 },
+  topEventSkeleton: { width: TOP_CARD_WIDTH, height: 220, borderRadius: radius.lg },
+  dots: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 14 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.border },
+  dotActive: { width: 20, backgroundColor: colors.primary },
   topEventImage: {
     width: '100%',
     height: '100%',
@@ -936,13 +961,12 @@ const styles = StyleSheet.create({
   },
   topEventOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
     padding: 16,
     justifyContent: 'space-between',
   },
   topEventBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(59, 130, 246, 0.9)',
+    backgroundColor: colors.accent,
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,

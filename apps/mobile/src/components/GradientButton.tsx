@@ -1,7 +1,8 @@
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, gradients, radius } from '../theme';
+import { colors, gradients, radius, shadow } from '../theme';
+import { PressableScale } from './PressableScale';
 
 type Props = {
   label: string;
@@ -31,16 +32,16 @@ export default function GradientButton({ label, onPress, icon, disabled, loading
   }
 
   return (
-    <TouchableOpacity testID={testID} disabled={disabled || loading} onPress={onPress} style={styles.button}>
-      <LinearGradient colors={gradients.primaryButton} style={styles.gradient}>
+    <PressableScale testID={testID} accessibilityRole="button" disabled={disabled || loading} onPress={onPress} style={styles.button}>
+      <LinearGradient colors={gradients.primaryButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.gradient}>
         {content}
       </LinearGradient>
-    </TouchableOpacity>
+    </PressableScale>
   );
 }
 
 const styles = StyleSheet.create({
-  button: { height: 52, borderRadius: radius.pill, overflow: 'hidden' },
+  button: { height: 52, borderRadius: radius.pill, overflow: 'hidden', ...shadow.card },
   gradient: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   content: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   label: { color: colors.textInverse, fontSize: 16, fontWeight: '700' },

@@ -33,6 +33,7 @@ import { sourceBadge } from '../utils/trust';
 import { LinearGradient } from 'expo-linear-gradient';
 import GradientButton from '../components/GradientButton';
 import { gradients, radius, shadow, spacing, type } from '../theme';
+import { DetailSkeleton } from '../components/Skeleton';
 
 const { width } = Dimensions.get('window');
 
@@ -194,10 +195,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>{t('loading')}</Text>
-        </View>
+        <DetailSkeleton />
       </SafeAreaView>
     );
   }

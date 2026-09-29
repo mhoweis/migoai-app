@@ -26,6 +26,7 @@ import { categoryLabel, formatEventDate, formatPrice, useLocale } from '../i18n'
 import { sourceBadge } from '../utils/trust';
 import { radius, shadow, spacing, type } from '../theme';
 import Chip from '../components/Chip';
+import { EventListSkeleton } from '../components/Skeleton';
 
 // Event categories for filtering
 const EVENT_CATEGORIES = [
@@ -811,10 +812,7 @@ const EventsScreen = () => {
   if (loading && !refreshing) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>{t('loading')}</Text>
-        </View>
+        <EventListSkeleton count={5} />
       </SafeAreaView>
     );
   }

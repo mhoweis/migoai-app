@@ -36,6 +36,7 @@ import { ticketsService } from "./src/services/tickets.service";
 import { navigateToTab } from "./src/navigation/navigationRef";
 import { setLocale, STORAGE_KEY, useLocale } from "./src/i18n";
 import { shadow, radius } from "./src/theme";
+import './src/web/globalStyles';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();

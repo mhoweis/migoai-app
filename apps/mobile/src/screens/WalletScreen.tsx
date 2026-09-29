@@ -26,6 +26,7 @@ import { socialService } from '../services/social.service';
 import { formatEventDate, useLocale, categoryLabel } from '../i18n';
 import { radius, shadow, spacing, type } from '../theme';
 import GradientButton from '../components/GradientButton';
+import { EventListSkeleton } from '../components/Skeleton';
 
 const categoryColors: Record<string, string> = {
   Music: colors.primaryDark,
@@ -296,7 +297,7 @@ export default function WalletScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
+        <EventListSkeleton count={3} />
       </SafeAreaView>
     );
   }
@@ -419,6 +420,6 @@ const styles = StyleSheet.create({
   modalActions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 18 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 120 },
   emptyTitle: { marginTop: 16, fontSize: 20, fontWeight: '700', color: colors.textSecondary },
-  emptyText: { marginTop: 6, color: colors.textMuted, textAlign: 'center' },
+  emptyText: { marginTop: 6, marginBottom: 24, color: colors.textMuted, textAlign: 'center' },
   emptyIcon: { width: 96, height: 96, borderRadius: 48, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
 });
