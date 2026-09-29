@@ -1347,9 +1347,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   venueGridCard: {
-    width: '47%',
+    width: 'auto',
+    flexBasis: '30%',
     flexGrow: 1,
-    maxWidth: 220,
+    maxWidth: '32%',
+    height: 150,
   },
   venueCard: {
     width: 150,
