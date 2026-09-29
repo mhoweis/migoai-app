@@ -5,6 +5,7 @@ export type HomeSectionId =
   | 'weekend'
   | 'featured'
   | 'thisWeek'
+  | 'friends'
   | 'venues'
   | 'today'
   | 'tickets'
@@ -16,6 +17,7 @@ export const DEFAULT_HOME_SECTIONS: HomeSectionId[] = [
   'weekend',
   'featured',
   'thisWeek',
+  'friends',
   'venues',
   'today',
   'tickets',
@@ -68,6 +70,7 @@ export const HOME_SECTION_META: Record<HomeSectionId, {
   weekend: { icon: 'calendar-outline', labelKey: 'this_weekend' },
   featured: { icon: 'sparkles-outline', labelKey: 'top_upcoming_events' },
   thisWeek: { icon: 'calendar-number-outline', labelKey: 'this_week_for_you' },
+  friends: { icon: 'people-outline', labelKey: 'friends_are_going' },
   venues: { icon: 'business-outline', labelKey: 'top_venues' },
   today: { icon: 'flash-outline', labelKey: 'todays_picks' },
   tickets: { icon: 'ticket-outline', labelKey: 'your_tickets' },

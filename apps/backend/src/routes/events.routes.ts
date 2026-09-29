@@ -5,7 +5,7 @@ import { authenticate, AuthRequest, optionalAuthenticate } from "../middlewares/
 import { asyncHandler } from "../middlewares/error.middleware";
 import { z } from "zod";
 import prisma from "../database/prisma";
-import { createEventInvite, getEventSocial } from "../services/social.service";
+import { createEventInvite, getEventSocial, getFriendsGoingEvents } from "../services/social.service";
 import { getWebBase } from "./share.routes";
 import { recommendEvents } from "../services/recommendation.service";
 
@@ -122,6 +122,13 @@ router.get("/recommended", authenticate, asyncHandler(async (req: AuthRequest, r
   const requestedLimit = parseNumberParam(req.query.limit, 10);
   const limit = Math.min(Math.max(requestedLimit, 1), 50);
   const events = await recommendEvents(req.userId!, { city, from, to, limit });
+  res.json({ success: true, data: { events } });
+}));
+
+router.get("/friends-going", authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const requestedLimit = parseNumberParam(req.query.limit, 10);
+  const limit = Math.min(Math.max(requestedLimit, 1), 30);
+  const events = await getFriendsGoingEvents(req.userId!, limit);
   res.json({ success: true, data: { events } });
 }));
 

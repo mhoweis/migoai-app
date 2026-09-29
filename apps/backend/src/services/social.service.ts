@@ -1,11 +1,12 @@
 import crypto from 'crypto';
 import { Prisma } from '@prisma/client';
 import prisma from '../config/database';
+import { eventService } from './events.service';
 
 const BASE62 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 const goingStatuses = ['CONFIRMED', 'CHECKED_IN'] as const;
 
-type PublicUser = {
+export type PublicUser = {
   id: string;
   name: string | null;
   avatar: string | null;
@@ -156,6 +157,66 @@ export const getEventSocial = async (eventId: string, userId?: string) => {
     attendeesPreview,
     friendsGoing,
   };
+};
+
+export const getFriendsGoingEvents = async (userId: string, limit = 10) => {
+  const bookings = await prisma.booking.findMany({
+    where: {
+      status: { in: [...goingStatuses] },
+      event: {
+        status: 'ACTIVE',
+        visibility: 'PUBLIC',
+        startDate: { gte: new Date() },
+      },
+      user: {
+        followers: { some: { followerId: userId } },
+      },
+    },
+    select: {
+      eventId: true,
+      event: {
+        select: eventService.getEventSelectFields(userId),
+      },
+      user: {
+        select: { id: true, name: true, avatar: true, avatarUrl: true },
+      },
+    },
+  });
+
+  const grouped = new Map<string, {
+    event: any;
+    friends: PublicUser[];
+    friendIds: Set<string>;
+  }>();
+
+  bookings.forEach(({ eventId, event, user }) => {
+    const existing = grouped.get(eventId);
+    const friend = publicUser(user);
+    if (existing) {
+      if (!existing.friendIds.has(friend.id)) {
+        existing.friendIds.add(friend.id);
+        if (existing.friends.length < 5) existing.friends.push(friend);
+      }
+      return;
+    }
+    grouped.set(eventId, {
+      event,
+      friends: [friend],
+      friendIds: new Set([friend.id]),
+    });
+  });
+
+  return Array.from(grouped.values())
+    .sort((a, b) => (
+      b.friendIds.size - a.friendIds.size
+      || new Date(a.event.startDate).getTime() - new Date(b.event.startDate).getTime()
+    ))
+    .slice(0, limit)
+    .map(({ event, friends, friendIds }) => ({
+      ...eventService.formatEventResponse(event, userId),
+      friendsGoing: friends,
+      friendsGoingCount: friendIds.size,
+    }));
 };
 
 export const searchUsers = async (userId: string, query: string) => {

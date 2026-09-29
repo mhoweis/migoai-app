@@ -1,4 +1,5 @@
 import { api } from './api';
+import { Event } from '@migo/shared';
 
 export interface SocialUser {
   id: string;
@@ -43,5 +44,11 @@ export const socialService = {
   },
   async suggested(): Promise<SocialUser[]> {
     return data(await api.get('/users/suggested'));
+  },
+  async friendsGoingEvents(limit = 10): Promise<Array<Event & { friendsGoing: SocialUser[]; friendsGoingCount: number }>> {
+    const response = data<{ events: Array<Event & { friendsGoing: SocialUser[]; friendsGoingCount: number }> }>(
+      await api.get('/events/friends-going', { params: { limit } }),
+    );
+    return response.events;
   },
 };

@@ -22,6 +22,7 @@ import { useSavedEventsStore } from '../store/savedEventsStore';
 import { useWalletStore } from '../store/walletStore';
 import { Event } from '@migo/shared';
 import { api } from '../services/api';
+import { socialService, SocialUser } from '../services/social.service';
 import { navigateToTab, navigationRef } from '../navigation/navigationRef';
 import { categoryLabel, formatEventDate, formatPrice, useLocale } from '../i18n';
 import { sourceBadge } from '../utils/trust';
@@ -54,6 +55,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const [filteredTopEvents, setFilteredTopEvents] = useState<Event[]>([]);
   const [filteredThisWeek, setFilteredThisWeek] = useState<Event[]>([]);
   const [recommendedThisWeek, setRecommendedThisWeek] = useState<Event[]>([]);
+  const [friendsGoingEvents, setFriendsGoingEvents] = useState<Array<Event & { friendsGoing: SocialUser[]; friendsGoingCount: number }>>([]);
   const [filteredToday, setFilteredToday] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTopIndex, setActiveTopIndex] = useState(0);
@@ -193,7 +195,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
       const { start, end } = getThisWeekRange();
 
       // Fetch events filtered by user's location (default: Dubai)
-      const [fetchedEvents, recommendedResponse] = await Promise.all([
+      const [fetchedEvents, recommendedResponse, friendsGoingResponse] = await Promise.all([
         fetchAllEvents({
           city: userLocation || 'Dubai',
         }),
@@ -205,6 +207,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             limit: 10,
           },
         }).catch(() => null),
+        socialService.friendsGoingEvents(10).catch(() => null),
       ]);
 
       setAllCityEvents(fetchedEvents);
@@ -228,6 +231,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         ? recommendedResponse.data.data?.events || []
         : getThisWeekEvents(filtered).slice(0, 10);
       setRecommendedThisWeek(recommended.slice(0, 10));
+      setFriendsGoingEvents(friendsGoingResponse || []);
     } catch (error) {
       console.error('Error loading events:', error);
       setAllCityEvents([]);
@@ -236,6 +240,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
       setFilteredThisWeek([]);
       setFilteredToday([]);
       setRecommendedThisWeek([]);
+      setFriendsGoingEvents([]);
     } finally {
       setRefreshing(false);
       setLoading(false);
@@ -665,6 +670,48 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
     </View>
   ) : null;
 
+  const renderFriends = () => friendsGoingEvents.length > 0 ? (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>{t('friends_are_going')}</Text>
+      </View>
+      {friendsGoingEvents.slice(0, 5).map((event) => {
+        const friends = event.friendsGoing.slice(0, 3);
+        const firstFriend = event.friendsGoing[0];
+        const remainingCount = Math.max(0, event.friendsGoingCount - 1);
+        return (
+          <View key={event.id}>
+            {renderEventCard(event)}
+            <View style={styles.friendsRow}>
+              <View style={styles.friendsAvatars}>
+                {friends.map((friend, index) => (
+                  friend.avatar ? (
+                    <Image
+                      key={friend.id}
+                      source={{ uri: friend.avatar }}
+                      style={[styles.friendAvatar, index > 0 && styles.friendAvatarOverlap]}
+                    />
+                  ) : (
+                    <View key={friend.id} style={[styles.friendAvatar, styles.friendAvatarFallback, index > 0 && styles.friendAvatarOverlap]}>
+                      <Text style={styles.friendAvatarInitial}>{(friend.name || '?').charAt(0).toUpperCase()}</Text>
+                    </View>
+                  )
+                ))}
+              </View>
+              {firstFriend ? (
+                <Text style={styles.friendsGoingText}>
+                  {remainingCount > 0
+                    ? t('friends_going_names', { name: firstFriend.name || '', count: remainingCount })
+                    : t('friend_going_single', { name: firstFriend.name || '' })}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  ) : null;
+
   const renderToday = () => (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
@@ -741,6 +788,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
     weekend: renderWeekend,
     featured: renderFeatured,
     thisWeek: renderThisWeek,
+    friends: renderFriends,
     venues: renderVenues,
     today: renderToday,
     tickets: renderTickets,
@@ -1001,6 +1049,44 @@ const styles = StyleSheet.create({
     marginTop: 3,
     color: colors.textMuted,
     fontSize: 11,
+  },
+  friendsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginTop: -6,
+    marginBottom: 12,
+  },
+  friendsAvatars: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  friendAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: colors.bg,
+  },
+  friendAvatarOverlap: {
+    marginLeft: -8,
+  },
+  friendAvatarFallback: {
+    backgroundColor: colors.primarySoft,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  friendAvatarInitial: {
+    color: colors.primaryDark,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  friendsGoingText: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '600',
+    flexShrink: 1,
   },
   seeAll: {
     color: colors.primary,
