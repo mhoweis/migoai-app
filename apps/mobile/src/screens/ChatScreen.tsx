@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { navigationRef } from '../navigation/navigationRef';
 import { useUserStore } from '../store/userStore';
 import { chatService } from '../services/chat.service';
 import { api } from '../services/api';
@@ -463,6 +464,16 @@ const ChatScreen: React.FC = () => {
       >
         {/* Header */}
         <View style={styles.header}>
+          {navigationRef.current?.canGoBack() ? (
+            <TouchableOpacity
+              onPress={() => navigationRef.current?.goBack()}
+              accessibilityRole="button"
+              accessibilityLabel={t('back')}
+              style={styles.backButton}
+            >
+              <Ionicons name="chevron-back" size={24} color={colors.text} />
+            </TouchableOpacity>
+          ) : null}
           <View style={styles.headerContent}>
             <View style={styles.aiHeaderIcon}>
               <Ionicons name="sparkles" size={24} color={colors.primary} />
@@ -636,6 +647,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     backgroundColor: colors.surface,
+  },
+  backButton: {
+    padding: 4,
+    marginRight: 8,
   },
   headerContent: {
     flexDirection: 'row',

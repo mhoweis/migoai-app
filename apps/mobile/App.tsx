@@ -36,6 +36,7 @@ import { ticketsService } from "./src/services/tickets.service";
 import { navigateToTab } from "./src/navigation/navigationRef";
 import { setLocale, STORAGE_KEY, useLocale } from "./src/i18n";
 import { shadow, radius } from "./src/theme";
+import ChatFab from "./src/components/ChatFab";
 import './src/web/globalStyles';
 
 const Stack = createNativeStackNavigator();
@@ -65,9 +66,6 @@ const CustomTabIcon = ({ routeName, focused }: { routeName: string, focused: boo
       break;
     case "EventsTab":
       iconSource = require('./assets/icons/events.png');
-      break;
-    case "ChatTab":
-      iconSource = require('./assets/icons/AIchat.png');
       break;
     case "ProfileTab":
       iconSource = require('./assets/icons/profile.png');
@@ -126,11 +124,6 @@ function MainTabs() {
         name="EventsTab"
         component={EventsScreen}
         options={{ title: t('events') }}
-      />
-      <Tab.Screen
-        name="ChatTab"
-        component={ChatScreen}
-        options={{ title: t('chat') }}
       />
       <Tab.Screen
         name="WalletTab"
@@ -233,11 +226,6 @@ function MainTabsWithProfileStack() {
         options={{ title: t('events') }}
       />
       <Tab.Screen
-        name="ChatTab"
-        component={ChatScreen}
-        options={{ title: t('chat') }}
-      />
-      <Tab.Screen
         name="WalletTab"
         component={WalletScreen}
         options={{ title: t('wallet') }}
@@ -251,13 +239,21 @@ function MainTabsWithProfileStack() {
   );
 }
 
-function AppFrame({ children }: { children: React.ReactNode }) {
+function AppFrame({ children, showChatFab, currentRoute }: {
+  children: React.ReactNode;
+  showChatFab: boolean;
+  currentRoute?: string;
+}) {
   const { width } = useWindowDimensions();
   const constrained = Platform.OS === 'web' && width >= 900;
+  const showFabOnRoute = ['Main', 'HomeTab', 'EventsTab', 'WalletTab', 'ProfileTab'].includes(currentRoute || 'Main');
 
   return (
     <View style={styles.frameBackdrop}>
-      <View style={[styles.frame, constrained && styles.frameConstrained]}>{children}</View>
+      <View style={[styles.frame, constrained && styles.frameConstrained]}>
+        {children}
+        {showChatFab && showFabOnRoute ? <ChatFab /> : null}
+      </View>
     </View>
   );
 }
@@ -266,6 +262,7 @@ export default function App() {
   const { user, firstLogin, loadUserFromStorage, setUser, setFirstLogin } = useUserStore();
   const [appLoading, setAppLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
+  const [currentRoute, setCurrentRoute] = useState<string | undefined>();
   const { t } = useLocale();
 
   useEffect(() => {
@@ -449,8 +446,11 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer ref={navigationRef}>
-        <AppFrame>
+      <NavigationContainer
+        ref={navigationRef}
+        onStateChange={() => setCurrentRoute(navigationRef.current?.getCurrentRoute()?.name)}
+      >
+        <AppFrame showChatFab={Boolean(user && !firstLogin)} currentRoute={currentRoute}>
           <Stack.Navigator initialRouteName={!user ? "Register" : undefined}>
             {!user ? (
               // Auth Screens
@@ -488,6 +488,11 @@ export default function App() {
                   options={{
                     headerShown: false,
                   }}
+                />
+                <Stack.Screen
+                  name="Chat"
+                  component={ChatScreen}
+                  options={{ headerShown: false }}
                 />
                 <Stack.Screen
                   name="AIEvents"

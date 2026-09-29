@@ -72,12 +72,11 @@ export function navigateToMainStack(screenName: string, params?: Record<string, 
  * e.g. navigateToTab('Events', 'EventsMain', { venueFilter: 'Dubai Expo' })
  */
 // The mounted navigator in App.tsx names its tab routes HomeTab/EventsTab/
-// ChatTab/ProfileTab, while screens call navigateToTab with short names.
+// ProfileTab, while screens call navigateToTab with short names.
 // Map short names to the mounted tab route names.
 const TAB_ROUTE_MAP: Record<string, string> = {
   Home: 'HomeTab',
   Events: 'EventsTab',
-  Chat: 'ChatTab',
   Profile: 'ProfileTab',
   Wallet: 'WalletTab',
 };
@@ -87,6 +86,10 @@ export function navigateToTab(
   nestedScreen?: string,
   nestedParams?: Record<string, any>,
 ) {
+  if (tabName === 'Chat') {
+    navigationRef.current?.navigate('Chat', nestedParams);
+    return;
+  }
   if (_tabNav) {
     if (nestedScreen) {
       _tabNav.navigate(tabName, { screen: nestedScreen, params: nestedParams });
