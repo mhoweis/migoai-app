@@ -1,6 +1,6 @@
 import { colors } from '../theme';
 // src/screens/HomeScreen.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   FlatList,
   RefreshControl,
   Dimensions,
+  Platform,
   Modal,
   Share,
 } from 'react-native';
@@ -54,6 +55,19 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const [filteredToday, setFilteredToday] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTopIndex, setActiveTopIndex] = useState(0);
+  const topListRef = useRef<FlatList<Event>>(null);
+  const snapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleTopScroll = (offsetX: number) => {
+    const index = Math.round(offsetX / (TOP_CARD_WIDTH + 16));
+    setActiveTopIndex(index);
+    if (Platform.OS !== 'web') return;
+    if (snapTimer.current) clearTimeout(snapTimer.current);
+    snapTimer.current = setTimeout(() => {
+      const target = index * (TOP_CARD_WIDTH + 16);
+      if (Math.abs(target - offsetX) > 1) topListRef.current?.scrollToOffset({ offset: target, animated: true });
+    }, 140);
+  };
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showAllVenues, setShowAllVenues] = useState(false);
   const [availableCities, setAvailableCities] = useState<Array<{ name: string; count: number }>>([]);
@@ -502,7 +516,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         {/* Header */}
         <LinearGradient colors={gradients.primary} style={styles.hero}>
         <View style={styles.header}>
-          <View>
+          <View style={styles.headerText}>
             <Text style={styles.greetingHero}>
               {t('home_greeting', { name: user?.name?.split(' ')[0] || t('welcome') })}
             </Text>
@@ -569,6 +583,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             </TouchableOpacity>
           </View>
           <FlatList
+            ref={topListRef}
             horizontal
             data={filteredTopEvents}
             renderItem={renderTopEventCard}
@@ -578,7 +593,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             snapToInterval={TOP_CARD_WIDTH + 16}
             decelerationRate="fast"
             scrollEventThrottle={16}
-            onScroll={(e) => setActiveTopIndex(Math.round(e.nativeEvent.contentOffset.x / (TOP_CARD_WIDTH + 16)))}
+            onScroll={(e) => handleTopScroll(e.nativeEvent.contentOffset.x)}
             ListEmptyComponent={loading ? (
               <View style={styles.topEventsSkeletonRow}>
                 <Skeleton style={styles.topEventSkeleton} />
@@ -847,7 +862,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.primary,
   },
-  locationDisplayHero: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.pill },
+  headerText: { flex: 1, marginRight: spacing.md },
+  locationDisplayHero: { flexShrink: 0, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.pill },
   locationTextHero: { fontSize: 14, fontWeight: '600', color: colors.textInverse, marginLeft: 4 },
   homeSearch: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginHorizontal: 20, marginTop: -28, paddingLeft: 18, paddingRight: 6, height: 56, borderRadius: radius.pill, backgroundColor: colors.surface, ...shadow.card },
   homeSearchText: { ...type.body, color: colors.textMuted, flex: 1 },
