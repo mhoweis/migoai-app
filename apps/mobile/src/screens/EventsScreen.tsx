@@ -28,6 +28,7 @@ import { radius, shadow, spacing, type } from '../theme';
 import Chip from '../components/Chip';
 import { EventListSkeleton } from '../components/Skeleton';
 import { trackSearch } from '../services/signals.service';
+import { fetchAllEvents } from '../utils/fetchAllEvents';
 
 // Event categories for filtering
 const EVENT_CATEGORIES = [
@@ -258,22 +259,7 @@ const EventsScreen = () => {
         params.city = selectedCity;
       }
 
-      const allEvents: Event[] = [];
-      let page = 1;
-      let hasNext = true;
-      while (hasNext && page <= 10) {
-        const response = await api.get('/events', {
-          params: { ...params, page },
-        });
-        console.log('Events API response:', response.data);
-        if (!response.data.success) break;
-
-        const eventsData = response.data.data?.events || response.data.data;
-        if (!Array.isArray(eventsData)) break;
-        allEvents.push(...eventsData);
-        hasNext = response.data.data?.pagination?.hasNext === true;
-        page += 1;
-      }
+      const allEvents = await fetchAllEvents(params);
 
       // Filter out fully-past events: keep events that start today or later,
       // or events that have already started but still have a future end date.

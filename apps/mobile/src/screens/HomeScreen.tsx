@@ -31,6 +31,7 @@ import { gradients, radius, shadow, spacing, type } from '../theme';
 import { PressableScale } from '../components/PressableScale';
 import { Skeleton } from '../components/Skeleton';
 import { HomeSectionId, normalizeHomeLayout } from '../config/homeSections';
+import { fetchAllEvents } from '../utils/fetchAllEvents';
 
 type WeekendDigestPreview = {
   title: string;
@@ -74,6 +75,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const [availableCities, setAvailableCities] = useState<Array<{ name: string; count: number }>>([]);
   const [selectedInterest, setSelectedInterest] = useState<string | null>(null);
   const [allEvents, setAllEvents] = useState<Event[]>([]);
+  const [allCityEvents, setAllCityEvents] = useState<Event[]>([]);
   const [weekendDigest, setWeekendDigest] = useState<WeekendDigestPreview | null>(null);
 
   useEffect(() => {
@@ -191,12 +193,9 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
       const { start, end } = getThisWeekRange();
 
       // Fetch events filtered by user's location (default: Dubai)
-      const [response, recommendedResponse] = await Promise.all([
-        api.get('/events', {
-          params: {
-            city: userLocation || 'Dubai',
-            limit: 200,
-          },
+      const [fetchedEvents, recommendedResponse] = await Promise.all([
+        fetchAllEvents({
+          city: userLocation || 'Dubai',
         }),
         api.get('/events/recommended', {
           params: {
@@ -208,31 +207,30 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         }).catch(() => null),
       ]);
 
-      if (response.data.success) {
-        const fetchedEvents = response.data.data?.events || [];
+      setAllCityEvents(fetchedEvents);
 
-        // Apply interest filtering if user has interests
-        let filtered = fetchedEvents;
-        if (user?.interests && user.interests.length > 0) {
-          filtered = fetchedEvents.filter((event: Event) =>
-            user.interests.some((interest: string) =>
-              event.category?.toLowerCase().includes(interest.toLowerCase())
-            )
-          );
-        }
-
-        setAllEvents(filtered);
-        setFilteredEvents(filtered);
-        setFilteredTopEvents(filtered.slice(0, 10));
-        setFilteredThisWeek(getThisWeekEvents(filtered));
-        setFilteredToday(getTodayEvents(filtered));
-        const recommended = recommendedResponse?.data?.success
-          ? recommendedResponse.data.data?.events || []
-          : getThisWeekEvents(filtered).slice(0, 10);
-        setRecommendedThisWeek(recommended.slice(0, 10));
+      // Apply interest filtering if user has interests
+      let filtered = fetchedEvents;
+      if (user?.interests && user.interests.length > 0) {
+        filtered = fetchedEvents.filter((event: Event) =>
+          user.interests.some((interest: string) =>
+            event.category?.toLowerCase().includes(interest.toLowerCase())
+          )
+        );
       }
+
+      setAllEvents(filtered);
+      setFilteredEvents(filtered);
+      setFilteredTopEvents(filtered.slice(0, 10));
+      setFilteredThisWeek(getThisWeekEvents(filtered));
+      setFilteredToday(getTodayEvents(filtered));
+      const recommended = recommendedResponse?.data?.success
+        ? recommendedResponse.data.data?.events || []
+        : getThisWeekEvents(filtered).slice(0, 10);
+      setRecommendedThisWeek(recommended.slice(0, 10));
     } catch (error) {
       console.error('Error loading events:', error);
+      setAllCityEvents([]);
       setFilteredEvents([]);
       setFilteredTopEvents([]);
       setFilteredThisWeek([]);
@@ -277,11 +275,11 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
     setFilteredToday(getTodayEvents(allEvents));
   };
 
-  // Derive top venues from allEvents (sorted by event count)
+  // Derive top venues from all city events (sorted by event count)
   const topVenues = React.useMemo(() => {
     interface VenueInfo { name: string; image?: string; city: string; count: number }
     const map = new Map<string, VenueInfo>();
-    allEvents.forEach((event: Event) => {
+    allCityEvents.forEach((event: Event) => {
       if (!event.venueName) return;
       const existing = map.get(event.venueName);
       if (existing) {
@@ -297,7 +295,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
       }
     });
     return Array.from(map.values()).sort((a, b) => b.count - a.count);
-  }, [allEvents]);
+  }, [allCityEvents]);
 
   const renderVenueCard = (item: { name: string; image?: string; city: string; count: number }, style?: object) => (
     <TouchableOpacity
