@@ -52,6 +52,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
   const [filteredTopEvents, setFilteredTopEvents] = useState<Event[]>([]);
   const [filteredThisWeek, setFilteredThisWeek] = useState<Event[]>([]);
+  const [recommendedThisWeek, setRecommendedThisWeek] = useState<Event[]>([]);
   const [filteredToday, setFilteredToday] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTopIndex, setActiveTopIndex] = useState(0);
@@ -142,6 +143,15 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   // Filter events from today to end of current week (Sunday).
   // If today IS Sunday, the range extends to next Sunday.
   const getThisWeekEvents = (events: Event[]): Event[] => {
+    const { start, end } = getThisWeekRange();
+
+    return events.filter((event: Event) => {
+      const d = new Date(event.startDate);
+      return d >= start && d <= end;
+    });
+  };
+
+  const getThisWeekRange = (): { start: Date; end: Date } => {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
 
@@ -152,10 +162,14 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
     end.setDate(start.getDate() + daysUntilSunday);
     end.setHours(23, 59, 59, 999);
 
-    return events.filter((event: Event) => {
-      const d = new Date(event.startDate);
-      return d >= start && d <= end;
-    });
+    return { start, end };
+  };
+
+  const toDateString = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   // Share an event via the native share sheet
@@ -174,14 +188,25 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const loadEvents = async () => {
     try {
       setRefreshing(true);
+      const { start, end } = getThisWeekRange();
 
       // Fetch events filtered by user's location (default: Dubai)
-      const response = await api.get('/events', {
-        params: {
-          city: userLocation || 'Dubai',
-          limit: 200,
-        },
-      });
+      const [response, recommendedResponse] = await Promise.all([
+        api.get('/events', {
+          params: {
+            city: userLocation || 'Dubai',
+            limit: 200,
+          },
+        }),
+        api.get('/events/recommended', {
+          params: {
+            city: userLocation || 'Dubai',
+            from: start.toISOString(),
+            to: end.toISOString(),
+            limit: 10,
+          },
+        }).catch(() => null),
+      ]);
 
       if (response.data.success) {
         const fetchedEvents = response.data.data?.events || [];
@@ -201,6 +226,10 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         setFilteredTopEvents(filtered.slice(0, 10));
         setFilteredThisWeek(getThisWeekEvents(filtered));
         setFilteredToday(getTodayEvents(filtered));
+        const recommended = recommendedResponse?.data?.success
+          ? recommendedResponse.data.data?.events || []
+          : getThisWeekEvents(filtered).slice(0, 10);
+        setRecommendedThisWeek(recommended.slice(0, 10));
       }
     } catch (error) {
       console.error('Error loading events:', error);
@@ -208,6 +237,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
       setFilteredTopEvents([]);
       setFilteredThisWeek([]);
       setFilteredToday([]);
+      setRecommendedThisWeek([]);
     } finally {
       setRefreshing(false);
       setLoading(false);
@@ -221,11 +251,6 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   // Function to navigate to Events tab
   const navigateToEvents = () => {
     navigateToTab('Events');
-  };
-
-  // Function to navigate to Events with filter
-  const navigateToEventsWithFilter = (filter: string) => {
-    navigateToTab('Events', 'EventsMain', { filter });
   };
 
   // Handle interest pill selection — filters all event sections on HomeScreen
@@ -573,13 +598,32 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const renderThisWeek = () => (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{t('this_week_for_you')}</Text>
-        <TouchableOpacity onPress={() => navigateToEventsWithFilter('this-week')}>
+        <View style={styles.sectionTitleBlock}>
+          <Text style={styles.sectionTitle}>{t('this_week_for_you')}</Text>
+          <Text style={styles.sectionSubtitle}>{t('personalised_for_you')}</Text>
+        </View>
+        <TouchableOpacity onPress={() => {
+          const { start, end } = getThisWeekRange();
+          navigateToTab('Events', 'EventsMain', {
+            dateFrom: toDateString(start),
+            dateTo: toDateString(end),
+          });
+        }}>
           <Text style={styles.seeAll}>{t('see_all')}</Text>
         </TouchableOpacity>
       </View>
-      {filteredThisWeek.length > 0 ? (
-        filteredThisWeek.map((event) => renderEventCard(event))
+      {(selectedInterest
+        ? recommendedThisWeek.filter((event) =>
+            event.category?.toLowerCase().includes(selectedInterest.toLowerCase())
+          )
+        : recommendedThisWeek
+      ).length > 0 ? (
+        (selectedInterest
+          ? recommendedThisWeek.filter((event) =>
+              event.category?.toLowerCase().includes(selectedInterest.toLowerCase())
+            )
+          : recommendedThisWeek
+        ).slice(0, 10).map((event) => renderEventCard(event))
       ) : (
         <View style={styles.emptyState}>
           <Ionicons name="calendar-outline" size={48} color={colors.border} />
@@ -946,10 +990,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 16,
   },
+  sectionTitleBlock: {
+    flex: 1,
+    marginRight: 12,
+  },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: colors.text,
+  },
+  sectionSubtitle: {
+    marginTop: 3,
+    color: colors.textMuted,
+    fontSize: 11,
   },
   seeAll: {
     color: colors.primary,

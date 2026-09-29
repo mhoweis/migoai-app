@@ -33,6 +33,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import GradientButton from '../components/GradientButton';
 import { gradients, radius, shadow, spacing, type } from '../theme';
 import { DetailSkeleton } from '../components/Skeleton';
+import { trackSignal } from '../services/signals.service';
 
 interface Props {
   route: any;
@@ -69,6 +70,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
       if (response.data.success) {
         setEvent(response.data.data);
+        void trackSignal('view', { eventId });
       } else {
         setError(t('no_events_found'));
       }

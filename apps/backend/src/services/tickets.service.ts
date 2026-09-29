@@ -6,6 +6,7 @@ import { AppError } from '../middlewares/error.middleware';
 import { getPaymentProvider } from './payments';
 import { findInviteForEvent } from './social.service';
 import { whatsappService } from './messaging/whatsapp.service';
+import { recordSignal } from './recommendation.service';
 
 const serviceError = (
   message: string,
@@ -309,6 +310,7 @@ class TicketsService {
   }
 
   async confirmPaidBooking(bookingId: string): Promise<any> {
+    let newlyConfirmed = false;
     const confirmed = await prisma.$transaction(async tx => {
       const booking = await tx.booking.findUnique({
         where: { id: bookingId },
@@ -337,6 +339,7 @@ class TicketsService {
         },
       });
       const qrCode = this.signTicket(booking.id, booking.eventId, booking.userId);
+      newlyConfirmed = true;
       return tx.booking.update({
         where: { id: booking.id },
         data: { status: BookingStatus.CONFIRMED, qrCode },
@@ -347,6 +350,9 @@ class TicketsService {
       void whatsappService.sendTicketConfirmation(confirmed.id).catch(error => {
         console.error('[whatsapp] ticket confirmation failed', error);
       });
+      if (newlyConfirmed) {
+        void recordSignal(confirmed.userId, 'book', { eventId: confirmed.eventId });
+      }
     }
     return confirmed;
   }
@@ -518,6 +524,7 @@ class TicketsService {
       },
       include: { event: true, user: { select: { id: true, name: true, email: true } } },
     });
+    void recordSignal(updated.userId, 'attend', { eventId: updated.eventId });
     return {
       booking: updated,
       attendee: updated.user,

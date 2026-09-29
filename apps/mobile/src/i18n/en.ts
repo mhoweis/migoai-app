@@ -56,6 +56,7 @@ const en = {
   show_less: 'Show Less',
   top_upcoming_events: 'Top Upcoming Events',
   this_week_for_you: 'This Week For You',
+  personalised_for_you: 'Ranked for you · learns from what you search, save and attend',
   todays_picks: "Today's Picks",
   top_venues: 'Top Venues',
   your_tickets: 'Your Tickets',

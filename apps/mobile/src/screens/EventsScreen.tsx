@@ -27,6 +27,7 @@ import { sourceBadge } from '../utils/trust';
 import { radius, shadow, spacing, type } from '../theme';
 import Chip from '../components/Chip';
 import { EventListSkeleton } from '../components/Skeleton';
+import { trackSearch } from '../services/signals.service';
 
 // Event categories for filtering
 const EVENT_CATEGORIES = [
@@ -109,6 +110,10 @@ const EventsScreen = () => {
   useEffect(() => {
     fetchEvents();
   }, [selectedCity]);
+
+  useEffect(() => {
+    trackSearch(searchQuery);
+  }, [searchQuery]);
 
   // Load available cities, venues, and saved events once on mount
   useEffect(() => {

@@ -7,6 +7,7 @@ import { z } from "zod";
 import prisma from "../database/prisma";
 import { createEventInvite, getEventSocial } from "../services/social.service";
 import { getWebBase } from "./share.routes";
+import { recommendEvents } from "../services/recommendation.service";
 
 const router = Router();
 
@@ -110,6 +111,18 @@ router.get("/weekend", asyncHandler(async (req: Request, res: Response) => {
   
   const result = await eventService.getWeekendEvents(city, limit);
   res.json({ success: true, data: result });
+}));
+
+router.get("/recommended", authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const city = parseQueryParam<string>(req.query.city, 'Dubai') || 'Dubai';
+  const from = parseDateParam(req.query.from) || new Date();
+  const defaultTo = new Date(from);
+  defaultTo.setDate(defaultTo.getDate() + 7);
+  const to = parseDateParam(req.query.to) || defaultTo;
+  const requestedLimit = parseNumberParam(req.query.limit, 10);
+  const limit = Math.min(Math.max(requestedLimit, 1), 50);
+  const events = await recommendEvents(req.userId!, { city, from, to, limit });
+  res.json({ success: true, data: { events } });
 }));
 
 router.get("/mine", authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {

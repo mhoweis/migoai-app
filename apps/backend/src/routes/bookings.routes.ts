@@ -6,6 +6,7 @@ import ticketsService from '../services/tickets.service';
 import transfersService from '../services/transfers.service';
 import { buildApplePass, buildGoogleSaveUrl, getPassCapabilities, getPassTicket } from '../services/wallet-passes';
 import { BookingStatus } from '@prisma/client';
+import { recordSignal } from '../services/recommendation.service';
 
 const router = Router();
 
@@ -41,6 +42,7 @@ const routeError = (message: string, statusCode: number, code: string) => {
 router.post('/', asyncHandler(async (req: AuthRequest, res: Response) => {
   const input = rsvpSchema.parse(req.body);
   const booking = await ticketsService.createRsvp(req.userId!, input.eventId, input);
+  void recordSignal(req.userId!, 'book', { eventId: input.eventId });
   res.status(201).json({ success: true, data: booking });
 }));
 

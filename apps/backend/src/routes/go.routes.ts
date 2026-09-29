@@ -3,7 +3,7 @@
 //   GET /go/:eventId  →  302 redirect to the supplier
 //
 // One endpoint replaces both mobile call sites. It logs the click as a
-// UserSignal (weight 8), increments Event.clickCount — a column that existed
+// UserSignal, increments Event.clickCount — a column that existed
 // and that nothing wrote to — resolves the supplier, wraps the URL exactly
 // once, and redirects.
 
@@ -16,11 +16,9 @@ import {
   hashIp,
 } from '../services/affiliate.service';
 import logger from '../utils/logger';
+import { recordSignal } from '../services/recommendation.service';
 
 const router = Router();
-
-/** Signal weight for a ticket click-out, per the taste model spec. */
-const CLICK_OUT_WEIGHT = 8;
 
 router.get('/:eventId', optionalAuthenticate, async (req: AuthRequest, res: Response) => {
   const { eventId } = req.params;
@@ -76,14 +74,9 @@ router.get('/:eventId', optionalAuthenticate, async (req: AuthRequest, res: Resp
         data: { clickCount: { increment: 1 } },
       }),
       userId
-        ? prisma.userSignal.create({
-            data: {
-              userId,
-              eventId: event.id,
-              type: 'click_out',
-              weight: CLICK_OUT_WEIGHT,
-              context: { supplier: resolved.supplier, placement, token },
-            },
+        ? recordSignal(userId, 'click_out', {
+            eventId: event.id,
+            context: { supplier: resolved.supplier, placement, token },
           })
         : Promise.resolve(null),
     ]).then((results) => {

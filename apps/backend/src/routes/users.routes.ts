@@ -12,6 +12,7 @@ import {
   searchUsers,
   unfollowUser,
 } from "../services/social.service";
+import { recordSignal, SignalType } from "../services/recommendation.service";
 
 const router = Router();
 
@@ -28,6 +29,21 @@ router.get("/search", asyncHandler(async (req: AuthRequest, res: Response) => {
 
 router.get("/me/following", asyncHandler(async (req: AuthRequest, res: Response) => {
   res.json({ success: true, data: await listFollowing(req.userId!) });
+}));
+
+router.post("/me/signals", asyncHandler(async (req: AuthRequest, res: Response) => {
+  const input = z.object({
+    type: z.enum(["search", "view", "save", "unsave"]),
+    eventId: z.string().optional(),
+    context: z.object({
+      query: z.string().max(200).optional(),
+    }).strict().optional(),
+  }).strict().parse(req.body);
+  await recordSignal(req.userId!, input.type as SignalType, {
+    eventId: input.eventId,
+    context: input.context,
+  });
+  res.status(204).send();
 }));
 
 router.get("/me/followers", asyncHandler(async (req: AuthRequest, res: Response) => {

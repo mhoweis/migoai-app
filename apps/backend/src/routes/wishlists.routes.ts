@@ -2,6 +2,7 @@
 import { Router, Response } from 'express';
 import { authenticate, AuthRequest } from '../middlewares/auth.middleware';
 import prisma from '../config/database';
+import { recordSignal } from '../services/recommendation.service';
 
 const router = Router();
 
@@ -32,6 +33,7 @@ router.post('/:eventId', async (req: AuthRequest, res: Response) => {
       create: { userId, eventId },
       update: {},
     });
+    void recordSignal(userId, 'save', { eventId });
     res.json({ success: true, data: { wishlist } });
   } catch (err) {
     res.status(500).json({ success: false, error: 'Failed to save event' });
@@ -44,6 +46,7 @@ router.delete('/:eventId', async (req: AuthRequest, res: Response) => {
     const userId = req.userId!;
     const { eventId } = req.params;
     await prisma.wishlist.deleteMany({ where: { userId, eventId } });
+    void recordSignal(userId, 'unsave', { eventId });
     res.json({ success: true, data: { message: 'Removed from saved events' } });
   } catch (err) {
     res.status(500).json({ success: false, error: 'Failed to remove saved event' });

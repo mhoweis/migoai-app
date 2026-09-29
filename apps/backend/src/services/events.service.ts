@@ -888,7 +888,7 @@ export class EventService {
     }
   }
   
-  private getEventSelectFields(userId?: string, fullDetails: boolean = false) {
+  getEventSelectFields(userId?: string, fullDetails: boolean = false) {
     const baseSelect: any = {
       id: true,
       migoId: true,
@@ -1006,7 +1006,7 @@ export class EventService {
     return baseSelect;
   }
   
-  private formatEventResponse(event: any, userId?: string): any {
+  formatEventResponse(event: any, userId?: string): any {
     const eventAny = event as any;
     const source = getSourceInfo(eventAny.externalSource, eventAny.source);
     const isNative = source.id === 'migo';

@@ -58,6 +58,7 @@ const ar: Record<keyof typeof en, string> = {
   show_less: 'عرض أقل',
   top_upcoming_events: 'أبرز الفعاليات القادمة',
   this_week_for_you: 'هذا الأسبوع من أجلك',
+  personalised_for_you: 'مرتّبة لك · تتعلّم مما تبحث عنه وتحفظه وتحضره',
   todays_picks: 'اختيارات اليوم',
   top_venues: 'أبرز الأماكن',
   your_tickets: 'تذاكرك',
