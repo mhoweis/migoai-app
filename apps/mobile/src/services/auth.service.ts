@@ -1,6 +1,7 @@
 import { api } from './api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { tokenStorage } from './tokenStorage';
+import { HomeLayout } from '../config/homeSections';
 
 export interface User {
   id: string;
@@ -11,10 +12,11 @@ export interface User {
   role: string;
   interests: string[];
   preferences?: {
-    notifications: boolean;
-    location: string;
-    theme: 'light' | 'dark';
+    notifications?: boolean;
+    location?: string;
+    theme?: 'light' | 'dark';
     locale?: 'en' | 'ar';
+    homeLayout?: HomeLayout;
   };
   createdAt: string;
   updatedAt: string;
@@ -244,6 +246,17 @@ export const authService = {
     });
     if (!response.data.success) {
       throw new Error(response.data.error || 'Failed to update language');
+    }
+    await AsyncStorage.setItem('user', JSON.stringify(response.data.data));
+    return response.data.data;
+  },
+
+  async updateHomeLayout(homeLayout: HomeLayout): Promise<User> {
+    const response = await api.put<ApiResponse<User>>('/users/me', {
+      preferences: { homeLayout },
+    });
+    if (!response.data.success) {
+      throw new Error(response.data.error || 'Failed to update Home layout');
     }
     await AsyncStorage.setItem('user', JSON.stringify(response.data.data));
     return response.data.data;

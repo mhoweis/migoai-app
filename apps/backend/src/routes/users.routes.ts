@@ -80,6 +80,13 @@ const updateUserSchema = z
   })
   .strict();
 
+const homeLayoutSchema = z
+  .object({
+    order: z.array(z.string()).max(20),
+    hidden: z.array(z.string()).max(20),
+  })
+  .strict();
+
 const isSelfOrAdmin = async (req: AuthRequest, id: string): Promise<boolean> => {
   if (req.userId === id) return true;
   // The JWT role can be up to 15 min stale — re-check admin in the DB.
@@ -184,6 +191,11 @@ router.put("/me", async (req: AuthRequest, res: Response) => {
     const parsed = updateUserSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ success: false, error: "Invalid user data" });
+      return;
+    }
+    const homeLayout = parsed.data.preferences?.homeLayout;
+    if (homeLayout !== undefined && !homeLayoutSchema.safeParse(homeLayout).success) {
+      res.status(400).json({ success: false, error: "Invalid home layout" });
       return;
     }
     const existing = await prisma.user.findUnique({

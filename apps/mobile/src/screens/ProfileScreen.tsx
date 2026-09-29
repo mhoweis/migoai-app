@@ -116,6 +116,10 @@ const ProfileScreen = () => {
     navigation.navigate('FindFriends');
   };
 
+  const handleNavigateToCustomizeHome = () => {
+    navigationRef.current?.navigate('CustomizeHome');
+  };
+
   const handleNavigateToVerifyOrganizers = () => {
     (navigation as any).navigate('VerifyOrganizers');
   };
@@ -179,6 +183,14 @@ const ProfileScreen = () => {
             <View style={styles.menuItemLeft}>
               <Ionicons name="heart-outline" size={24} color={colors.textSecondary} />
               <Text style={styles.menuItemText}>{t('update_interests')}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToCustomizeHome}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="grid-outline" size={24} color={colors.primary} />
+              <Text style={styles.menuItemText}>{t('customize_home')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>

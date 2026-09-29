@@ -31,6 +31,7 @@ import FindFriendsScreen from "./src/screens/FindFriendsScreen";
 import ClaimTicketScreen from "./src/screens/ClaimTicketScreen";
 import WeekendDigestScreen from "./src/screens/WeekendDigestScreen";
 import VerifyOrganizersScreen from "./src/screens/VerifyOrganizersScreen";
+import CustomizeHomeScreen from "./src/screens/CustomizeHomeScreen";
 import { inviteRef } from "./src/utils/inviteRef";
 import { ticketsService } from "./src/services/tickets.service";
 import { navigateToTab } from "./src/navigation/navigationRef";
@@ -508,6 +509,11 @@ export default function App() {
                   name="WeekendDigest"
                   component={WeekendDigestScreen}
                   options={{ title: t('weekend_digest'), headerBackTitle: t('back') }}
+                />
+                <Stack.Screen
+                  name="CustomizeHome"
+                  component={CustomizeHomeScreen}
+                  options={{ title: t('customize_home'), headerBackTitle: t('back') }}
                 />
               </>
             )}

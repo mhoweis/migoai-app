@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { tokenStorage } from '../services/tokenStorage';
 import { authService, User } from '../services/auth.service';
+import { HomeLayout } from '../config/homeSections';
 
 interface UserStore {
   user: User | null;
@@ -15,6 +16,7 @@ interface UserStore {
   setUser: (user: User | null) => Promise<void>;
   setFirstLogin: (value: boolean) => Promise<void>;
   updateInterests: (interests: string[]) => Promise<void>;
+  updateHomeLayout: (homeLayout: HomeLayout) => Promise<void>;
   setUserLocation: (city: string) => Promise<void>;
   logout: () => Promise<void>;
   loadUserFromStorage: () => Promise<void>;
@@ -63,6 +65,27 @@ export const useUserStore = create<UserStore>((set, get) => ({
 
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
+      throw error;
+    }
+  },
+
+  updateHomeLayout: async (homeLayout) => {
+    const previousUser = get().user;
+    if (!previousUser) return;
+    const optimisticUser: User = {
+      ...previousUser,
+      preferences: {
+        ...previousUser.preferences,
+        homeLayout,
+      },
+    };
+    set({ user: optimisticUser, isLoading: true, error: null });
+    try {
+      const updatedUser = await authService.updateHomeLayout(homeLayout);
+      set({ user: updatedUser, isLoading: false });
+      await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+    } catch (error: any) {
+      set({ user: previousUser, isLoading: false, error: error.message });
       throw error;
     }
   },

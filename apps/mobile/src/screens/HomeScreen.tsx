@@ -30,6 +30,7 @@ import Chip from '../components/Chip';
 import { gradients, radius, shadow, spacing, type } from '../theme';
 import { PressableScale } from '../components/PressableScale';
 import { Skeleton } from '../components/Skeleton';
+import { HomeSectionId, normalizeHomeLayout } from '../config/homeSections';
 
 type WeekendDigestPreview = {
   title: string;
@@ -505,6 +506,207 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
     );
   };
 
+  const renderWeekend = () => weekendDigest ? (
+    <PressableScale
+      style={styles.weekendCardRing}
+      onPress={() => navigationRef.current?.navigate('WeekendDigest')}
+    >
+      <LinearGradient colors={gradients.primary} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.weekendCard}>
+        <View style={styles.weekendCardHeader}>
+          <View>
+            <Text style={styles.weekendTitle}>{t('this_weekend')}</Text>
+            <Text style={styles.weekendSubtitle}>{weekendDigest.title}</Text>
+          </View>
+          <Ionicons name="arrow-forward-circle" size={32} color={colors.textInverse} />
+        </View>
+        <Text style={styles.weekendCount}>
+          {weekendDigest.sections.reduce((count, section) => count + section.events.length, 0)} {t('events')} · {t('free')}: {weekendDigest.sections.flatMap(section => section.events).filter(event => event.isFree).length}
+        </Text>
+        <View style={styles.weekendPosters}>
+          {weekendDigest.sections.flatMap(section => section.events).slice(0, 3).map(event => (
+            event.coverImage
+              ? <Image key={event.id} source={{ uri: event.coverImage }} style={styles.weekendPoster} />
+              : <View key={event.id} style={[styles.weekendPoster, styles.weekendPosterPlaceholder]}><Ionicons name="calendar-outline" size={20} color={colors.textMuted} /></View>
+          ))}
+        </View>
+      </LinearGradient>
+    </PressableScale>
+  ) : null;
+
+  const renderFeatured = () => (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>{t('top_upcoming_events')}</Text>
+        <TouchableOpacity onPress={navigateToEvents}>
+          <Text style={styles.seeAll}>{t('see_all')}</Text>
+        </TouchableOpacity>
+      </View>
+      <FlatList
+        ref={topListRef}
+        horizontal
+        data={filteredTopEvents}
+        renderItem={renderTopEventCard}
+        keyExtractor={(item) => item.id}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.topEventsContainer}
+        snapToInterval={topCardWidth + 16}
+        decelerationRate="fast"
+        scrollEventThrottle={16}
+        onScroll={(e) => handleTopScroll(e.nativeEvent.contentOffset.x)}
+        ListEmptyComponent={loading ? (
+          <View style={styles.topEventsSkeletonRow}>
+            <Skeleton style={[styles.topEventSkeleton, { width: topCardWidth }]} />
+            <Skeleton style={[styles.topEventSkeleton, { width: topCardWidth }]} />
+          </View>
+        ) : null}
+      />
+      {filteredTopEvents.length > 1 && (
+        <View style={styles.dots}>
+          {filteredTopEvents.slice(0, 10).map((event, index) => (
+            <View key={event.id} style={[styles.dot, index === Math.min(activeTopIndex, 9) && styles.dotActive]} />
+          ))}
+        </View>
+      )}
+    </View>
+  );
+
+  const renderThisWeek = () => (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>{t('this_week_for_you')}</Text>
+        <TouchableOpacity onPress={() => navigateToEventsWithFilter('this-week')}>
+          <Text style={styles.seeAll}>{t('see_all')}</Text>
+        </TouchableOpacity>
+      </View>
+      {filteredThisWeek.length > 0 ? (
+        filteredThisWeek.map((event) => renderEventCard(event))
+      ) : (
+        <View style={styles.emptyState}>
+          <Ionicons name="calendar-outline" size={48} color={colors.border} />
+          <Text style={styles.emptyStateText}>{t('no_events_help')}</Text>
+          <TouchableOpacity style={styles.exploreButton} onPress={navigateToEvents}>
+            <Text style={styles.exploreButtonText}>{t('explore_all_events')}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+
+  const renderVenues = () => topVenues.length > 0 ? (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>{t('top_venues')}</Text>
+        <TouchableOpacity onPress={() => setShowAllVenues((v) => !v)}>
+          <Text style={styles.seeAll}>
+            {showAllVenues ? t('show_less') : `${t('see_all')} (${topVenues.length})`}
+          </Text>
+        </TouchableOpacity>
+      </View>
+      {showAllVenues ? (
+        <View style={styles.venuesGrid}>
+          {topVenues.map((item) => (
+            <React.Fragment key={item.name}>
+              {renderVenueCard(item, styles.venueGridCard)}
+            </React.Fragment>
+          ))}
+        </View>
+      ) : (
+        <FlatList
+          horizontal
+          data={topVenues.slice(0, 15)}
+          keyExtractor={(item) => item.name}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.venuesContainer}
+          renderItem={({ item }) => renderVenueCard(item)}
+        />
+      )}
+    </View>
+  ) : null;
+
+  const renderToday = () => (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>{t('todays_picks')}</Text>
+        <View style={styles.todayBadge}>
+          <Ionicons name="flash" size={12} color={colors.textInverse} />
+          <Text style={styles.todayBadgeText}>{t('live')}</Text>
+        </View>
+      </View>
+      {filteredToday.length > 0 ? (
+        filteredToday.map((event) => renderEventCard(event, true))
+      ) : (
+        <View style={styles.emptyState}>
+          <Ionicons name="time-outline" size={48} color={colors.border} />
+          <Text style={styles.emptyStateText}>{t('no_events_help')}</Text>
+          <Text style={styles.emptyStateSubtext}>{t('explore_all_events')}</Text>
+        </View>
+      )}
+    </View>
+  );
+
+  const renderTickets = () => upcomingTickets().length > 0 ? (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>{t('your_tickets')}</Text>
+        <TouchableOpacity onPress={() => navigateToTab('Wallet')}>
+          <Text style={styles.seeAll}>{t('view_wallet')}</Text>
+        </TouchableOpacity>
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
+        {upcomingTickets().slice(0, 5).map((ticket) => (
+          <TouchableOpacity key={ticket.id} style={styles.ticketPreviewCard} onPress={() => navigateToTab('Wallet')}>
+            <View style={[styles.ticketPreviewTop, { backgroundColor: ticket.category === 'Music' ? colors.primaryDark : ticket.category === 'Sports' ? colors.success : colors.primary }]}>
+              <Text style={styles.ticketPreviewCategory}>{categoryLabel(ticket.category)}</Text>
+              <Text style={styles.ticketPreviewTitle} numberOfLines={2}>{ticket.eventTitle}</Text>
+            </View>
+            <View style={styles.ticketPreviewBottom}>
+              <Ionicons name="calendar-outline" size={12} color={colors.textMuted} />
+              <Text style={styles.ticketPreviewDate}>{formatEventDate(ticket.eventDate)}</Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  ) : null;
+
+  const renderSaved = () => savedEvents.length > 0 ? (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>{t('your_saved_events')}</Text>
+        <TouchableOpacity onPress={() => navigateToTab('Events')}>
+          <Text style={styles.seeAll}>{t('see_all')}</Text>
+        </TouchableOpacity>
+      </View>
+      {savedEvents.slice(0, 4).map((event) => renderEventCard(event))}
+    </View>
+  ) : null;
+
+  const renderAssistant = () => (
+    <TouchableOpacity style={styles.aiAssistantButton} onPress={() => navigateToTab('Chat')}>
+      <View style={styles.aiAssistantIcon}>
+        <Ionicons name="sparkles" size={24} color={colors.textInverse} />
+      </View>
+      <View style={styles.aiAssistantText}>
+        <Text style={styles.aiAssistantTitle}>{t('need_help')}</Text>
+        <Text style={styles.aiAssistantSubtitle}>{t('chat_with_ai')}</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={24} color={colors.primary} />
+    </TouchableOpacity>
+  );
+
+  const sectionRenderers: Record<HomeSectionId, () => React.ReactNode> = {
+    interests: renderInterestPills,
+    weekend: renderWeekend,
+    featured: renderFeatured,
+    thisWeek: renderThisWeek,
+    venues: renderVenues,
+    today: renderToday,
+    tickets: renderTickets,
+    saved: renderSaved,
+    assistant: renderAssistant,
+  };
+  const layout = normalizeHomeLayout(user?.preferences?.homeLayout);
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -543,213 +745,19 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         </PressableScale>
 
-        {/* User Interests */}
-        {renderInterestPills()}
+        {layout.order
+          .filter(id => !layout.hidden.includes(id))
+          .map(id => <React.Fragment key={id}>{sectionRenderers[id]()}</React.Fragment>)}
 
-        {weekendDigest && (
-          <PressableScale
-            style={styles.weekendCardRing}
-            onPress={() => navigationRef.current?.navigate('WeekendDigest')}
-          >
-          <LinearGradient colors={gradients.primary} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.weekendCard}>
-            <View style={styles.weekendCardHeader}>
-              <View>
-                <Text style={styles.weekendTitle}>{t('this_weekend')}</Text>
-                <Text style={styles.weekendSubtitle}>{weekendDigest.title}</Text>
-              </View>
-              <Ionicons name="arrow-forward-circle" size={32} color={colors.textInverse} />
-            </View>
-            <Text style={styles.weekendCount}>
-              {weekendDigest.sections.reduce((count, section) => count + section.events.length, 0)} {t('events')} · {t('free')}: {weekendDigest.sections.flatMap(section => section.events).filter(event => event.isFree).length}
-            </Text>
-            <View style={styles.weekendPosters}>
-              {weekendDigest.sections.flatMap(section => section.events).slice(0, 3).map(event => (
-                event.coverImage
-                  ? <Image key={event.id} source={{ uri: event.coverImage }} style={styles.weekendPoster} />
-                  : <View key={event.id} style={[styles.weekendPoster, styles.weekendPosterPlaceholder]}><Ionicons name="calendar-outline" size={20} color={colors.textMuted} /></View>
-              ))}
-            </View>
-          </LinearGradient>
-          </PressableScale>
-        )}
-
-        {/* Top 10 Upcoming Events - Horizontal Scroll */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{t('top_upcoming_events')}</Text>
-            <TouchableOpacity onPress={navigateToEvents}>
-              <Text style={styles.seeAll}>{t('see_all')}</Text>
-            </TouchableOpacity>
-          </View>
-          <FlatList
-            ref={topListRef}
-            horizontal
-            data={filteredTopEvents}
-            renderItem={renderTopEventCard}
-            keyExtractor={(item) => item.id}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.topEventsContainer}
-            snapToInterval={topCardWidth + 16}
-            decelerationRate="fast"
-            scrollEventThrottle={16}
-            onScroll={(e) => handleTopScroll(e.nativeEvent.contentOffset.x)}
-            ListEmptyComponent={loading ? (
-              <View style={styles.topEventsSkeletonRow}>
-                <Skeleton style={[styles.topEventSkeleton, { width: topCardWidth }]} />
-                <Skeleton style={[styles.topEventSkeleton, { width: topCardWidth }]} />
-              </View>
-            ) : null}
-          />
-          {filteredTopEvents.length > 1 && (
-            <View style={styles.dots}>
-              {filteredTopEvents.slice(0, 10).map((event, index) => (
-                <View key={event.id} style={[styles.dot, index === Math.min(activeTopIndex, 9) && styles.dotActive]} />
-              ))}
-            </View>
-          )}
-        </View>
-
-        {/* This Week's Events */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{t('this_week_for_you')}</Text>
-            <TouchableOpacity onPress={() => navigateToEventsWithFilter('this-week')}>
-              <Text style={styles.seeAll}>{t('see_all')}</Text>
-            </TouchableOpacity>
-          </View>
-          {filteredThisWeek.length > 0 ? (
-            filteredThisWeek.map((event) => renderEventCard(event))
-          ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="calendar-outline" size={48} color={colors.border} />
-              <Text style={styles.emptyStateText}>
-                {t('no_events_help')}
-              </Text>
-              <TouchableOpacity 
-                style={styles.exploreButton}
-                onPress={navigateToEvents}
-              >
-                <Text style={styles.exploreButtonText}>{t('explore_all_events')}</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        {/* Top Venues */}
-        {topVenues.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>{t('top_venues')}</Text>
-              <TouchableOpacity onPress={() => setShowAllVenues((v) => !v)}>
-                <Text style={styles.seeAll}>
-                  {showAllVenues ? t('show_less') : `${t('see_all')} (${topVenues.length})`}
-                </Text>
-              </TouchableOpacity>
-            </View>
-            {showAllVenues ? (
-              <View style={styles.venuesGrid}>
-                {topVenues.map((item) => (
-                  <React.Fragment key={item.name}>
-                    {renderVenueCard(item, styles.venueGridCard)}
-                  </React.Fragment>
-                ))}
-              </View>
-            ) : (
-              <FlatList
-                horizontal
-                data={topVenues.slice(0, 15)}
-                keyExtractor={(item) => item.name}
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.venuesContainer}
-                renderItem={({ item }) => renderVenueCard(item)}
-              />
-            )}
-          </View>
-        )}
-
-        {/* Today's Events */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{t('todays_picks')}</Text>
-            <View style={styles.todayBadge}>
-              <Ionicons name="flash" size={12} color={colors.textInverse} />
-              <Text style={styles.todayBadgeText}>{t('live')}</Text>
-            </View>
-          </View>
-          {filteredToday.length > 0 ? (
-            filteredToday.map((event) => renderEventCard(event, true))
-          ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="time-outline" size={48} color={colors.border} />
-              <Text style={styles.emptyStateText}>
-                {t('no_events_help')}
-              </Text>
-              <Text style={styles.emptyStateSubtext}>
-                {t('explore_all_events')}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Your Tickets section — only shown if user has upcoming tickets */}
-        {upcomingTickets().length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>{t('your_tickets')}</Text>
-              <TouchableOpacity onPress={() => navigateToTab('Wallet')}>
-                <Text style={styles.seeAll}>{t('view_wallet')}</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
-              {upcomingTickets().slice(0, 5).map((ticket) => (
-                <TouchableOpacity
-                  key={ticket.id}
-                  style={styles.ticketPreviewCard}
-                  onPress={() => navigateToTab('Wallet')}
-                >
-                  <View style={[styles.ticketPreviewTop, { backgroundColor: ticket.category === 'Music' ? colors.primaryDark : ticket.category === 'Sports' ? colors.success : colors.primary }]}>
-                    <Text style={styles.ticketPreviewCategory}>{categoryLabel(ticket.category)}</Text>
-                    <Text style={styles.ticketPreviewTitle} numberOfLines={2}>{ticket.eventTitle}</Text>
-                  </View>
-                  <View style={styles.ticketPreviewBottom}>
-                    <Ionicons name="calendar-outline" size={12} color={colors.textMuted} />
-                    <Text style={styles.ticketPreviewDate}>
-                      {formatEventDate(ticket.eventDate)}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* Your Saved Events section */}
-        {savedEvents.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>{t('your_saved_events')}</Text>
-              <TouchableOpacity onPress={() => navigateToTab('Events')}>
-                <Text style={styles.seeAll}>{t('see_all')}</Text>
-              </TouchableOpacity>
-            </View>
-            {savedEvents.slice(0, 4).map((event) => renderEventCard(event))}
-          </View>
-        )}
-
-        {/* AI Assistant Button */}
-        <TouchableOpacity
-          style={styles.aiAssistantButton}
-          onPress={() => navigateToTab('Chat')}
+        <PressableScale
+          style={styles.customizeButton}
+          onPress={() => navigationRef.current?.navigate('CustomizeHome')}
+          accessibilityRole="button"
+          testID="customize-home-button"
         >
-          <View style={styles.aiAssistantIcon}>
-            <Ionicons name="sparkles" size={24} color={colors.textInverse} />
-          </View>
-          <View style={styles.aiAssistantText}>
-            <Text style={styles.aiAssistantTitle}>{t('need_help')}</Text>
-            <Text style={styles.aiAssistantSubtitle}>{t('chat_with_ai')}</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={24} color={colors.primary} />
-        </TouchableOpacity>
+          <Ionicons name="options-outline" size={18} color={colors.primary} />
+          <Text style={styles.customizeButtonText}>{t('customize_home')}</Text>
+        </PressableScale>
       </ScrollView>
 
       {/* Location Selection Modal */}
@@ -1219,6 +1227,24 @@ const styles = StyleSheet.create({
   aiAssistantSubtitle: {
     fontSize: 14,
     color: colors.textMuted,
+  },
+  customizeButton: {
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 32,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.surface,
+  },
+  customizeButtonText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: '700',
   },
   // Ticket preview card
   ticketPreviewCard: {
