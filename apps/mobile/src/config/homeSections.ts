@@ -51,8 +51,11 @@ export function normalizeHomeLayout(raw: unknown): HomeLayout {
     (id): id is HomeSectionId => typeof id === 'string' && SECTION_IDS.has(id as HomeSectionId),
   );
   const dedupedOrder = [...new Set(order)];
-  DEFAULT_HOME_SECTIONS.forEach(id => {
-    if (!dedupedOrder.includes(id)) dedupedOrder.push(id);
+  DEFAULT_HOME_SECTIONS.forEach((id, index) => {
+    if (dedupedOrder.includes(id)) return;
+    const previous = DEFAULT_HOME_SECTIONS[index - 1];
+    const anchor = previous ? dedupedOrder.indexOf(previous) : -1;
+    dedupedOrder.splice(anchor + 1, 0, id);
   });
 
   const hidden = [...new Set(candidate.hidden.filter(
