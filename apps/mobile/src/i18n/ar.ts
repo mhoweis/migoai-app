@@ -100,6 +100,7 @@ const ar: Record<keyof typeof en, string> = {
   about: 'نبذة',
   location_on_map: 'الموقع على الخريطة',
   open_google_maps: 'فتح في خرائط Google',
+  approximate_location: 'موقع تقريبي — اضغط للفتح في خرائط جوجل',
   get_free_ticket: 'احصل على تذكرة مجانية',
   view_ticket: 'عرض التذكرة',
   buy_ticket: 'اشترِ تذكرة',

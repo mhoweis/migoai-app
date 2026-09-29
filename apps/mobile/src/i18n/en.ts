@@ -98,6 +98,7 @@ const en = {
   about: 'About',
   location_on_map: 'Location on Map',
   open_google_maps: 'Open in Google Maps',
+  approximate_location: 'Approximate — tap to open in Google Maps',
   get_free_ticket: 'Get Free Ticket',
   view_ticket: 'View Ticket',
   buy_ticket: 'Buy Ticket',

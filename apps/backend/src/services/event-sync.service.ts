@@ -18,6 +18,7 @@ import { uaeGovProvider } from './providers/uae-gov.provider';
 import { yasIslandProvider } from './providers/yas-island.provider';
 import { alserkalProvider } from './providers/alserkal.provider';
 import { EventProvider, NormalizedEvent } from './providers/types';
+import { geocodeVenue } from './places/geocode.service';
 
 export interface ProviderSyncSummary {
   fetched: number;
@@ -31,6 +32,8 @@ export interface SyncSummary {
   perProvider: Record<string, ProviderSyncSummary>;
   durationMs: number;
   skipped?: boolean;
+  geocoded?: number;
+  unresolved?: number;
 }
 
 let running = false;
@@ -103,11 +106,61 @@ export class EventSyncService {
         }
       }
 
+      const coordinates = await this.backfillCoordinates(120);
       await this.markExpiredEvents(syncedSources);
-      return { perProvider, durationMs: Date.now() - startedAt };
+      return {
+        perProvider,
+        durationMs: Date.now() - startedAt,
+        geocoded: coordinates.geocoded,
+        unresolved: coordinates.unresolved,
+      };
     } finally {
       running = false;
     }
+  }
+
+  async backfillCoordinates(limit = 120): Promise<{ geocoded: number; unresolved: number }> {
+    const events = await prisma.event.findMany({
+      where: {
+        latitude: null,
+        status: 'ACTIVE',
+        startDate: { gte: new Date() },
+        OR: [{ venueName: { not: null } }, { address: { not: null } }],
+      },
+      take: limit,
+      orderBy: { startDate: 'asc' },
+      select: {
+        id: true,
+        venueName: true,
+        address: true,
+        city: true,
+      },
+    });
+    let geocoded = 0;
+    let unresolved = 0;
+
+    for (const event of events) {
+      const coordinates = await geocodeVenue(event.venueName, event.address, event.city);
+      if (!coordinates) {
+        unresolved += 1;
+        continue;
+      }
+      await prisma.event.update({
+        where: { id: event.id },
+        data: {
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude,
+        },
+      });
+      geocoded += 1;
+    }
+
+    logger.info('Event coordinate backfill complete', {
+      requested: events.length,
+      geocoded,
+      unresolved,
+    });
+    return { geocoded, unresolved };
   }
 
   private async upsertEvents(
