@@ -13,6 +13,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:seed": "ts-node prisma/seed.ts",
+    "seed:friends": "ts-node prisma/seed-friends.ts",
     "prisma:push": "prisma db push",
     "prisma:reset": "prisma migrate reset",
     "lint": "eslint src/**/*.ts",

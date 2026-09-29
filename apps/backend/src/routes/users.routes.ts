@@ -10,6 +10,7 @@ import {
   listFollowers,
   listFollowing,
   searchUsers,
+  suggestedUsers,
   unfollowUser,
 } from "../services/social.service";
 import { recordSignal, SignalType } from "../services/recommendation.service";
@@ -25,6 +26,10 @@ router.get("/search", asyncHandler(async (req: AuthRequest, res: Response) => {
     return;
   }
   res.json({ success: true, data: await searchUsers(req.userId!, query) });
+}));
+
+router.get("/suggested", asyncHandler(async (req: AuthRequest, res: Response) => {
+  res.json({ success: true, data: await suggestedUsers(req.userId!) });
 }));
 
 router.get("/me/following", asyncHandler(async (req: AuthRequest, res: Response) => {

@@ -200,6 +200,8 @@ const en = {
   check_in_invalid: 'Invalid or expired ticket.',
   search_people: 'Search people',
   following: 'Following',
+  suggested_people: 'Suggested for you',
+  going_to_events: 'Going to {{count}} events',
   follow: 'Follow',
   unfollow: 'Unfollow',
   no_friends: 'No friends found',

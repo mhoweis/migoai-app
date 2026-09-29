@@ -202,6 +202,8 @@ const ar: Record<keyof typeof en, string> = {
   check_in_invalid: 'التذكرة غير صالحة أو منتهية.',
   search_people: 'ابحث عن أشخاص',
   following: 'المتابَعون',
+  suggested_people: 'مقترحون لك',
+  going_to_events: 'سيحضر {{count}} فعاليات',
   follow: 'متابعة',
   unfollow: 'إلغاء المتابعة',
   no_friends: 'لم يتم العثور على أصدقاء',

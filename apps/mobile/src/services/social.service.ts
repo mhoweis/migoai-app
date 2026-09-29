@@ -5,6 +5,7 @@ export interface SocialUser {
   name?: string | null;
   avatar?: string | null;
   isFollowing?: boolean;
+  goingCount?: number;
 }
 
 export interface EventSocial {
@@ -39,5 +40,8 @@ export const socialService = {
   },
   async following(): Promise<SocialUser[]> {
     return data(await api.get('/users/me/following'));
+  },
+  async suggested(): Promise<SocialUser[]> {
+    return data(await api.get('/users/suggested'));
   },
 };

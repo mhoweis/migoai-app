@@ -181,6 +181,46 @@ export const searchUsers = async (userId: string, query: string) => {
   return users.map(user => ({ ...publicUser(user), isFollowing: following.has(user.id) }));
 };
 
+export const suggestedUsers = async (userId: string) => {
+  const users = await prisma.user.findMany({
+    where: {
+      id: { not: userId },
+      email: { not: 'system@migo.events' },
+      isAdmin: false,
+      followers: { none: { followerId: userId } },
+    },
+    select: {
+      id: true,
+      name: true,
+      avatar: true,
+      avatarUrl: true,
+      _count: {
+        select: {
+          bookings: { where: { status: 'CONFIRMED' } },
+        },
+      },
+      bookings: {
+        where: {
+          status: 'CONFIRMED',
+          event: { startDate: { gte: new Date() } },
+        },
+        select: { id: true },
+      },
+    },
+    orderBy: [
+      { bookings: { _count: 'desc' } },
+      { name: 'asc' },
+    ],
+    take: 20,
+  });
+
+  return users.map(user => ({
+    ...publicUser(user),
+    isFollowing: false,
+    goingCount: user.bookings.length,
+  }));
+};
+
 export const followUser = async (followerId: string, followingId: string) => {
   if (followerId === followingId) return { error: 'SELF_FOLLOW' as const };
   const target = await prisma.user.findUnique({ where: { id: followingId }, select: { id: true } });
