@@ -137,7 +137,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             end={{ x: 1, y: 1 }}
             style={[styles.header, isWebDesktop && styles.desktopBrandPanel]}
           >
-            <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+            <Image source={require('../../assets/logo-mark.png')} style={styles.logo} resizeMode="contain" />
             {isWebDesktop ? (
               <>
                 <Text style={styles.brandStatement}>{t('login_brand_headline')}</Text>

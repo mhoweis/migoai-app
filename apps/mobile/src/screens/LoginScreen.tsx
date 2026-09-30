@@ -131,7 +131,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
           >
             {/* Updated: Replaced Icon with actual logo */}
             <Image 
-              source={require('../../assets/logo.png')}
+              source={require('../../assets/logo-mark.png')}
               style={styles.logo}
               resizeMode="contain"
             />
