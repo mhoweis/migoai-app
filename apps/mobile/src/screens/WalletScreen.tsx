@@ -309,15 +309,15 @@ export default function WalletScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container}>
       <LinearGradient colors={gradients.dusk} style={styles.header}>
-        <View style={styles.headerContent}>
+        <Container style={styles.headerContent}>
           <View>
             <Text style={styles.headerEyebrow}>{t('wallet')}</Text>
             <Text style={styles.headerTitle}>{t('your_tickets')}</Text>
           </View>
           <View style={styles.headerIcon}><Ionicons name="ticket-outline" size={28} color={colors.textInverse} /></View>
-        </View>
+        </Container>
       </LinearGradient>
       {offline ? <Text style={styles.offline}>{t('offline_saved_tickets')}</Text> : null}
       <Container style={[styles.ticketListContainer, !isWebDesktop && styles.mobileTicketListContainer]}>
@@ -385,7 +385,7 @@ export default function WalletScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   loader: { flex: 1 },
-  headerContent: { width: '100%', maxWidth: 1240, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 48 },
+  headerContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerEyebrow: { color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: '700' },
   headerIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' },
   header: {
@@ -394,7 +394,7 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
   },
   headerTitle: { ...type.h1, color: colors.textInverse, marginTop: 6 },
-  desktopList: { width: '100%', maxWidth: 1240, alignSelf: 'center' },
+  desktopList: { width: '100%' },
   ticketListContainer: { flex: 1 },
   mobileTicketListContainer: { paddingHorizontal: 0 },
   list: { paddingHorizontal: 20, paddingVertical: 24, gap: 16 },

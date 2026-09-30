@@ -145,7 +145,7 @@ const ProfileScreen = () => {
             <View style={isWebDesktop ? styles.desktopSummary : undefined}>
 
         {/* ── User Info ── */}
-        <View style={styles.section}>
+        <View style={[styles.section, isWebDesktop && styles.desktopSection]}>
           <View style={styles.userInfo}>
 
             {/* Tappable avatar */}
@@ -175,7 +175,7 @@ const ProfileScreen = () => {
           </View>
         </View>
             {isWebDesktop ? (
-              <View style={styles.profileStats}>
+              <View style={[styles.profileStats, isWebDesktop && styles.desktopProfileStats]}>
                 <View style={styles.profileStat}>
                   <Text style={styles.profileStatValue}>{user?.interests?.length || 0}</Text>
                   <Text style={styles.profileStatLabel}>{t('your_interests')}</Text>
@@ -190,7 +190,7 @@ const ProfileScreen = () => {
             <View style={isWebDesktop ? styles.desktopSettings : undefined}>
 
         {/* ── Menu ── */}
-        <View style={styles.section}>
+        <View style={[styles.section, isWebDesktop && styles.desktopSection]}>
           <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToWallet}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="wallet-outline" size={24} color={colors.primary} />
@@ -224,7 +224,7 @@ const ProfileScreen = () => {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.section}>
+        <View style={[styles.section, isWebDesktop && styles.desktopSection]}>
           <Text style={styles.sectionTitle}>{t('host')}</Text>
           <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToCreateEvent}>
             <View style={styles.menuItemLeft}>
@@ -258,7 +258,7 @@ const ProfileScreen = () => {
           ) : null}
         </View>
 
-        <View style={styles.section}>
+        <View style={[styles.section, isWebDesktop && styles.desktopSection]}>
           <TouchableOpacity style={styles.menuItem} onPress={logout}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="log-out-outline" size={24} color={colors.danger} />
@@ -267,7 +267,7 @@ const ProfileScreen = () => {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.section}>
+        <View style={[styles.section, isWebDesktop && styles.desktopSection]}>
           <Text style={styles.sectionTitle}>{t('language')}</Text>
           <View style={styles.languageToggle}>
             <TouchableOpacity
@@ -347,6 +347,8 @@ const styles = StyleSheet.create({
   desktopHeader: { paddingHorizontal: 0 },
   desktopSummary: { width: '34%' },
   desktopSettings: { flex: 1, minWidth: 0 },
+  desktopSection: { marginHorizontal: 0 },
+  desktopProfileStats: { marginHorizontal: 0 },
   profileStats: { flexDirection: 'row', gap: 12, marginHorizontal: 20, marginTop: 16 },
   profileStat: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.md, padding: 16, ...shadow.card },
   profileStatValue: { ...type.h2, color: colors.primary },

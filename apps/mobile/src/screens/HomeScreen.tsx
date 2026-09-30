@@ -39,6 +39,9 @@ import EventCard from '../components/EventCard';
 import WebFooter from '../components/WebFooter';
 import DateBadge from '../components/DateBadge';
 
+const RankedEventView = View as unknown as React.ComponentType<any>;
+const RankedEventText = Text as unknown as React.ComponentType<any>;
+
 type WeekendDigestPreview = {
   title: string;
   sections: Array<{ events: Array<{ id: string; title: string; coverImage?: string | null; isFree: boolean }> }>;
@@ -51,11 +54,11 @@ interface Props {
 const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const { isWebDesktop, gutter, width } = useBreakpoint();
   const recommendationColumns = width >= 1400 ? 5 : 4;
-  const recommendationCellWidth = (count: number) => (Math.min(width, 1240) - gutter * 2 - 40 - (count - 1) * 16) / count;
+  const recommendationCellWidth = (count: number) => (Math.min(width, 1240) - gutter * 2 - (count - 1) * 16) / count;
   const venueColumns = isWebDesktop ? 6 : 3;
-  const venueCellWidth = (Math.min(width, 1240) - gutter * 2 - 40 - (venueColumns - 1) * 12) / venueColumns;
+  const venueCellWidth = (Math.min(width, 1240) - gutter * 2 - (venueColumns - 1) * 12) / venueColumns;
   const topCardWidth = isWebDesktop
-    ? Math.min(360, (Math.min(width, 1240) - gutter * 2 - 32) / 3)
+    ? (Math.min(width, 1240) - gutter * 2 - 32) / 3
     : Math.min(width * 0.75, 360);
   const { user, userLocation, setUserLocation } = useUserStore();
   const { t, locale } = useLocale();
@@ -90,6 +93,18 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const [allEvents, setAllEvents] = useState<Event[]>([]);
   const [allCityEvents, setAllCityEvents] = useState<Event[]>([]);
   const [weekendDigest, setWeekendDigest] = useState<WeekendDigestPreview | null>(null);
+  const heroFanEvents = React.useMemo(() => {
+    const covers = new Set<string>();
+    const events: Event[] = [];
+    filteredTopEvents.forEach(event => {
+      const cover = (event.coverImage || event.thumbnail || '').trim();
+      const key = cover.split(/[?#]/, 1)[0].toLowerCase();
+      if (!key || covers.has(key)) return;
+      covers.add(key);
+      events.push(event);
+    });
+    return events.slice(0, 3);
+  }, [filteredTopEvents]);
 
   useEffect(() => {
     loadEvents();
@@ -369,6 +384,8 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
     const formattedDate = formatEventWhen(item, locale);
 
     const saved = savedIds.has(item.id);
+    const trustKind = sourceBadge((item as any).trust, locale)?.kind;
+    const isOfficial = ['official', 'venue'].includes(trustKind || '');
 
     return (
       <View style={[styles.topEventCard, { width: topCardWidth }]}>
@@ -390,7 +407,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
               <View style={styles.topEventBadge}>
                 <Text style={styles.topEventBadgeText}>{t('featured')}</Text>
               </View>
-              {sourceBadge((item as any).trust, locale)?.kind && ['official', 'venue'].includes(sourceBadge((item as any).trust, locale)?.kind || '') && (
+              {isOfficial && (
                 <View style={styles.topTrustPill}><Ionicons name="shield-checkmark" size={11} color={colors.textInverse} /><Text style={styles.topTrustPillText}>{t('official')}</Text></View>
               )}
             </View>
@@ -418,6 +435,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           <TouchableOpacity
             accessibilityRole="button"
             accessibilityLabel={saved ? t('remove_saved_event') : t('save_event')}
+            hitSlop={4}
             style={styles.topEventActionBtn}
             onPress={() => toggleSaved(item)}
           >
@@ -430,6 +448,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           <TouchableOpacity
             accessibilityRole="button"
             accessibilityLabel={t('share')}
+            hitSlop={4}
             style={styles.topEventActionBtn}
             onPress={() => handleShare(item)}
           >
@@ -456,6 +475,69 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
     );
 
     const saved = savedIds.has(item.id);
+
+    if (rank !== undefined) {
+      const trustKind = sourceBadge((item as any).trust, locale)?.kind;
+      const isOfficial = ['official', 'venue'].includes(trustKind || '');
+      return (
+        <RankedEventView key={item.id} style={styles.rankedEventCard}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={item.title}
+            style={styles.rankedEventContent}
+            onPress={() => navigation.navigate('EventDetail', { eventId: item.id })}
+          >
+            <RankedEventView style={styles.rankedEventImage}>
+              {item.coverImage || item.thumbnail ? (
+                <Image source={{ uri: item.coverImage || item.thumbnail }} style={styles.rankedEventCover} />
+              ) : (
+                <RankedEventView style={[styles.rankedEventCover, styles.placeholderImageSmall]}>
+                  <Ionicons name="image-outline" size={28} color={colors.border} />
+                </RankedEventView>
+              )}
+              <RankedEventView style={styles.rankedEventRank}>
+                <RankedEventText style={styles.rankedEventRankText}>{rank}</RankedEventText>
+              </RankedEventView>
+            </RankedEventView>
+            <RankedEventView style={styles.rankedEventDetails}>
+              <RankedEventView style={styles.rankedEventEyebrow}>
+                <RankedEventText style={styles.rankedEventCategory} numberOfLines={1}>{categoryLabel(item.category)}</RankedEventText>
+                {isOfficial ? (
+                  <RankedEventView accessible accessibilityRole="image" accessibilityLabel={t('official')} style={styles.rankedEventOfficial}>
+                    <Ionicons name="shield-checkmark" size={15} color={colors.info} />
+                  </RankedEventView>
+                ) : null}
+              </RankedEventView>
+              <RankedEventText style={styles.rankedEventTitle} numberOfLines={2}>{item.title}</RankedEventText>
+              <RankedEventText style={styles.rankedEventMeta} numberOfLines={1}>
+                {formattedDate} · {item.venueName || item.city}
+              </RankedEventText>
+              <RankedEventView style={styles.rankedEventPrice}>{priceDisplay}</RankedEventView>
+            </RankedEventView>
+          </TouchableOpacity>
+          <RankedEventView style={[styles.rankedEventActions, Platform.OS === 'web' && width < 1024 && styles.rankedEventActionsWithChatFab]}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={saved ? t('remove_saved_event') : t('save_event')}
+              hitSlop={4}
+              style={styles.rankedEventActionButton}
+              onPress={() => toggleSaved(item)}
+            >
+              <Ionicons name={saved ? 'bookmark' : 'bookmark-outline'} size={18} color={saved ? colors.primary : colors.textMuted} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={t('share')}
+              hitSlop={4}
+              style={styles.rankedEventActionButton}
+              onPress={() => handleShare(item)}
+            >
+              <Ionicons name="share-outline" size={18} color={colors.textMuted} />
+            </TouchableOpacity>
+          </RankedEventView>
+        </RankedEventView>
+      );
+    }
 
     return (
       <View key={item.id} style={[styles.eventCard, isToday && styles.todayEventCard]}>
@@ -591,29 +673,32 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
   const renderFeatured = () => (
     <View style={styles.section}>
-      <SectionHeader title={t('top_upcoming_events')} onSeeAll={navigateToEvents} />
-      {isWebDesktop ? (
-        <View style={styles.carouselControls}>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('previous')} style={styles.carouselArrow} onPress={() => topListRef.current?.scrollToOffset({ offset: Math.max(0, activeTopIndex - 1) * (topCardWidth + 16), animated: true })}>
-            <Ionicons name="arrow-back" size={18} color={colors.ink} />
-          </TouchableOpacity>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('next')} style={styles.carouselArrow} onPress={() => topListRef.current?.scrollToOffset({ offset: Math.min(filteredTopEvents.length - 1, activeTopIndex + 1) * (topCardWidth + 16), animated: true })}>
-            <Ionicons name="arrow-forward" size={18} color={colors.ink} />
-          </TouchableOpacity>
-        </View>
-      ) : null}
+      <SectionHeader
+        title={t('top_upcoming_events')}
+        onSeeAll={navigateToEvents}
+        trailingContent={isWebDesktop ? (
+          <View style={styles.carouselHeaderControls}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('previous')} style={styles.carouselArrow} onPress={() => topListRef.current?.scrollToOffset({ offset: Math.max(0, activeTopIndex - 1) * (topCardWidth + 16), animated: true })}>
+              <Ionicons name="arrow-back" size={18} color={colors.ink} />
+            </TouchableOpacity>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('next')} style={styles.carouselArrow} onPress={() => topListRef.current?.scrollToOffset({ offset: Math.min(filteredTopEvents.length - 1, activeTopIndex + 1) * (topCardWidth + 16), animated: true })}>
+              <Ionicons name="arrow-forward" size={18} color={colors.ink} />
+            </TouchableOpacity>
+          </View>
+        ) : null}
+      />
       <FlatList
         ref={topListRef}
         horizontal
         data={filteredTopEvents}
         renderItem={renderTopEventCard}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item: Event) => item.id}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.topEventsContainer}
         snapToInterval={topCardWidth + 16}
         decelerationRate="fast"
         scrollEventThrottle={16}
-        onScroll={(e) => handleTopScroll(e.nativeEvent.contentOffset.x)}
+        onScroll={(e: { nativeEvent: { contentOffset: { x: number } } }) => handleTopScroll(e.nativeEvent.contentOffset.x)}
         ListEmptyComponent={loading ? (
           <View style={styles.topEventsSkeletonRow}>
             <Skeleton style={[styles.topEventSkeleton, { width: topCardWidth }]} />
@@ -769,7 +854,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const renderTickets = () => upcomingTickets().length > 0 ? (
     <View style={styles.section}>
       <SectionHeader title={t('your_tickets')} actionLabel={t('view_wallet')} onSeeAll={() => navigateToTab('Wallet')} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 0, gap: 12 }}>
         {upcomingTickets().slice(0, 5).map((ticket) => (
           <TouchableOpacity key={ticket.id} style={styles.ticketPreviewCard} onPress={() => navigateToTab('Wallet')}>
             <View style={[styles.ticketPreviewTop, { backgroundColor: ticket.category === 'Music' ? colors.primaryDark : ticket.category === 'Sports' ? colors.success : colors.primary }]}>
@@ -844,7 +929,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           style={[styles.hero, isWebDesktop && styles.desktopHero]}
         >
           <View style={[styles.heroContent, isWebDesktop && styles.desktopHeroContent]}>
-            <View style={styles.heroLeft}>
+            <View style={[styles.heroLeft, !isWebDesktop && styles.heroLeftFull]}>
               <View style={styles.header}>
                 <View style={styles.headerText}>
                   <Text style={[styles.greetingHero, isWebDesktop && styles.desktopGreetingHero]}>{isWebDesktop
@@ -868,17 +953,15 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             </View>
             {isWebDesktop ? (
               <View style={styles.heroFan}>
-                {filteredTopEvents.slice(0, 3).map((event, index) => (
+                {heroFanEvents.map((event, index) => (
                   <PressableScale
                     key={event.id}
                     accessibilityRole="button"
                     accessibilityLabel={event.title}
                     onPress={() => navigation.navigate('EventDetail', { eventId: event.id })}
-                    style={[styles.heroFanImage, { transform: [{ rotate: `${(index - 1) * 6}deg` }, { translateY: Math.abs(index - 1) * 18 }] }]}
+                    style={[styles.heroFanImage, { zIndex: index === 1 ? 3 : 1, transform: [{ translateX: (index - 1) * 40 }, { rotate: `${(index - 1) * 8}deg` }] }]}
                   >
-                    {event.coverImage || event.thumbnail ? (
-                      <Image source={{ uri: event.coverImage || event.thumbnail }} style={styles.heroFanCover} />
-                    ) : <LinearGradient colors={gradients.primary} style={styles.heroFanCover} />}
+                    <Image source={{ uri: event.coverImage || event.thumbnail }} style={styles.heroFanCover} />
                     {index === 1 ? <View style={styles.heroFanDateBadge}><DateBadge date={event.startDate} /></View> : null}
                   </PressableScale>
                 ))}
@@ -993,25 +1076,27 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
-  heroShell: { paddingHorizontal: 0 },
+  heroShell: {},
   hero: { paddingTop: 8, paddingBottom: 28, borderBottomLeftRadius: radius.xl, borderBottomRightRadius: radius.xl, overflow: 'hidden' },
   desktopHero: { height: 440, justifyContent: 'center', borderRadius: radius.xl, paddingVertical: 20 },
   heroContent: { width: '100%' },
-  desktopHeroContent: { maxWidth: 1240, alignSelf: 'center', paddingHorizontal: 48, flex: 1, flexDirection: 'row', alignItems: 'center', gap: 36 },
+  desktopHeroContent: { width: '100%', alignSelf: 'center', flex: 1, flexDirection: 'row', alignItems: 'center', gap: 36 },
   heroLeft: { flex: 1, maxWidth: 560, zIndex: 1 },
-  desktopHeroSearch: { marginHorizontal: 20, marginTop: 20, maxWidth: 500 },
+  heroLeftFull: { maxWidth: '100%', width: '100%' },
+  desktopHeroSearch: { marginHorizontal: 0, marginTop: 20, maxWidth: 500 },
   heroFan: { flex: 1, minWidth: 300, height: 330, alignItems: 'center', justifyContent: 'center' },
   heroFanImage: { position: 'absolute', width: '52%', height: 270, borderRadius: radius.lg, borderWidth: 3, borderColor: colors.surface, overflow: 'hidden', ...shadow.float },
   heroFanCover: { width: '100%', height: '100%' },
   heroFanDateBadge: { position: 'absolute', top: 12, left: 12 },
   heroOrb: { position: 'absolute', right: -80, top: -120, width: 380, height: 380, borderRadius: 190, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' },
   heroOrbSmall: { position: 'absolute', right: 120, bottom: -220, width: 320, height: 320, borderRadius: 160, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
-  pageContent: { paddingHorizontal: 0 },
+  pageContent: {},
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    width: '100%',
+    paddingHorizontal: 0,
     paddingTop: 20,
     paddingBottom: 16,
   },
@@ -1038,7 +1123,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.primary,
   },
-  headerText: { flex: 1, marginRight: spacing.md },
+  headerText: { flex: 1, minWidth: 0, marginEnd: spacing.md },
   locationDisplayHero: { flexShrink: 0, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.pill },
   locationTextHero: { fontSize: 14, fontWeight: '600', color: colors.textInverse, marginLeft: 4 },
   homeSearch: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginHorizontal: 20, marginTop: -28, paddingLeft: 18, paddingRight: 6, height: 56, borderRadius: radius.pill, backgroundColor: colors.surface, ...shadow.card },
@@ -1051,12 +1136,12 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   interestsScroll: {
-    paddingLeft: 20,
+    paddingLeft: 0,
     marginTop: 20,
     marginBottom: 20,
   },
   interestsContainer: {
-    paddingRight: 20,
+    paddingRight: 0,
     gap: 8,
   },
   interestPill: {
@@ -1099,14 +1184,14 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 32,
   },
-  recommendationGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, paddingHorizontal: 20 },
+  recommendationGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, paddingHorizontal: 0 },
   recommendationCell: { minWidth: 0 },
-  carouselControls: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, paddingHorizontal: 20, marginBottom: 8 },
+  carouselHeaderControls: { flexDirection: 'row', alignItems: 'center', gap: 4, marginEnd: 4 },
   carouselArrow: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  friendsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, paddingHorizontal: 20 },
+  friendsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, paddingHorizontal: 0 },
   friendsCell: { width: '31%', minWidth: 0 },
   weekendCard: { padding: 18, borderRadius: radius.lg },
-  weekendCardRing: { marginHorizontal: 20, marginBottom: 24, borderRadius: radius.lg, ...shadow.card },
+  weekendCardRing: { marginHorizontal: 0, marginBottom: 24, borderRadius: radius.lg, ...shadow.card },
   weekendCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   weekendTitle: { fontSize: 22, fontWeight: '800', color: colors.textInverse, letterSpacing: -0.3 },
   weekendSubtitle: { marginTop: 4, color: 'rgba(255,255,255,0.85)' },
@@ -1118,7 +1203,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 0,
     marginBottom: 16,
   },
   sectionTitleBlock: {
@@ -1138,7 +1223,7 @@ const styles = StyleSheet.create({
   friendsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 0,
     marginTop: -6,
     marginBottom: 12,
   },
@@ -1180,7 +1265,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   topEventsContainer: {
-    paddingLeft: 20,
+    paddingLeft: 0,
     gap: 16,
   },
   topEventCard: {
@@ -1207,38 +1292,40 @@ const styles = StyleSheet.create({
   },
   topEventOverlay: {
     ...StyleSheet.absoluteFillObject,
-    padding: 16,
+    padding: 12,
     justifyContent: 'space-between',
   },
   topEventBadge: {
     alignSelf: 'flex-start',
     backgroundColor: colors.accent,
-    paddingHorizontal: 12,
+    paddingHorizontal: 6,
     paddingVertical: 4,
     borderRadius: 12,
   },
   topEventBadgeText: {
     color: colors.textInverse,
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 'bold',
   },
   topEventTopRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     alignItems: 'center',
+    gap: 6,
+    paddingEnd: 88,
   },
   topEventActions: {
     position: 'absolute',
-    top: 16,
-    right: 16,
+    top: 12,
+    end: 12,
     zIndex: 1,
     flexDirection: 'row',
     gap: 8,
   },
   topEventActionBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: 'rgba(0,0,0,0.35)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1274,7 +1361,7 @@ const styles = StyleSheet.create({
   eventCard: {
     flexDirection: 'row',
     backgroundColor: colors.textInverse,
-    marginHorizontal: 20,
+    marginHorizontal: 0,
     marginBottom: 16,
     borderRadius: 12,
     overflow: 'hidden',
@@ -1285,6 +1372,22 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   eventCardContent: { flex: 1, minWidth: 0, flexDirection: 'row' },
+  rankedEventCard: { minHeight: 120, flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, marginBottom: 12, borderRadius: radius.lg, backgroundColor: colors.surface, ...shadow.card },
+  rankedEventContent: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  rankedEventImage: { width: 96, height: 96, borderRadius: 14, overflow: 'hidden', position: 'relative', backgroundColor: colors.surfaceAlt },
+  rankedEventCover: { width: '100%', height: '100%' },
+  rankedEventRank: { position: 'absolute', left: 8, bottom: 8, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.ink },
+  rankedEventRankText: { color: colors.accent, fontSize: 13, fontWeight: '800' },
+  rankedEventDetails: { flex: 1, minWidth: 0, justifyContent: 'center' },
+  rankedEventEyebrow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 3 },
+  rankedEventCategory: { flex: 1, minWidth: 0, color: colors.textMuted, fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
+  rankedEventOfficial: { width: 18, height: 18, alignItems: 'center', justifyContent: 'center' },
+  rankedEventTitle: { color: colors.text, fontSize: 14, fontWeight: '700', lineHeight: 18 },
+  rankedEventMeta: { marginTop: 3, color: colors.textMuted, fontSize: 11, lineHeight: 14 },
+  rankedEventPrice: { marginTop: 3 },
+  rankedEventActions: { flexDirection: 'column', alignItems: 'center', gap: 4 },
+  rankedEventActionsWithChatFab: { marginEnd: 16 },
+  rankedEventActionButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: colors.surfaceAlt },
   eventRank: { position: 'absolute', zIndex: 2, top: 12, left: 12, width: 32, height: 32, borderRadius: 16, backgroundColor: colors.ink, alignItems: 'center', justifyContent: 'center' },
   eventRankText: { color: colors.accent, fontSize: 16, fontWeight: '800' },
   todayEventCard: {
@@ -1312,8 +1415,8 @@ const styles = StyleSheet.create({
   },
   trustPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.successSoft, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 10 },
   trustPillText: { color: colors.success, fontSize: 10, fontWeight: '700' },
-  topTrustPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(22,101,52,0.85)', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 10 },
-  topTrustPillText: { color: colors.textInverse, fontSize: 10, fontWeight: '700' },
+  topTrustPill: { flexDirection: 'row', alignItems: 'center', gap: 2, backgroundColor: 'rgba(22,101,52,0.85)', paddingHorizontal: 4, paddingVertical: 3, borderRadius: 10 },
+  topTrustPillText: { color: colors.textInverse, fontSize: 9, fontWeight: '700' },
   eventCategory: {
     fontSize: 12,
     color: colors.textMuted,
@@ -1408,7 +1511,7 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     padding: 32,
-    marginHorizontal: 20,
+    marginHorizontal: 0,
     backgroundColor: colors.bg,
     borderRadius: 16,
   },
@@ -1440,7 +1543,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.primarySoft,
-    marginHorizontal: 20,
+    marginHorizontal: 0,
     marginBottom: 32,
     padding: 20,
     borderRadius: 16,
@@ -1527,13 +1630,13 @@ const styles = StyleSheet.create({
   ticketPreviewDate: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
   // Top Venues
   venuesContainer: {
-    paddingLeft: 20,
+    paddingLeft: 0,
     gap: 12,
   },
   venuesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 20,
+    paddingHorizontal: 0,
     gap: 12,
   },
   venueGridDesktop: { height: 160 },

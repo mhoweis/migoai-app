@@ -8,6 +8,8 @@ import Container from './Container';
 import { useUserStore } from '../store/userStore';
 import GradientButton from './GradientButton';
 
+const FlexSpacer = View as unknown as React.ComponentType<any>;
+
 const links = [
   { route: 'HomeTab', label: 'home', icon: 'home-outline' as const },
   { route: 'EventsTab', label: 'discover', icon: 'compass-outline' as const },
@@ -40,6 +42,7 @@ export default function WebTopNav({ activeTab }: { activeTab?: string }) {
           <Ionicons name="search" size={17} color={colors.textMuted} />
           <Text numberOfLines={1} style={styles.searchText}>{t('search_events')}</Text>
         </TouchableOpacity>
+        <FlexSpacer style={styles.spacer} />
         <TouchableOpacity accessibilityRole="button" accessibilityLabel={locale === 'ar' ? t('english') : t('arabic')} onPress={() => void setLocale(locale === 'ar' ? 'en' : 'ar')} style={styles.localeButton}>
           <Ionicons name="globe-outline" size={17} color={colors.ink} />
           <Text style={styles.localeText}>{locale === 'ar' ? 'EN' : 'ع'}</Text>
@@ -67,12 +70,13 @@ const styles = StyleSheet.create({
   hoverLink: { backgroundColor: colors.primarySoft },
   linkText: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
   activeLinkText: { color: colors.ink, fontWeight: '700' },
-  search: { flex: 1, minWidth: 90, maxWidth: 205, height: 44, flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: radius.pill, paddingHorizontal: 12, backgroundColor: colors.surfaceAlt },
-  searchText: { flex: 1, color: colors.textMuted, fontSize: 11 },
+  search: { flex: 1, minWidth: 90, maxWidth: 280, height: 44, flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: radius.pill, paddingHorizontal: 12, backgroundColor: colors.surfaceAlt },
+  searchText: { flex: 1, color: colors.textMuted, fontSize: 13 },
+  spacer: { flex: 1, minWidth: spacing.sm },
   avatarButton: { width: 44, height: 44, borderRadius: 22, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primarySoft },
   avatarImage: { width: 36, height: 36, borderRadius: 18 },
   avatarInitial: { color: colors.primaryDark, fontSize: 15, fontWeight: '800' },
   localeButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 8 },
   localeText: { color: colors.ink, fontSize: 12, fontWeight: '700' },
-  createButton: { height: 44, minWidth: 124, flexShrink: 0, borderRadius: radius.pill, paddingHorizontal: 10 },
+  createButton: { height: 44, minWidth: 124, flexShrink: 0, borderRadius: radius.pill },
 });

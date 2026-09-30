@@ -25,6 +25,9 @@ import { gradients, radius, shadow, type } from '../theme';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { Ionicons } from '@expo/vector-icons';
 
+const DesktopFormPanel = View as unknown as React.ComponentType<any>;
+const DesktopFormText = Text as unknown as React.ComponentType<any>;
+
 interface Props {
   navigation: any;
 }
@@ -132,8 +135,12 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
               style={styles.logo}
               resizeMode="contain"
             />
-            <Text style={styles.title}>{t('welcome')}</Text>
-            <Text style={styles.subtitle}>{t('sign_in_continue')}</Text>
+            {!isWebDesktop ? (
+              <>
+                <Text style={styles.title}>{t('welcome')}</Text>
+                <Text style={styles.subtitle}>{t('sign_in_continue')}</Text>
+              </>
+            ) : null}
             {isWebDesktop ? (
               <>
                 <Text style={styles.brandStatement}>{t('login_brand_headline')}</Text>
@@ -149,7 +156,14 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
             ) : null}
           </LinearGradient>
 
+          <DesktopFormPanel style={isWebDesktop ? styles.desktopFormPanel : undefined}>
           <View style={[styles.form, isWebDesktop && styles.desktopForm]}>
+            {isWebDesktop ? (
+              <>
+                <DesktopFormText style={styles.formHeading}>{t('welcome_back')}</DesktopFormText>
+                <DesktopFormText style={styles.formSubtitle}>{t('sign_in_continue')}</DesktopFormText>
+              </>
+            ) : null}
             <View style={styles.inputContainer}>
               {/*<Icon name="mail-outline" size={20} color={colors.textMuted} style={styles.inputIcon} />*/}
               <TextInput
@@ -157,7 +171,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 style={styles.input}
                 placeholder={t('email_or_phone')}
                 value={identifier}
-                onChangeText={(value) => {
+                onChangeText={(value: string) => {
                   setIdentifier(value);
                   setErrorMessage(null);
                 }}
@@ -275,6 +289,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
               </TouchableOpacity>
             </View>
           </View>
+          </DesktopFormPanel>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -304,7 +319,7 @@ const styles = StyleSheet.create({
     padding: 24,
     justifyContent: 'center',
   },
-  desktopScrollContent: { flexDirection: 'row', alignItems: 'stretch', minHeight: '100%', padding: 0, gap: 0 },
+  desktopScrollContent: { flexDirection: 'row', alignItems: 'stretch', justifyContent: 'flex-start', minHeight: '100%', padding: 0, gap: 0 },
   header: {
     alignItems: 'center',
     marginTop: 20,
@@ -314,7 +329,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     overflow: 'hidden',
   },
-  desktopBrandPanel: { width: '55%', margin: 0, borderRadius: 0, justifyContent: 'center', paddingHorizontal: 64, paddingVertical: 64 },
+  desktopBrandPanel: { width: '55%', minHeight: '100%', margin: 0, marginTop: 0, marginBottom: 0, borderRadius: 0, alignItems: 'flex-start', justifyContent: 'center', paddingHorizontal: 64, paddingVertical: 64 },
   logo: {
     width: 80,
     height: 80,
@@ -337,7 +352,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     padding: 20,
   },
-  desktopForm: { width: '45%', maxWidth: 420, alignSelf: 'center', marginHorizontal: 0, ...shadow.card },
+  desktopFormPanel: { flex: 1, minWidth: 0, minHeight: '100%', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 64, paddingVertical: 40, backgroundColor: colors.bg },
+  desktopForm: { flexGrow: 0, flexShrink: 0, flexBasis: 'auto', width: '100%', maxWidth: 420, alignSelf: 'center', marginHorizontal: 0, padding: 32, ...shadow.card },
+  formHeading: { ...type.h2, color: colors.text, marginBottom: 4 },
+  formSubtitle: { ...type.body, color: colors.textMuted, marginBottom: 24 },
   brandStatement: { ...type.display, color: colors.textInverse, maxWidth: 440, textAlign: 'left', marginTop: 44 },
   brandBenefits: { alignSelf: 'stretch', gap: 18, maxWidth: 460, marginTop: 36 },
   brandBenefit: { flexDirection: 'row', alignItems: 'center', gap: 14 },

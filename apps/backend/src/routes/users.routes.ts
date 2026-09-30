@@ -193,7 +193,7 @@ router.get("/me", async (req: AuthRequest, res: Response) => {
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: publicUserSelect,
+      select: { ...publicUserSelect, interests: true },
     });
 
     if (!user) {
@@ -237,7 +237,7 @@ router.put("/me", async (req: AuthRequest, res: Response) => {
         avatar: parsed.data.avatar,
         preferences,
       },
-      select: publicUserSelect,
+      select: { ...publicUserSelect, interests: true },
     });
     res.json({ success: true, data: user });
   } catch {

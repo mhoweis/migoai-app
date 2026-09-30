@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { Platform, StyleSheet, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocale } from '../i18n';
@@ -10,7 +10,9 @@ import { useBreakpoint } from '../hooks/useBreakpoint';
 
 export default function ChatFab() {
   const { t } = useLocale();
-  const { isWebDesktop } = useBreakpoint();
+  const { isWebDesktop, width } = useBreakpoint();
+  const isDesktopPill = isWebDesktop && width >= 1440;
+  const isCompactWebFab = Platform.OS === 'web' && width < 1024;
 
   return (
     <PressableScale
@@ -18,16 +20,26 @@ export default function ChatFab() {
       accessibilityLabel={t('chat')}
       testID="chat-fab"
       onPress={() => navigationRef.current?.navigate('Chat')}
-      style={[styles.fab, isWebDesktop && styles.desktopFab]}
+      style={[
+        styles.fab,
+        isDesktopPill ? styles.desktopFab : isWebDesktop ? styles.compactDesktopFab : isCompactWebFab && styles.compactWebFab,
+      ]}
     >
       <LinearGradient
         colors={gradients.primaryButton}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.gradient}
+        style={[
+          styles.gradient,
+          isDesktopPill
+            ? styles.desktopGradient
+            : isWebDesktop
+              ? styles.compactDesktopGradient
+              : isCompactWebFab && styles.compactGradient,
+        ]}
       >
         <Ionicons name="sparkles" size={26} color={colors.textInverse} />
-        {isWebDesktop ? <Text style={styles.fabLabel}>{t('ask_migo')}</Text> : null}
+        {isDesktopPill ? <Text style={styles.fabLabel}>{t('ask_migo')}</Text> : null}
       </LinearGradient>
     </PressableScale>
   );
@@ -41,25 +53,31 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    overflow: 'hidden',
     ...shadow.float,
     zIndex: 50,
   },
   desktopFab: {
-    right: 32,
+    right: 0,
     bottom: 32,
     width: 'auto',
-    minWidth: 150,
     height: 56,
     borderRadius: 28,
-    paddingHorizontal: 18,
   },
+  compactDesktopFab: { right: 0, bottom: 32, width: 48, height: 48, borderRadius: 24 },
+  compactWebFab: { right: 0, width: 44, height: 44, borderRadius: 22 },
   gradient: {
     flex: 1,
     flexDirection: 'row',
     gap: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 28,
+    overflow: 'hidden',
   },
+  desktopGradient: {
+    paddingHorizontal: 18,
+  },
+  compactDesktopGradient: { borderRadius: 24 },
+  compactGradient: { borderRadius: 22 },
   fabLabel: { color: colors.textInverse, fontSize: 15, fontWeight: '700' },
 });

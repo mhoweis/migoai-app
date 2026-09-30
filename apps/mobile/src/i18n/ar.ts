@@ -11,6 +11,7 @@ const ar: Record<keyof typeof en, string> = {
   loading: 'جارٍ التحميل...',
   initializing_app: 'جارٍ تهيئة التطبيق...',
   welcome: 'مرحباً',
+  welcome_back: 'مرحباً بعودتك',
   sign_in_continue: 'سجّل الدخول لمتابعة استكشاف الفعاليات',
   login: 'تسجيل الدخول',
   login_failed: 'فشل تسجيل الدخول',

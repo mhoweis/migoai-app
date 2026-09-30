@@ -32,9 +32,18 @@ export const useUserStore = create<UserStore>((set, get) => ({
   userLocation: null, // Will be set from storage or default to 'New York'
   
   setUser: async (user) => {
-    set({ user, error: null });
-    if (user) {
-      await AsyncStorage.setItem('user', JSON.stringify(user));
+    const currentUser = get().user;
+    const nextUser = user && currentUser?.id === user.id
+      ? {
+          ...currentUser,
+          ...user,
+          interests: user.interests ?? currentUser.interests,
+          preferences: { ...currentUser.preferences, ...user.preferences },
+        }
+      : user;
+    set({ user: nextUser, error: null });
+    if (nextUser) {
+      await AsyncStorage.setItem('user', JSON.stringify(nextUser));
     } else {
       await AsyncStorage.removeItem('user');
     }
@@ -82,8 +91,14 @@ export const useUserStore = create<UserStore>((set, get) => ({
     set({ user: optimisticUser, isLoading: true, error: null });
     try {
       const updatedUser = await authService.updateHomeLayout(homeLayout);
-      set({ user: updatedUser, isLoading: false });
-      await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+      const mergedUser = {
+        ...previousUser,
+        ...updatedUser,
+        interests: updatedUser.interests ?? previousUser.interests,
+        preferences: { ...previousUser.preferences, ...updatedUser.preferences },
+      };
+      set({ user: mergedUser, isLoading: false });
+      await AsyncStorage.setItem('user', JSON.stringify(mergedUser));
     } catch (error: any) {
       set({ user: previousUser, isLoading: false, error: error.message });
       throw error;

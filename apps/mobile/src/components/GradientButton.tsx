@@ -4,6 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { colors, gradients, radius, shadow } from '../theme';
 import { PressableScale } from './PressableScale';
 
+const ShadowWrapper = View as unknown as React.ComponentType<any>;
+
 type Props = {
   label: string;
   onPress: () => void;
@@ -34,16 +36,19 @@ export default function GradientButton({ label, onPress, icon, disabled, loading
   }
 
   return (
-    <PressableScale testID={testID} accessibilityRole="button" accessibilityLabel={accessibilityLabel || label} disabled={disabled || loading} onPress={onPress} style={[styles.button, style]}>
-      <LinearGradient colors={gradients.primaryButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.gradient}>
-        {content}
-      </LinearGradient>
-    </PressableScale>
+    <ShadowWrapper style={[styles.shadowWrapper, style]}>
+      <PressableScale testID={testID} accessibilityRole="button" accessibilityLabel={accessibilityLabel || label} disabled={disabled || loading} onPress={onPress} style={styles.button}>
+        <LinearGradient colors={gradients.primaryButton} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.gradient}>
+          {content}
+        </LinearGradient>
+      </PressableScale>
+    </ShadowWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  button: { height: 52, borderRadius: radius.pill, overflow: 'hidden', ...shadow.card },
+  shadowWrapper: { height: 52, borderRadius: radius.pill, ...shadow.card },
+  button: { width: '100%', height: '100%', borderRadius: radius.pill, overflow: 'hidden' },
   gradient: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   content: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   label: { color: colors.textInverse, fontSize: 16, fontWeight: '700' },

@@ -11,7 +11,7 @@ import { navigationRef } from '../navigation/navigationRef';
 export default function WebFooter({ wide = false }: { wide?: boolean }) {
   const { t, locale, setLocale } = useLocale();
   const { width } = useBreakpoint();
-  const bleed = Math.max(0, (width - 1240) / 2);
+  const bleed = Math.max(0, (width - 1240) / 2) + 48;
   return (
     <View style={[styles.footer, wide && { width, marginLeft: -bleed }]}>
       <LinearGradient colors={gradients.dusk} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.rule} />

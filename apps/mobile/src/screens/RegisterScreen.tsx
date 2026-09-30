@@ -19,8 +19,11 @@ import { useUserStore } from '../store/userStore';
 import { useLocale } from '../i18n';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { LinearGradient } from 'expo-linear-gradient';
-import { gradients, type } from '../theme';
+import { gradients, shadow, type } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
+
+const DesktopFormPanel = View as unknown as React.ComponentType<any>;
+const DesktopFormText = Text as unknown as React.ComponentType<any>;
 
 type SignupMode = 'phone' | 'email';
 
@@ -155,7 +158,14 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             )}
           </LinearGradient>
 
+          <DesktopFormPanel style={isWebDesktop ? styles.desktopFormPanel : undefined}>
           <View style={isWebDesktop ? styles.desktopForm : undefined}>
+          {isWebDesktop ? (
+            <>
+              <DesktopFormText style={styles.formHeading}>{t('create_account')}</DesktopFormText>
+              <DesktopFormText style={styles.formSubtitle}>{t('register_subtitle')}</DesktopFormText>
+            </>
+          ) : null}
           <View style={styles.modeSelector}>
             <TouchableOpacity
               style={[styles.modeButton, mode === 'phone' && styles.modeButtonActive]}
@@ -195,7 +205,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   style={styles.input}
                   placeholder={t('phone_number')}
                   value={phone}
-                  onChangeText={(value) => {
+                  onChangeText={(value: string) => {
                     setPhone(value);
                     if (otpSent) {
                       setOtpSent(false);
@@ -317,6 +327,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             </TouchableOpacity>
           </View>
           </View>
+          </DesktopFormPanel>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -327,10 +338,13 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.textInverse },
   keyboardView: { flex: 1 },
   scrollContent: { flexGrow: 1, padding: 24, paddingBottom: 36 },
-  desktopScrollContent: { flexDirection: 'row', alignItems: 'stretch', minHeight: '100%', padding: 0, gap: 0 },
+  desktopScrollContent: { flexDirection: 'row', alignItems: 'stretch', justifyContent: 'flex-start', minHeight: '100%', padding: 0, paddingBottom: 0, gap: 0 },
   header: { marginTop: 24, marginBottom: 28, alignItems: 'center', borderRadius: radius.xl, padding: 24 },
-  desktopBrandPanel: { width: '55%', margin: 0, justifyContent: 'center', paddingHorizontal: 64, borderRadius: 0, height: '100%' },
-  desktopForm: { width: '45%', maxWidth: 420, alignSelf: 'center', padding: 40 },
+  desktopBrandPanel: { width: '55%', minHeight: '100%', margin: 0, marginTop: 0, marginBottom: 0, alignItems: 'flex-start', justifyContent: 'center', paddingHorizontal: 64, paddingVertical: 64, borderRadius: 0 },
+  desktopFormPanel: { flex: 1, minWidth: 0, minHeight: '100%', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 64, paddingVertical: 40, backgroundColor: colors.bg },
+  desktopForm: { flexGrow: 0, flexShrink: 0, flexBasis: 'auto', width: '100%', maxWidth: 420, alignSelf: 'center', padding: 32, backgroundColor: colors.surface, borderRadius: radius.xl, ...shadow.card },
+  formHeading: { ...type.h2, color: colors.text, marginBottom: 4 },
+  formSubtitle: { ...type.body, color: colors.textMuted, marginBottom: 24 },
   brandStatement: { ...type.display, color: colors.textInverse, maxWidth: 440, textAlign: 'left', marginTop: 44 },
   brandBenefits: { alignSelf: 'stretch', gap: 18, maxWidth: 460, marginTop: 36 },
   brandBenefit: { flexDirection: 'row', alignItems: 'center', gap: 14 },

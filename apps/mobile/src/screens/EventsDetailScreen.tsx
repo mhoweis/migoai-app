@@ -249,12 +249,12 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </Container>
         ) : null}
         {/* Event Image */}
-        <Container style={styles.imageWrapper}>
+        <Container style={[styles.imageWrapper, !isWebDesktop && styles.mobileImageWrapper]}>
         <View style={[styles.imageContainer, isWebDesktop && styles.desktopImageContainer]}>
           {event.coverImage ? (
-            <Image source={{ uri: event.coverImage }} style={styles.eventImage} />
+            <Image source={{ uri: event.coverImage }} style={[styles.eventImage, isWebDesktop && styles.desktopCoverFill]} resizeMode="cover" />
           ) : (
-            <View style={[styles.eventImage, styles.placeholderImage]}>
+            <View style={[styles.eventImage, styles.placeholderImage, isWebDesktop && styles.desktopCoverFill]}>
               <Ionicons name="image-outline" size={64} color={colors.border} />
             </View>
           )}
@@ -269,8 +269,13 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 <Ionicons name="arrow-back" size={24} color={colors.textInverse} />
               </TouchableOpacity>
             ) : null}
+            <View style={[
+              styles.dateBadgePosition,
+              isWebDesktop ? styles.desktopDateBadge : [styles.phoneDateBadge, { top: insets.top + spacing.md }],
+            ]}>
+              <DateBadge date={event.startDate} />
+            </View>
               <View style={styles.heroTitleRow}>
-                <DateBadge date={event.startDate} />
                 <View style={styles.heroTitleContent}>
                   <Text style={styles.heroCategory}>{categoryLabel(event.category)}</Text>
                   <Text style={[styles.imageTitle, isWebDesktop && styles.desktopImageTitle]} numberOfLines={3}>{event.title}</Text>
@@ -303,18 +308,21 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         </Container>
 
           {/* Event Content */}
-          <Container style={[styles.detailContainer, isWebDesktop && styles.desktopBody]}>
+          <Container style={[
+            styles.detailContainer,
+            !isWebDesktop && styles.mobileDetailContainer,
+            isWebDesktop && styles.desktopBody,
+          ]}>
           <View style={[styles.content, isWebDesktop && styles.desktopMain]}>
           {/* Event Header */}
           <View style={styles.eventHeader}>
-            <View style={styles.eventCategoryContainer}>
-              <Text style={styles.eventCategory}>{categoryLabel(event.category)}</Text>
-              {event.locationType === 'ONLINE' && (
+            {event.locationType === 'ONLINE' ? (
+              <View style={styles.eventCategoryContainer}>
                 <View style={styles.featuredBadge}>
                   <Text style={styles.featuredBadgeText}>{t('online')}</Text>
                 </View>
-              )}
-            </View>
+              </View>
+            ) : null}
             {sourceBadge(event.trust, locale) && (
               <View style={[styles.sourceChip, { backgroundColor: sourceBadge(event.trust, locale)?.backgroundColor }]}>
                 <Ionicons name="shield-checkmark" size={15} color={sourceBadge(event.trust, locale)?.color} />
@@ -624,17 +632,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.textInverse,
   },
-  imageWrapper: { paddingHorizontal: 0 },
-  desktopBackContainer: { paddingHorizontal: 48, paddingTop: 16 },
+  imageWrapper: {},
+  mobileImageWrapper: { paddingHorizontal: 0 },
+  desktopBackContainer: { paddingTop: 16 },
   desktopBack: { minHeight: 44, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 8 },
   desktopBackText: { color: colors.primary, fontWeight: '700' },
-  desktopImageContainer: { height: 420, maxWidth: 1240, width: '100%', alignSelf: 'center', marginTop: 24, borderRadius: radius.xl, overflow: 'hidden' },
+  desktopImageContainer: { height: 420, width: '100%', alignSelf: 'center', marginTop: 24, borderRadius: radius.xl, overflow: 'hidden' },
   heroTitleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 14, flex: 1 },
   heroTitleContent: { flex: 1, minWidth: 0 },
   heroCategory: { color: colors.accent, fontSize: 13, fontWeight: '800', textTransform: 'uppercase', marginBottom: 6 },
   desktopImageTitle: { fontSize: 40, lineHeight: 44, maxWidth: 760 },
-  detailContainer: { paddingHorizontal: 0 },
-  desktopBody: { flexDirection: 'row', alignItems: 'flex-start', gap: 32, maxWidth: 1240, paddingHorizontal: 48, alignSelf: 'center' },
+  detailContainer: {},
+  mobileDetailContainer: { paddingHorizontal: 0 },
+  desktopBody: { flexDirection: 'row', alignItems: 'flex-start', gap: 32, alignSelf: 'center' },
   desktopMain: { flex: 1, minWidth: 0, marginTop: 32, paddingHorizontal: 0 },
   infoCard: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, padding: 18 },
   bookingCard: { width: 340, marginTop: 32, padding: 24, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, ...shadow.card },
@@ -683,6 +693,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 380,
   },
+  desktopCoverFill: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
   placeholderImage: {
     backgroundColor: colors.surfaceAlt,
     justifyContent: 'center',
@@ -694,6 +705,9 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.lg + 24,
   },
+  dateBadgePosition: { position: 'absolute', zIndex: 2 },
+  phoneDateBadge: { top: spacing.lg, end: spacing.lg },
+  desktopDateBadge: { top: spacing.lg, start: spacing.lg },
   backButton: {
     position: 'absolute',
     left: spacing.lg,
@@ -907,12 +921,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   bottomBarInfo: {
+    flex: 1,
+    minWidth: 0,
     flexShrink: 1,
     marginRight: 12,
   },
   bottomBarButton: {
     flex: 1,
-    minWidth: 150,
+    minWidth: 180,
     maxWidth: 320,
   },
   bottomBarPrice: {

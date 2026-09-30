@@ -9,6 +9,7 @@ const en = {
   loading: 'Loading...',
   initializing_app: 'Initializing app...',
   welcome: 'Welcome',
+  welcome_back: 'Welcome back',
   sign_in_continue: 'Sign in to continue exploring events',
   login: 'Log in',
   login_failed: 'Login Failed',
