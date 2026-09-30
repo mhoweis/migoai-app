@@ -27,6 +27,7 @@ import { gradients, radius, shadow, type } from '../theme';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { Ionicons } from '@expo/vector-icons';
 import { PressableScale } from '../components/PressableScale';
+import { LanguageToggle } from '../components/LanguageToggle';
 
 type SocialProvider = 'google' | 'apple' | 'facebook';
 
@@ -65,10 +66,10 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { setUser, setFirstLogin } = useUserStore();
-  const { locale, t } = useLocale();
+  const { isRTL, t } = useLocale();
   const { isWebDesktop } = useBreakpoint();
   const { width } = useWindowDimensions();
-  const showSocialLabels = isWebDesktop || width >= 360;
+  const showSocialLabels = isWebDesktop ? width >= 1200 : width >= 360;
   const [socialNotice, setSocialNotice] = useState<string | null>(null);
 
   useEffect(() => {
@@ -139,12 +140,6 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <TouchableOpacity
-        style={styles.languageToggle}
-        onPress={() => void setLocale(locale === 'ar' ? 'en' : 'ar')}
-      >
-        <Text style={styles.languageToggleText}>{locale === 'ar' ? t('english') : t('arabic')}</Text>
-      </TouchableOpacity>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -163,7 +158,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
             {/* Updated: Replaced Icon with actual logo */}
             <Image 
               source={require('../../assets/logo-mark.png')}
-              style={styles.logo}
+              style={[styles.logo, isWebDesktop && styles.logoDesktop]}
               resizeMode="contain"
             />
             {!isWebDesktop ? (
@@ -199,7 +194,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
               {/*<Icon name="mail-outline" size={20} color={colors.textMuted} style={styles.inputIcon} />*/}
               <TextInput
                 accessibilityLabel={t('email_or_phone')}
-                style={styles.input}
+                style={[styles.input, isRTL && styles.inputRtl]}
                 placeholder={t('email_or_phone')}
                 value={identifier}
                 onChangeText={(value: string) => {
@@ -218,7 +213,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
               {/*<Icon name="lock-closed-outline" size={20} color={colors.textMuted} style={styles.inputIcon} />*/}
               <TextInput
                 accessibilityLabel={t('password')}
-                style={styles.input}
+                style={[styles.input, isRTL && styles.inputRtl]}
                 placeholder={t('password')}
                 value={password}
                 onChangeText={setPassword}
@@ -283,7 +278,9 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
                   onPress={() => handleSocialLogin(id)}
                   disabled={loading}
                 >
-                  <SocialMark provider={id} />
+                  <View style={styles.socialMark}>
+                    <SocialMark provider={id} />
+                  </View>
                   {showSocialLabels && <Text style={[styles.socialLabel, !isWebDesktop && styles.socialLabelCompact]}>{label}</Text>}
                 </PressableScale>
               ))}
@@ -306,6 +303,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
               </TouchableOpacity>
             </View>
           </View>
+          <LanguageToggle />
           </DesktopFormPanel>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -317,16 +315,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
-  },
-  languageToggle: {
-    position: 'absolute',
-    top: 18,
-    right: 20,
-    zIndex: 2,
-  },
-  languageToggleText: {
-    color: colors.primary,
-    fontWeight: '700',
   },
   keyboardView: {
     flex: 1,
@@ -351,6 +339,11 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     marginBottom: 16,
+  },
+  logoDesktop: {
+    width: 180,
+    height: 180,
+    marginBottom: 8,
   },
   title: {
     ...type.h1,
@@ -393,8 +386,13 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    minWidth: 0,
     fontSize: 16,
     color: colors.text,
+  },
+  inputRtl: {
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   forgotPassword: {
     alignSelf: 'flex-end',
@@ -471,6 +469,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     ...shadow.card,
+  },
+  socialMark: {
+    flexShrink: 0,
   },
   socialButtonCompact: {
     gap: 0,

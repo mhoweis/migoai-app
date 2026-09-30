@@ -21,6 +21,7 @@ import { useBreakpoint } from '../hooks/useBreakpoint';
 import { LinearGradient } from 'expo-linear-gradient';
 import { gradients, shadow, type } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
+import { LanguageToggle } from '../components/LanguageToggle';
 
 const DesktopFormPanel = View as unknown as React.ComponentType<any>;
 const DesktopFormText = Text as unknown as React.ComponentType<any>;
@@ -40,7 +41,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { setUser, setFirstLogin } = useUserStore();
-  const { t } = useLocale();
+  const { isRTL, t } = useLocale();
   const { isWebDesktop } = useBreakpoint();
 
   const showError = (message: string) => {
@@ -137,7 +138,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             end={{ x: 1, y: 1 }}
             style={[styles.header, isWebDesktop && styles.desktopBrandPanel]}
           >
-            <Image source={require('../../assets/logo-mark.png')} style={styles.logo} resizeMode="contain" />
+            <Image source={require('../../assets/logo-mark.png')} style={[styles.logo, isWebDesktop && styles.logoDesktop]} resizeMode="contain" />
             {isWebDesktop ? (
               <>
                 <Text style={styles.brandStatement}>{t('login_brand_headline')}</Text>
@@ -188,7 +189,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <View style={styles.inputContainer}>
               <TextInput
                 accessibilityLabel={t('full_name')}
-              style={styles.input}
+              style={[styles.input, isRTL && styles.inputRtl]}
               placeholder={t('full_name')}
               value={name}
               onChangeText={setName}
@@ -202,7 +203,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               <View style={styles.inputContainer}>
                 <TextInput
                   accessibilityLabel={t('phone_number')}
-                  style={styles.input}
+                  style={[styles.input, isRTL && styles.inputRtl]}
                   placeholder={t('phone_number')}
                   value={phone}
                   onChangeText={(value: string) => {
@@ -221,7 +222,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 <View style={styles.inputContainer}>
                   <TextInput
                     accessibilityLabel={t('verification_code')}
-                    style={styles.input}
+                    style={[styles.input, isRTL && styles.inputRtl]}
                     placeholder={t('verification_code')}
                     value={otp}
                     onChangeText={setOtp}
@@ -261,7 +262,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               <View style={styles.inputContainer}>
                 <TextInput
                   accessibilityLabel={t('email_address')}
-                  style={styles.input}
+                  style={[styles.input, isRTL && styles.inputRtl]}
                   placeholder={t('email_address')}
                   value={email}
                   onChangeText={setEmail}
@@ -273,7 +274,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               <View style={styles.inputContainer}>
                 <TextInput
                   accessibilityLabel={t('password')}
-                  style={styles.input}
+                  style={[styles.input, isRTL && styles.inputRtl]}
                   placeholder={t('password')}
                   value={password}
                   onChangeText={setPassword}
@@ -291,7 +292,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               <View style={styles.inputContainer}>
                 <TextInput
                   accessibilityLabel={t('confirm_password')}
-                  style={styles.input}
+                  style={[styles.input, isRTL && styles.inputRtl]}
                   placeholder={t('confirm_password')}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
@@ -327,6 +328,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             </TouchableOpacity>
           </View>
           </View>
+          <LanguageToggle />
           </DesktopFormPanel>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -350,6 +352,7 @@ const styles = StyleSheet.create({
   brandBenefit: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   brandBenefitText: { flex: 1, color: 'rgba(255,255,255,0.88)', fontSize: 16, lineHeight: 24 },
   logo: { width: 64, height: 64, marginBottom: 14 },
+  logoDesktop: { width: 180, height: 180, marginBottom: 8 },
   title: { fontSize: 30, fontWeight: 'bold', color: colors.textInverse, marginBottom: 8 },
   subtitle: { fontSize: 15, color: 'rgba(255,255,255,0.85)', textAlign: 'center' },
   modeSelector: {
@@ -373,7 +376,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  input: { flex: 1, height: 56, fontSize: 16, color: colors.text },
+  input: { flex: 1, minWidth: 0, height: 56, fontSize: 16, color: colors.text },
+  inputRtl: { textAlign: 'right', writingDirection: 'rtl' },
   showPassword: { width: 20, height: 20 },
   passwordToggle: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   hint: { color: colors.textMuted, fontSize: 12, marginBottom: 18 },
