@@ -1,6 +1,6 @@
 import { colors } from '../theme';
 // migo-mobile/src/screens/LoginScreen.tsx - UPDATED
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,9 @@ import {
   ActivityIndicator,
   ScrollView,
   Image,
+  useWindowDimensions,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUserStore } from '../store/userStore';
 import { authService } from '../services/auth.service';
@@ -24,6 +26,30 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { gradients, radius, shadow, type } from '../theme';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { Ionicons } from '@expo/vector-icons';
+import { PressableScale } from '../components/PressableScale';
+
+type SocialProvider = 'google' | 'apple' | 'facebook';
+
+const SOCIAL_PROVIDERS: { id: SocialProvider; label: string }[] = [
+  { id: 'google', label: 'Google' },
+  { id: 'apple', label: 'Apple' },
+  { id: 'facebook', label: 'Facebook' },
+];
+
+const GoogleMark = ({ size }: { size: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 48 48">
+    <Path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+    <Path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+    <Path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+    <Path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+  </Svg>
+);
+
+const SocialMark = ({ provider }: { provider: SocialProvider }) => {
+  if (provider === 'google') return <GoogleMark size={20} />;
+  if (provider === 'apple') return <Ionicons name="logo-apple" size={21} color={colors.ink} />;
+  return <Ionicons name="logo-facebook" size={21} color="#1877F2" />;
+};
 
 const DesktopFormPanel = View as unknown as React.ComponentType<any>;
 const DesktopFormText = Text as unknown as React.ComponentType<any>;
@@ -41,6 +67,15 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const { setUser, setFirstLogin } = useUserStore();
   const { locale, t } = useLocale();
   const { isWebDesktop } = useBreakpoint();
+  const { width } = useWindowDimensions();
+  const showSocialLabels = isWebDesktop || width >= 360;
+  const [socialNotice, setSocialNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!socialNotice) return;
+    const timer = setTimeout(() => setSocialNotice(null), 5000);
+    return () => clearTimeout(timer);
+  }, [socialNotice]);
 
   const handleLogin = async () => {
     if (!identifier.trim() || !password) {
@@ -93,13 +128,9 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  const handleSocialLogin = async (provider: 'google' | 'apple' | 'facebook') => {
-    Alert.alert(t('coming_soon'), t('social_login_soon', { provider }), [{ text: t('ok') }]);
-    
-    // For future implementation:
-    // 1. Use Firebase or other OAuth provider
-    // 2. Get ID token
-    // 3. Call authService.socialLogin(idToken, provider)
+  const handleSocialLogin = (provider: SocialProvider) => {
+    const label = SOCIAL_PROVIDERS.find(item => item.id === provider)?.label ?? provider;
+    setSocialNotice(t('social_login_soon', { provider: label }));
   };
 
   const handleForgotPassword = () => {
@@ -243,41 +274,27 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
             </View>
 
             <View style={styles.socialButtons}>
-              {/* Updated: Replaced Ionicons with actual social icons */}
-              <TouchableOpacity 
-                style={styles.socialButton}
-                onPress={() => handleSocialLogin('google')}
-                disabled={loading}
-              >
-                <Image 
-                  source={require('../../assets/social/google.png')}
-                  style={styles.socialIcon}
-                  resizeMode="contain"
-                />
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.socialButton}
-                onPress={() => handleSocialLogin('apple')}
-                disabled={loading}
-              >
-                <Image 
-                  source={require('../../assets/social/apple.png')}
-                  style={styles.socialIcon}
-                  resizeMode="contain"
-                />
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.socialButton}
-                onPress={() => handleSocialLogin('facebook')}
-                disabled={loading}
-              >
-                <Image 
-                  source={require('../../assets/social/facebook.png')}
-                  style={styles.socialIcon}
-                  resizeMode="contain"
-                />
-              </TouchableOpacity>
+              {SOCIAL_PROVIDERS.map(({ id, label }) => (
+                <PressableScale
+                  key={id}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${t('or_continue_with')} ${label}`}
+                  style={[styles.socialButton, !showSocialLabels && styles.socialButtonCompact]}
+                  onPress={() => handleSocialLogin(id)}
+                  disabled={loading}
+                >
+                  <SocialMark provider={id} />
+                  {showSocialLabels && <Text style={[styles.socialLabel, !isWebDesktop && styles.socialLabelCompact]}>{label}</Text>}
+                </PressableScale>
+              ))}
             </View>
+
+            {socialNotice && (
+              <View accessibilityRole="alert" style={styles.socialNotice}>
+                <Ionicons name="information-circle" size={18} color={colors.info} />
+                <Text style={styles.socialNoticeText}>{socialNotice}</Text>
+              </View>
+            )}
 
             <View style={styles.footer}>
               <Text style={styles.footerText}>{t('no_account_yet')} </Text>
@@ -438,24 +455,49 @@ const styles = StyleSheet.create({
   },
   socialButtons: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 20,
-    marginBottom: 32,
+    gap: 8,
+    marginBottom: 20,
   },
   socialButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.bg,
-    justifyContent: 'center',
+    flex: 1,
+    height: 52,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 8,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    overflow: 'hidden',
+    ...shadow.card,
   },
-  socialIcon: {
-    width: 24,
-    height: 24,
+  socialButtonCompact: {
+    gap: 0,
+  },
+  socialLabel: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  socialLabelCompact: {
+    fontSize: 13,
+  },
+  socialNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.infoSoft,
+    borderRadius: radius.md,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 16,
+  },
+  socialNoticeText: {
+    flex: 1,
+    color: colors.info,
+    fontSize: 13,
+    fontWeight: '500',
   },
   footer: {
     flexDirection: 'row',
