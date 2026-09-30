@@ -38,8 +38,8 @@ export function sourceBadge(trust?: EventTrust, locale: 'en' | 'ar' = 'en'): {
     ? kindText.organizer
     : `${kindText[kind] || kind} · ${locale === 'ar' ? (trust.source.labelAr || trust.source.label) : trust.source.label}`;
   const badgeColors: Record<string, [string, string]> = {
-    official: [colors.success, colors.successSoft],
-    venue: [colors.success, colors.successSoft],
+    official: [colors.info, colors.infoSoft],
+    venue: [colors.info, colors.infoSoft],
     ticketing: [colors.primaryDark, colors.primarySoft],
     community: [colors.textSecondary, colors.surfaceAlt],
     organizer: [colors.primary, colors.primarySoft],

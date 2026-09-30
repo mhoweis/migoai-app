@@ -1,24 +1,11 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, Platform, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
+import React from 'react';
+import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { colors, radius, spacing } from '../theme';
 
 type Props = { style?: StyleProp<ViewStyle> };
 
 export function Skeleton({ style }: Props) {
-  const opacity = useRef(new Animated.Value(0.5)).current;
-
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 1, duration: 700, useNativeDriver: Platform.OS !== 'web' }),
-        Animated.timing(opacity, { toValue: 0.5, duration: 700, useNativeDriver: Platform.OS !== 'web' }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [opacity]);
-
-  return <Animated.View style={[styles.base, style, { opacity }]} />;
+  return <View style={[styles.base, style]} />;
 }
 
 export function EventListSkeleton({ count = 4 }: { count?: number }) {

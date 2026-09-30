@@ -12,6 +12,9 @@ type Props = {
 export default function Chip({ label, selected = false, onPress, disabled = false }: Props) {
   return (
     <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected, disabled: disabled || !onPress }}
       disabled={disabled || !onPress}
       onPress={onPress}
       style={[styles.chip, selected ? styles.selected : styles.unselected, disabled && styles.disabled]}

@@ -4,8 +4,8 @@ import { NavigationContainer } from "@react-navigation/native";
 import { navigationRef } from "./src/navigation/navigationRef";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import { Alert, Image, Linking, Platform, StyleSheet, useWindowDimensions, View } from "react-native";
+import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
+import { Alert, Image, Linking, Platform, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useUserStore } from "./src/store/userStore";
 import { authService } from "./src/services/auth.service";
@@ -38,6 +38,9 @@ import { navigateToTab } from "./src/navigation/navigationRef";
 import { setLocale, STORAGE_KEY, useLocale } from "./src/i18n";
 import { shadow, radius } from "./src/theme";
 import ChatFab from "./src/components/ChatFab";
+import { useBreakpoint } from "./src/hooks/useBreakpoint";
+import WebTopNav from "./src/components/WebTopNav";
+import Container from "./src/components/Container";
 import './src/web/globalStyles';
 
 const Stack = createNativeStackNavigator();
@@ -47,44 +50,31 @@ const CHECKOUT_CANCEL_QUERY = 'checkout=cancel';
 
 // Custom Tab Icon Component
 const CustomTabIcon = ({ routeName, focused }: { routeName: string, focused: boolean }) => {
-  if (routeName === "WalletTab") {
-    return (
-      <View style={[styles.iconContainer, focused && styles.iconContainerFocused]}>
-        <Ionicons
-          name={focused ? "wallet" : "wallet-outline"}
-          size={24}
-          color={focused ? colors.primary : colors.textMuted}
-        />
-      </View>
-    );
-  }
-
-  let iconSource;
-  
+  const { t } = useLocale();
+  let iconName: keyof typeof Ionicons.glyphMap = 'home-outline';
+  let label = 'home';
   switch (routeName) {
     case "HomeTab":
-      iconSource = require('./assets/icons/home.png');
+      iconName = focused ? 'home' : 'home-outline';
+      label = 'home';
       break;
     case "EventsTab":
-      iconSource = require('./assets/icons/events.png');
+      iconName = focused ? 'compass' : 'compass-outline';
+      label = 'events';
+      break;
+    case "WalletTab":
+      iconName = focused ? 'wallet' : 'wallet-outline';
+      label = 'wallet';
       break;
     case "ProfileTab":
-      iconSource = require('./assets/icons/profile.png');
+      iconName = focused ? 'person' : 'person-outline';
+      label = 'profile';
       break;
-    default:
-      iconSource = require('./assets/icons/home.png');
   }
-  
   return (
     <View style={[styles.iconContainer, focused && styles.iconContainerFocused]}>
-      <Image 
-        source={iconSource} 
-        style={[
-          styles.tabIcon,
-          { tintColor: focused ? colors.primary : colors.textMuted }
-        ]}
-        resizeMode="contain"
-      />
+      <Ionicons name={iconName} size={22} color={focused ? colors.primary : colors.textMuted} />
+      {focused ? <Text style={styles.activeTabLabel}>{t(label as any)}</Text> : null}
     </View>
   );
 };
@@ -92,6 +82,20 @@ const CustomTabIcon = ({ routeName, focused }: { routeName: string, focused: boo
 // Updated MainTabs with custom icons
 function MainTabs() {
   const { t } = useLocale();
+  const { isWebDesktop } = useBreakpoint();
+  const insets = useSafeAreaInsets();
+  const tabBarStyle = isWebDesktop ? { display: 'none' as const } : {
+    borderTopWidth: 0,
+    backgroundColor: colors.surface,
+    minHeight: 64 + insets.bottom,
+    height: 64 + insets.bottom,
+    paddingBottom: Math.max(8, insets.bottom),
+    paddingTop: 4,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    ...shadow.float,
+    maxWidth: '100%' as const,
+  };
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -100,19 +104,8 @@ function MainTabs() {
         ),
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
-            tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
-        tabBarStyle: {
-          borderTopWidth: 0,
-          backgroundColor: colors.surface,
-          minHeight: 64,
-          height: 64,
-          paddingBottom: 8,
-          paddingTop: 4,
-          borderTopLeftRadius: radius.xl,
-          borderTopRightRadius: radius.xl,
-          ...shadow.float,
-          maxWidth: '100%',
-        },
+        tabBarShowLabel: false,
+        tabBarStyle,
         headerShown: false,
       })}
     >
@@ -192,6 +185,20 @@ export function ProfileStack() {
 // Updated MainTabsWithProfileStack with custom icons
 function MainTabsWithProfileStack() {
   const { t } = useLocale();
+  const { isWebDesktop } = useBreakpoint();
+  const insets = useSafeAreaInsets();
+  const tabBarStyle = isWebDesktop ? { display: 'none' as const } : {
+    borderTopWidth: 0,
+    backgroundColor: colors.surface,
+    minHeight: 64 + insets.bottom,
+    height: 64 + insets.bottom,
+    paddingBottom: Math.max(8, insets.bottom),
+    paddingTop: 4,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    ...shadow.float,
+    maxWidth: '100%' as const,
+  };
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -200,19 +207,8 @@ function MainTabsWithProfileStack() {
         ),
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
-            tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
-        tabBarStyle: {
-          borderTopWidth: 0,
-          backgroundColor: colors.surface,
-          minHeight: 64,
-          height: 64,
-          paddingBottom: 8,
-          paddingTop: 4,
-          borderTopLeftRadius: radius.xl,
-          borderTopRightRadius: radius.xl,
-          ...shadow.float,
-          maxWidth: '100%',
-        },
+        tabBarShowLabel: false,
+        tabBarStyle,
         headerShown: false,
       })}
     >
@@ -240,19 +236,42 @@ function MainTabsWithProfileStack() {
   );
 }
 
-function AppFrame({ children, showChatFab, currentRoute }: {
+function getActiveTab() {
+  const root = navigationRef.getRootState();
+  const main = root?.routes.find(route => route.name === 'Main');
+  const tabs = (main as any)?.state;
+  const selected = tabs?.routes?.[tabs.index ?? 0]?.name;
+  return selected;
+}
+
+function AppFrame({ children, showChatFab, currentRoute, activeTab }: {
   children: React.ReactNode;
   showChatFab: boolean;
   currentRoute?: string;
+  activeTab?: string;
 }) {
-  const { width } = useWindowDimensions();
-  const constrained = Platform.OS === 'web' && width >= 900;
+  const { isWebDesktop } = useBreakpoint();
   const showFabOnRoute = ['Main', 'HomeTab', 'EventsTab', 'WalletTab', 'ProfileTab'].includes(currentRoute || 'Main');
+  const centeredDesktopRoutes = new Set([
+    'Interests',
+    'ConnectionTest',
+    'MyEvents',
+    'CheckIn',
+    'FindFriends',
+    'VerifyOrganizers',
+    'AIEvents',
+    'ClaimTicket',
+    'WeekendDigest',
+    'CustomizeHome',
+  ]);
 
   return (
     <View style={styles.frameBackdrop}>
-      <View style={[styles.frame, constrained && styles.frameConstrained]}>
-        {children}
+      <View style={styles.frame}>
+        {showChatFab && isWebDesktop ? <WebTopNav activeTab={activeTab} /> : null}
+        {isWebDesktop && centeredDesktopRoutes.has(currentRoute || '')
+          ? <Container style={styles.desktopSecondaryContent}>{children}</Container>
+          : children}
         {showChatFab && showFabOnRoute ? <ChatFab /> : null}
       </View>
     </View>
@@ -264,6 +283,7 @@ export default function App() {
   const [appLoading, setAppLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
   const [currentRoute, setCurrentRoute] = useState<string | undefined>();
+  const [activeTab, setActiveTab] = useState<string | undefined>();
   const { t } = useLocale();
 
   useEffect(() => {
@@ -449,9 +469,16 @@ export default function App() {
     <SafeAreaProvider>
       <NavigationContainer
         ref={navigationRef}
-        onStateChange={() => setCurrentRoute(navigationRef.current?.getCurrentRoute()?.name)}
+        onReady={() => {
+          setCurrentRoute(navigationRef.current?.getCurrentRoute()?.name);
+          setActiveTab(getActiveTab());
+        }}
+        onStateChange={() => {
+          setCurrentRoute(navigationRef.current?.getCurrentRoute()?.name);
+          setActiveTab(getActiveTab());
+        }}
       >
-        <AppFrame showChatFab={Boolean(user && !firstLogin)} currentRoute={currentRoute}>
+        <AppFrame showChatFab={Boolean(user && !firstLogin)} currentRoute={currentRoute} activeTab={activeTab}>
           <Stack.Navigator initialRouteName={!user ? "Register" : undefined}>
             {!user ? (
               // Auth Screens
@@ -525,32 +552,23 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  frameBackdrop: {
-    flex: 1,
-    backgroundColor: colors.bg,
-    alignItems: 'center',
-  },
+  frameBackdrop: { flex: 1, backgroundColor: colors.bg },
+  desktopSecondaryContent: { flex: 1 },
   frame: {
     flex: 1,
     width: '100%',
-  },
-  frameConstrained: {
-    maxWidth: 820,
-    ...shadow.card,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.bg,
   },
   iconContainer: {
-    width: 38,
-    height: 30,
+    minWidth: 34,
+    height: 36,
+    paddingHorizontal: 6,
+    flexDirection: 'row',
+    gap: 4,
     borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  iconContainerFocused: {
-    backgroundColor: colors.primarySoft,
-  },
-  tabIcon: {
-    width: 24,
-    height: 24,
-  },
+  iconContainerFocused: { backgroundColor: colors.primarySoft },
+  activeTabLabel: { color: colors.primary, fontSize: 10, fontWeight: '700' },
 });

@@ -8,6 +8,12 @@ export type Locale = 'en' | 'ar';
 export type TranslationKey = keyof typeof en;
 
 const STORAGE_KEY = 'migo.locale';
+const dubaiCalendarDay = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Dubai',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
 let locale: Locale = detectDeviceLocale();
 const listeners = new Set<() => void>();
 
@@ -104,6 +110,29 @@ export function formatEventDate(
     year: 'numeric',
     ...(opts.withTime ? { hour: 'numeric', minute: '2-digit' } : {}),
   }).format(new Date(date));
+}
+
+export function formatEventWhen(event: { startDate: string; endDate?: string | null }, selectedLocale: 'en' | 'ar'): string {
+  const localeCode = selectedLocale === 'ar' ? 'ar-AE-u-nu-latn' : 'en-AE';
+  const start = new Date(event.startDate);
+  const end = event.endDate ? new Date(event.endDate) : null;
+  const dateOnly = /T00:00:00(?:\.000)?(?:Z|[+-]\d\d:\d\d)?$/i.test(event.startDate);
+  const now = new Date();
+  const todayInDubai = dubaiCalendarDay.format(now);
+  const startDayInDubai = dubaiCalendarDay.format(start);
+  const endDayInDubai = end ? dubaiCalendarDay.format(end) : '';
+  if (end && ((start.getTime() < now.getTime() && end.getTime() > now.getTime())
+    || (dateOnly && startDayInDubai <= todayInDubai && todayInDubai <= endDayInDubai))) {
+    const until = new Intl.DateTimeFormat(localeCode, { day: 'numeric', month: 'short', timeZone: 'Asia/Dubai' }).format(end);
+    return `${t('now_on')} · ${t('until')} ${until}`;
+  }
+  return new Intl.DateTimeFormat(localeCode, {
+    timeZone: 'Asia/Dubai',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    ...(!dateOnly ? { hour: 'numeric', minute: '2-digit' } : {}),
+  }).format(start);
 }
 
 export function formatPrice(amount: number, currency = 'AED'): string {
