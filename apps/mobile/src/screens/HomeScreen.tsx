@@ -926,7 +926,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           colors={isWebDesktop ? [colors.ink, ...gradients.dusk] : gradients.dusk}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={[styles.hero, isWebDesktop && styles.desktopHero]}
+          style={[styles.hero, Platform.OS === 'web' && !isWebDesktop && styles.mobileWebHero, isWebDesktop && styles.desktopHero]}
         >
           <View style={[styles.heroContent, isWebDesktop && styles.desktopHeroContent]}>
             <View style={[styles.heroLeft, !isWebDesktop && styles.heroLeftFull]}>
@@ -1078,6 +1078,7 @@ const styles = StyleSheet.create({
   },
   heroShell: {},
   hero: { paddingTop: 8, paddingBottom: 28, borderBottomLeftRadius: radius.xl, borderBottomRightRadius: radius.xl, overflow: 'hidden' },
+  mobileWebHero: { paddingTop: 40 },
   desktopHero: { height: 440, justifyContent: 'center', borderRadius: radius.xl, paddingHorizontal: 64, paddingTop: 56, paddingBottom: 56 },
   heroContent: { width: '100%' },
   desktopHeroContent: { width: '100%', alignSelf: 'center', flex: 1, flexDirection: 'row', alignItems: 'center', gap: 36 },
