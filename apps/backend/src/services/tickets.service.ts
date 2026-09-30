@@ -486,7 +486,7 @@ class TicketsService {
     return booking;
   }
 
-  async checkIn(code: string, staffUserId: string): Promise<any> {
+  async checkIn(code: string, staffUserId: string, eventId?: string): Promise<any> {
     const bookingId = await this.verifyTicketCode(code);
     if (!bookingId) {
       throw serviceError('Invalid ticket code', 404, 'INVALID_TICKET');
@@ -506,6 +506,11 @@ class TicketsService {
       && !(booking.event.organizerId === staffUserId && staff.isOrganizer)
     )) {
       throw serviceError('You are not authorized to check in attendees', 403, 'FORBIDDEN');
+    }
+    if (eventId && booking.eventId !== eventId) {
+      throw serviceError('Ticket is for a different event', 409, 'WRONG_EVENT', {
+        eventTitle: booking.event.title,
+      });
     }
     if (booking.status === BookingStatus.CHECKED_IN) {
       throw serviceError('Ticket has already been checked in', 409, 'ALREADY_CHECKED_IN', {

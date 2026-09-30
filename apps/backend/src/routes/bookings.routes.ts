@@ -114,8 +114,8 @@ router.get('/:id/pass/google', asyncHandler(async (req: AuthRequest, res: Respon
 }));
 
 router.post('/check-in', asyncHandler(async (req: AuthRequest, res: Response) => {
-  const input = z.object({ code: z.string().min(1) }).parse(req.body);
-  const result = await ticketsService.checkIn(input.code, req.userId!);
+  const input = z.object({ code: z.string().min(1), eventId: z.string().min(1).optional() }).parse(req.body);
+  const result = await ticketsService.checkIn(input.code, req.userId!, input.eventId);
   res.json({ success: true, data: result });
 }));
 

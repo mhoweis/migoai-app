@@ -166,13 +166,13 @@ export const ticketsService = {
     await api.post(`/bookings/${id}/cancel`);
   },
 
-  async checkIn(code: string): Promise<{
+  async checkIn(code: string, eventId?: string): Promise<{
     booking: Ticket;
     attendee?: { name?: string | null; email?: string | null };
     eventTitle: string;
     ticketCount: number;
   }> {
-    const response = await api.post('/bookings/check-in', { code });
+    const response = await api.post('/bookings/check-in', { code, eventId });
     return response.data.data;
   },
 
