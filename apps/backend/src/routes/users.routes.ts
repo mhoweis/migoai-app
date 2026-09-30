@@ -97,7 +97,16 @@ const updateUserSchema = z
   .object({
     name: z.string().trim().min(1).max(100).optional(),
     avatar: z.string().url().max(2048).nullable().optional(),
+    phone: z.string().regex(/^\+[1-9]\d{7,14}$/).nullable().optional(),
     preferences: z.record(z.string(), z.unknown()).optional(),
+  })
+  .strict();
+
+const reminderPreferencesSchema = z
+  .object({
+    email: z.boolean().optional(),
+    whatsapp: z.boolean().optional(),
+    saved: z.boolean().optional(),
   })
   .strict();
 
@@ -219,6 +228,11 @@ router.put("/me", async (req: AuthRequest, res: Response) => {
       res.status(400).json({ success: false, error: "Invalid home layout" });
       return;
     }
+    const reminders = parsed.data.preferences?.reminders;
+    if (reminders !== undefined && !reminderPreferencesSchema.safeParse(reminders).success) {
+      res.status(400).json({ success: false, error: "Invalid reminder preferences" });
+      return;
+    }
     const existing = await prisma.user.findUnique({
       where: { id: req.userId! },
       select: { preferences: true },
@@ -227,20 +241,35 @@ router.put("/me", async (req: AuthRequest, res: Response) => {
       existing?.preferences && typeof existing.preferences === "object" && !Array.isArray(existing.preferences)
         ? existing.preferences as Prisma.JsonObject
         : {};
-    const preferences = (parsed.data.preferences
+    const mergedPreferences = (parsed.data.preferences
       ? { ...currentPreferences, ...parsed.data.preferences }
-      : currentPreferences) as Prisma.InputJsonObject;
+      : { ...currentPreferences }) as Prisma.JsonObject;
+    if (reminders !== undefined) {
+      const currentReminders = currentPreferences.reminders;
+      mergedPreferences.reminders = {
+        ...(currentReminders && typeof currentReminders === "object" && !Array.isArray(currentReminders)
+          ? currentReminders as Prisma.JsonObject
+          : {}),
+        ...reminders as z.infer<typeof reminderPreferencesSchema>,
+      };
+    }
+    const preferences = mergedPreferences as Prisma.InputJsonObject;
     const user = await prisma.user.update({
       where: { id: req.userId! },
       data: {
         name: parsed.data.name,
         avatar: parsed.data.avatar,
+        phone: parsed.data.phone,
         preferences,
       },
       select: { ...publicUserSelect, interests: true },
     });
     res.json({ success: true, data: user });
-  } catch {
+  } catch (error: any) {
+    if (error?.code === "P2002") {
+      res.status(409).json({ success: false, error: "Phone already in use" });
+      return;
+    }
     res.status(500).json({ success: false, error: "Failed to update user" });
   }
 });

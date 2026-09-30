@@ -17,6 +17,7 @@ interface UserStore {
   setFirstLogin: (value: boolean) => Promise<void>;
   updateInterests: (interests: string[]) => Promise<void>;
   updateHomeLayout: (homeLayout: HomeLayout) => Promise<void>;
+  updateReminders: (phone: string | null, reminders: { email: boolean; whatsapp: boolean; saved: boolean }) => Promise<void>;
   setUserLocation: (city: string) => Promise<void>;
   logout: () => Promise<void>;
   loadUserFromStorage: () => Promise<void>;
@@ -101,6 +102,34 @@ export const useUserStore = create<UserStore>((set, get) => ({
       await AsyncStorage.setItem('user', JSON.stringify(mergedUser));
     } catch (error: any) {
       set({ user: previousUser, isLoading: false, error: error.message });
+      throw error;
+    }
+  },
+
+  updateReminders: async (phone, reminders) => {
+    const previousUser = get().user;
+    if (!previousUser) return;
+    set({ isLoading: true, error: null });
+    try {
+      const updatedUser = await authService.updateReminders(phone, reminders);
+      const mergedUser: User = {
+        ...previousUser,
+        ...updatedUser,
+        phone: updatedUser.phone === undefined ? previousUser.phone : updatedUser.phone,
+        interests: updatedUser.interests ?? previousUser.interests,
+        preferences: {
+          ...previousUser.preferences,
+          ...updatedUser.preferences,
+          reminders: {
+            ...previousUser.preferences?.reminders,
+            ...updatedUser.preferences?.reminders,
+          },
+        },
+      };
+      set({ user: mergedUser, isLoading: false });
+      await AsyncStorage.setItem('user', JSON.stringify(mergedUser));
+    } catch (error: any) {
+      set({ isLoading: false, error: error.message });
       throw error;
     }
   },

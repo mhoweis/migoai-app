@@ -8,6 +8,7 @@ import {
 } from '../services/llm-budget.service';
 import prisma from '../database/prisma';
 import { z } from 'zod';
+import { runReminders } from '../services/reminders.service';
 
 const router = Router();
 
@@ -15,6 +16,11 @@ router.use(authenticate, requireAdmin);
 
 router.get('/', (_req, res) => {
   res.json({ success: true, data: { message: 'Admin endpoint' } });
+});
+
+router.post('/reminders/run', async (_req: AuthRequest, res: Response) => {
+  const summary = await runReminders();
+  res.json({ success: true, data: summary });
 });
 
 router.get('/organizers', async (req: AuthRequest, res: Response) => {

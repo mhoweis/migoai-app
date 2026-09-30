@@ -17,6 +17,11 @@ export interface User {
     theme?: 'light' | 'dark';
     locale?: 'en' | 'ar';
     homeLayout?: HomeLayout;
+    reminders?: {
+      email?: boolean;
+      whatsapp?: boolean;
+      saved?: boolean;
+    };
   };
   createdAt: string;
   updatedAt: string;
@@ -257,6 +262,21 @@ export const authService = {
     });
     if (!response.data.success) {
       throw new Error(response.data.error || 'Failed to update Home layout');
+    }
+    await AsyncStorage.setItem('user', JSON.stringify(response.data.data));
+    return response.data.data;
+  },
+
+  async updateReminders(
+    phone: string | null,
+    reminders: { email: boolean; whatsapp: boolean; saved: boolean },
+  ): Promise<User> {
+    const response = await api.put<ApiResponse<User>>('/users/me', {
+      phone,
+      preferences: { reminders },
+    });
+    if (!response.data.success) {
+      throw new Error(response.data.error || 'Failed to update reminders');
     }
     await AsyncStorage.setItem('user', JSON.stringify(response.data.data));
     return response.data.data;

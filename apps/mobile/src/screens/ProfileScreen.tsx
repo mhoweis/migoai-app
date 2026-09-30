@@ -1,6 +1,6 @@
 import { colors } from '../theme';
 // src/screens/ProfileScreen.tsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Image,
   Modal,
   TextInput,
+  Switch,
   ActivityIndicator,
   Alert,
 } from 'react-native';
@@ -29,16 +30,42 @@ import { useBreakpoint } from '../hooks/useBreakpoint';
 import Container from '../components/Container';
 
 type ProfileScreenNavigationProp = NavigationProp<ProfileStackParamList, 'ProfileMain'>;
+const e164PhonePattern = /^\+[1-9]\d{7,14}$/;
 
 const ProfileScreen = () => {
   const navigation = useNavigation<ProfileScreenNavigationProp>();
-  const { user, logout, updateProfile, setUser } = useUserStore();
+  const { user, logout, updateProfile, updateReminders, setUser } = useUserStore();
   const { locale, t } = useLocale();
   const { isWebDesktop } = useBreakpoint();
 
   const [showNameModal, setShowNameModal] = useState(false);
   const [editName, setEditName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [reminderSettings, setReminderSettings] = useState({
+    email: user?.preferences?.reminders?.email ?? true,
+    whatsapp: user?.preferences?.reminders?.whatsapp ?? true,
+    saved: user?.preferences?.reminders?.saved ?? true,
+  });
+  const [reminderPhone, setReminderPhone] = useState(user?.phone ?? '');
+  const [isSavingReminders, setIsSavingReminders] = useState(false);
+  const [remindersSaved, setRemindersSaved] = useState(false);
+  const [remindersError, setRemindersError] = useState('');
+  const phoneIsInvalid = reminderPhone.trim().length > 0 && !e164PhonePattern.test(reminderPhone.trim());
+
+  useEffect(() => {
+    setReminderSettings({
+      email: user?.preferences?.reminders?.email ?? true,
+      whatsapp: user?.preferences?.reminders?.whatsapp ?? true,
+      saved: user?.preferences?.reminders?.saved ?? true,
+    });
+    setReminderPhone(user?.phone ?? '');
+  }, [
+    user?.id,
+    user?.phone,
+    user?.preferences?.reminders?.email,
+    user?.preferences?.reminders?.whatsapp,
+    user?.preferences?.reminders?.saved,
+  ]);
 
   // ── Avatar ────────────────────────────────────────────────────────────────
   const handlePickAvatar = async () => {
@@ -134,6 +161,21 @@ const ProfileScreen = () => {
     }
   };
 
+  const handleSaveReminders = async () => {
+    if (phoneIsInvalid) return;
+    setIsSavingReminders(true);
+    setRemindersSaved(false);
+    setRemindersError('');
+    try {
+      await updateReminders(reminderPhone.trim() || null, reminderSettings);
+      setRemindersSaved(true);
+    } catch (error: any) {
+      setRemindersError(error?.response?.data?.error || error?.message || t('reminders_save_failed'));
+    } finally {
+      setIsSavingReminders(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView>
@@ -222,6 +264,95 @@ const ProfileScreen = () => {
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
+        </View>
+
+        <View style={[styles.section, styles.remindersCard, isWebDesktop && styles.desktopSection]}>
+          <Text style={styles.sectionTitle}>{t('reminders')}</Text>
+          <View style={styles.remindersContent}>
+            {([
+              { key: 'email', label: t('email_reminders') },
+              { key: 'whatsapp', label: t('whatsapp_reminders') },
+              { key: 'saved', label: t('saved_event_reminders') },
+            ] as const).map(({ key, label }, index) => (
+              <View
+                key={key}
+                style={[
+                  styles.reminderRow,
+                  locale === 'ar' && styles.reminderRowRtl,
+                  index === 2 && styles.reminderRowLast,
+                ]}
+              >
+                <Text style={[styles.reminderLabel, locale === 'ar' && styles.reminderLabelRtl]}>{label}</Text>
+                <Switch
+                  accessibilityLabel={label}
+                  value={reminderSettings[key]}
+                  onValueChange={(value: boolean) => {
+                    setReminderSettings(current => ({ ...current, [key]: value }));
+                    setRemindersSaved(false);
+                  }}
+                  trackColor={{ false: colors.borderStrong, true: colors.primarySoft }}
+                  thumbColor={reminderSettings[key] ? colors.primary : colors.surface}
+                  ios_backgroundColor={colors.borderStrong}
+                />
+              </View>
+            ))}
+            <Text style={[styles.remindersPhoneLabel, locale === 'ar' && styles.reminderLabelRtl]}>
+              {t('whatsapp_number')}
+            </Text>
+            <TextInput
+              accessibilityLabel={t('whatsapp_number')}
+              style={[
+                styles.remindersPhoneInput,
+                locale === 'ar' && styles.remindersPhoneInputRtl,
+                phoneIsInvalid && styles.remindersPhoneInputInvalid,
+              ]}
+              value={reminderPhone}
+              onChangeText={(value: string) => {
+                setReminderPhone(value);
+                setRemindersSaved(false);
+              }}
+              placeholder="+9715XXXXXXXX"
+              placeholderTextColor={colors.textMuted}
+              keyboardType="phone-pad"
+              autoCapitalize="none"
+              textAlign={locale === 'ar' ? 'right' : 'left'}
+            />
+            {phoneIsInvalid ? (
+              <Text style={[styles.remindersError, locale === 'ar' && styles.reminderLabelRtl]}>
+                {t('invalid_whatsapp_number')}
+              </Text>
+            ) : null}
+            <Text style={[styles.remindersHelp, locale === 'ar' && styles.reminderLabelRtl]}>
+              {t('reminders_helper')}
+            </Text>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={t('save')}
+              style={[
+                styles.remindersSaveButton,
+                locale === 'ar' && styles.remindersSaveButtonRtl,
+                (isSavingReminders || phoneIsInvalid) && styles.remindersSaveButtonDisabled,
+              ]}
+              onPress={() => void handleSaveReminders()}
+              disabled={isSavingReminders || phoneIsInvalid}
+            >
+              {isSavingReminders ? (
+                <ActivityIndicator size="small" color={colors.textInverse} />
+              ) : (
+                <Text style={styles.remindersSaveText}>{t('save')}</Text>
+              )}
+            </TouchableOpacity>
+            {remindersSaved ? (
+              <Text style={[styles.remindersSuccess, locale === 'ar' && styles.reminderLabelRtl]}>
+                {t('reminders_saved_success')}
+              </Text>
+            ) : null}
+            {remindersError ? (
+              <Text style={[styles.remindersError, locale === 'ar' && styles.reminderLabelRtl]}>
+                {remindersError}
+              </Text>
+            ) : null}
+          </View>
         </View>
 
         <View style={[styles.section, isWebDesktop && styles.desktopSection]}>
@@ -368,6 +499,95 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     paddingVertical: 10,
     ...shadow.card,
+  },
+  remindersCard: {
+    paddingBottom: 20,
+  },
+  remindersContent: {
+    paddingHorizontal: 20,
+  },
+  reminderRow: {
+    minHeight: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.surfaceAlt,
+  },
+  reminderRowRtl: {
+    flexDirection: 'row',
+  },
+  reminderRowLast: {
+    borderBottomWidth: 0,
+  },
+  reminderLabel: {
+    flex: 1,
+    marginRight: 16,
+    color: colors.textSecondary,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  reminderLabelRtl: {
+    textAlign: 'right',
+  },
+  remindersPhoneLabel: {
+    ...type.label,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  remindersPhoneInput: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: colors.bg,
+    color: colors.text,
+    fontSize: 15,
+  },
+  remindersPhoneInputRtl: {
+    textAlign: 'right',
+  },
+  remindersPhoneInputInvalid: {
+    borderColor: colors.danger,
+  },
+  remindersHelp: {
+    ...type.caption,
+    lineHeight: 20,
+    marginTop: 14,
+    marginBottom: 16,
+  },
+  remindersError: {
+    color: colors.danger,
+    fontSize: 13,
+    marginTop: 6,
+  },
+  remindersSuccess: {
+    color: colors.success,
+    fontSize: 13,
+    marginTop: 10,
+  },
+  remindersSaveButton: {
+    alignSelf: 'flex-start',
+    minWidth: 120,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+  },
+  remindersSaveButtonRtl: {
+    alignSelf: 'flex-end',
+  },
+  remindersSaveButtonDisabled: {
+    opacity: 0.55,
+  },
+  remindersSaveText: {
+    color: colors.textInverse,
+    fontSize: 14,
+    fontWeight: '700',
   },
   sectionTitle: {
     paddingHorizontal: 20,

@@ -63,6 +63,8 @@ const envSchema = z.object({
   WHATSAPP_ACCESS_TOKEN: z.string().optional(),
   WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
   WHATSAPP_REMINDERS_CRON: z.string().default('0 5 * * *'),
+  WHATSAPP_REMINDER_TEMPLATE: z.string().optional(),
+  REMINDERS_INTERVAL_MINUTES: z.coerce.number().int().min(0).default(15),
   WEEKEND_DIGEST_CRON: z.string().default('0 6 * * 4'),
 
   // Event Data APIs
@@ -117,6 +119,12 @@ const envSchema = z.object({
   EMAIL_SERVER_PORT: z.string().optional(),
   EMAIL_SERVER_USER: z.string().optional(),
   EMAIL_SERVER_PASSWORD: z.string().optional(),
+  EMAIL_FROM: z.string().default('Migo <no-reply@migo.ae>'),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_SECURE: z.enum(['true', 'false']).optional(),
 });
 
 // Parse and export
@@ -201,6 +209,8 @@ export default {
   WHATSAPP_ACCESS_TOKEN: env.WHATSAPP_ACCESS_TOKEN || '',
   WHATSAPP_PHONE_NUMBER_ID: env.WHATSAPP_PHONE_NUMBER_ID || '',
   WHATSAPP_REMINDERS_CRON: env.WHATSAPP_REMINDERS_CRON,
+  WHATSAPP_REMINDER_TEMPLATE: env.WHATSAPP_REMINDER_TEMPLATE || '',
+  REMINDERS_INTERVAL_MINUTES: env.REMINDERS_INTERVAL_MINUTES,
   WEEKEND_DIGEST_CRON: env.WEEKEND_DIGEST_CRON,
 
   // Event Data APIs
@@ -255,6 +265,12 @@ export default {
   EMAIL_SERVER_PORT: env.EMAIL_SERVER_PORT || '',
   EMAIL_SERVER_USER: env.EMAIL_SERVER_USER || '',
   EMAIL_SERVER_PASSWORD: env.EMAIL_SERVER_PASSWORD || '',
+  EMAIL_FROM: env.EMAIL_FROM,
+  SMTP_HOST: env.SMTP_HOST || env.EMAIL_SERVER_HOST || '',
+  SMTP_PORT: env.SMTP_PORT ?? Number(env.EMAIL_SERVER_PORT || 587),
+  SMTP_USER: env.SMTP_USER || env.EMAIL_SERVER_USER || '',
+  SMTP_PASS: env.SMTP_PASS || env.EMAIL_SERVER_PASSWORD || '',
+  SMTP_SECURE: env.SMTP_SECURE === undefined ? undefined : env.SMTP_SECURE === 'true',
   
   // Helpers
   isDevelopment: env.NODE_ENV === 'development',

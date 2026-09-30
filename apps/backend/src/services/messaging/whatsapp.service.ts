@@ -6,16 +6,6 @@ import { formatShareDate } from '../social.service';
 
 const webBase = () => (config.APP_PUBLIC_URL || config.APP_URL).replace(/\/+$/, '');
 
-const parseNotes = (notes: string | null): Record<string, unknown> => {
-  if (!notes) return {};
-  try {
-    const parsed = JSON.parse(notes);
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-  } catch {
-    return {};
-  }
-};
-
 const configured = (): boolean => Boolean(
   config.WHATSAPP_ACCESS_TOKEN && config.WHATSAPP_PHONE_NUMBER_ID,
 );
@@ -48,6 +38,41 @@ export const whatsappService = {
     return true;
   },
 
+  async sendTemplate(
+    toE164: string,
+    name: string,
+    lang: 'en' | 'ar',
+    params: string[],
+  ): Promise<boolean> {
+    if (!configured()) {
+      logger.info('[whatsapp] skipped (not configured)');
+      return false;
+    }
+    await axios.post(
+      `https://graph.facebook.com/v20.0/${config.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+      {
+        messaging_product: 'whatsapp',
+        to: toE164,
+        type: 'template',
+        template: {
+          name,
+          language: { code: lang },
+          components: [{
+            type: 'body',
+            parameters: params.map(text => ({ type: 'text', text })),
+          }],
+        },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${config.WHATSAPP_ACCESS_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+    return true;
+  },
+
   async sendTicketConfirmation(bookingId: string): Promise<void> {
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
@@ -60,36 +85,5 @@ export const whatsappService = {
     const venue = booking.event.venueName || booking.event.city || 'TBA';
     const body = `Your ticket for ${booking.event.title} — ${formatShareDate(booking.event.startDate)} at ${venue}. Show the QR in your Migo Wallet at the door: ${webBase()}/?tab=wallet`;
     await this.sendText(booking.user.phone, body);
-  },
-
-  async sendEventReminders(): Promise<number> {
-    const now = new Date();
-    const bookings = await prisma.booking.findMany({
-      where: {
-        status: 'CONFIRMED',
-        event: {
-          startDate: { gte: now, lte: new Date(now.getTime() + 24 * 60 * 60 * 1000) },
-        },
-      },
-      include: {
-        event: { select: { title: true, startDate: true, venueName: true, city: true } },
-        user: { select: { phone: true } },
-      },
-    });
-    let sent = 0;
-    for (const booking of bookings) {
-      const notes = parseNotes(booking.notes);
-      if (notes.reminderSentAt || !booking.user.phone) continue;
-      const venue = booking.event.venueName || booking.event.city || 'TBA';
-      const body = `Reminder: ${booking.event.title} — ${formatShareDate(booking.event.startDate)} at ${venue}. Show the QR in your Migo Wallet at the door: ${webBase()}/?tab=wallet`;
-      if (await this.sendText(booking.user.phone, body)) {
-        await prisma.booking.update({
-          where: { id: booking.id },
-          data: { notes: JSON.stringify({ ...notes, reminderSentAt: new Date().toISOString() }) },
-        });
-        sent += 1;
-      }
-    }
-    return sent;
   },
 };
