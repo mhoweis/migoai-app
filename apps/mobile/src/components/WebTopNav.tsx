@@ -25,7 +25,7 @@ export default function WebTopNav({ activeTab }: { activeTab?: string }) {
     <View style={styles.bar}>
       <Container style={styles.inner}>
           <TouchableOpacity accessibilityRole="link" accessibilityLabel={t('home')} style={styles.brand} onPress={() => navigateToTab('Home')}>
-          <Image source={require('../../assets/icon.png')} style={styles.logo} />
+          <Image source={require('../../assets/logo.png')} style={styles.logo} />
           <Text style={styles.wordmark}>Migo</Text>
         </TouchableOpacity>
         <View style={styles.links}>
