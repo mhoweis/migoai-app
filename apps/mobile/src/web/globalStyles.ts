@@ -59,6 +59,11 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
   `;
   document.head.appendChild(style);
 
+  const viewport = document.querySelector('meta[name="viewport"]');
+  if (viewport && !viewport.getAttribute('content')?.includes('viewport-fit')) {
+    viewport.setAttribute('content', `${viewport.getAttribute('content')}, viewport-fit=cover`);
+  }
+
   document.title = 'Migo · UAE events in one place';
   let themeColor = document.querySelector('meta[name="theme-color"]');
   if (!themeColor) {

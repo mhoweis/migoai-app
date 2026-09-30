@@ -4,7 +4,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { navigationRef } from "./src/navigation/navigationRef";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Alert, Image, Linking, Platform, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useUserStore } from "./src/store/userStore";
@@ -38,6 +38,7 @@ import { navigateToTab } from "./src/navigation/navigationRef";
 import { setLocale, STORAGE_KEY, useLocale } from "./src/i18n";
 import { shadow, radius } from "./src/theme";
 import ChatFab from "./src/components/ChatFab";
+import { useTabBarMetrics } from "./src/navigation/tabBarMetrics";
 import { useBreakpoint } from "./src/hooks/useBreakpoint";
 import WebTopNav from "./src/components/WebTopNav";
 import Container from "./src/components/Container";
@@ -83,14 +84,14 @@ const CustomTabIcon = ({ routeName, focused }: { routeName: string, focused: boo
 function MainTabs() {
   const { t } = useLocale();
   const { isWebDesktop } = useBreakpoint();
-  const insets = useSafeAreaInsets();
+  const tabBarMetrics = useTabBarMetrics();
   const tabBarStyle = isWebDesktop ? { display: 'none' as const } : {
     borderTopWidth: 0,
     backgroundColor: colors.surface,
-    minHeight: 64 + insets.bottom,
-    height: 64 + insets.bottom,
-    paddingBottom: Math.max(8, insets.bottom),
-    paddingTop: 4,
+    minHeight: tabBarMetrics.height,
+    height: tabBarMetrics.height,
+    paddingBottom: tabBarMetrics.paddingBottom,
+    paddingTop: tabBarMetrics.paddingTop,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     ...shadow.float,
@@ -186,14 +187,14 @@ export function ProfileStack() {
 function MainTabsWithProfileStack() {
   const { t } = useLocale();
   const { isWebDesktop } = useBreakpoint();
-  const insets = useSafeAreaInsets();
+  const tabBarMetrics = useTabBarMetrics();
   const tabBarStyle = isWebDesktop ? { display: 'none' as const } : {
     borderTopWidth: 0,
     backgroundColor: colors.surface,
-    minHeight: 64 + insets.bottom,
-    height: 64 + insets.bottom,
-    paddingBottom: Math.max(8, insets.bottom),
-    paddingTop: 4,
+    minHeight: tabBarMetrics.height,
+    height: tabBarMetrics.height,
+    paddingBottom: tabBarMetrics.paddingBottom,
+    paddingTop: tabBarMetrics.paddingTop,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     ...shadow.float,

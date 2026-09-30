@@ -7,12 +7,14 @@ import { navigationRef } from '../navigation/navigationRef';
 import { colors, gradients, shadow } from '../theme';
 import { PressableScale } from './PressableScale';
 import { useBreakpoint } from '../hooks/useBreakpoint';
+import { useTabBarMetrics } from '../navigation/tabBarMetrics';
 
 export default function ChatFab() {
   const { t } = useLocale();
   const { isWebDesktop, width } = useBreakpoint();
   const isDesktopPill = isWebDesktop && width >= 1440;
   const isCompactWebFab = Platform.OS === 'web' && width < 1024;
+  const tabBarMetrics = useTabBarMetrics();
 
   return (
     <PressableScale
@@ -22,6 +24,7 @@ export default function ChatFab() {
       onPress={() => navigationRef.current?.navigate('Chat')}
       style={[
         styles.fab,
+        !isWebDesktop && { bottom: tabBarMetrics.height + 16 },
         isDesktopPill ? styles.desktopFab : isWebDesktop ? styles.compactDesktopFab : isCompactWebFab && styles.compactWebFab,
       ]}
     >
