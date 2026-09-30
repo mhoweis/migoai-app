@@ -236,12 +236,25 @@ function MainTabsWithProfileStack() {
   );
 }
 
-function getActiveTab() {
-  const root = navigationRef.getRootState();
-  const main = root?.routes.find(route => route.name === 'Main');
-  const tabs = (main as any)?.state;
-  const selected = tabs?.routes?.[tabs.index ?? 0]?.name;
-  return selected;
+function getActiveTab(state: any = navigationRef.getRootState()): string | undefined {
+  const routes = state?.routes ?? [];
+  let nestedState: any;
+  for (let index = Math.min(state?.index ?? routes.length - 1, routes.length - 1); index >= 0; index -= 1) {
+    if (routes[index].name === 'Main') {
+      nestedState = routes[index].state;
+      break;
+    }
+  }
+  const tabRoutes = ['HomeTab', 'EventsTab', 'WalletTab', 'ProfileTab'];
+
+  while (nestedState?.routes?.length) {
+    const focusedRoute: any = nestedState.routes[nestedState.index ?? 0];
+    if (!focusedRoute) return undefined;
+    if (tabRoutes.includes(focusedRoute.name)) return focusedRoute.name;
+    nestedState = focusedRoute.state;
+  }
+
+  return undefined;
 }
 
 function AppFrame({ children, showChatFab, currentRoute, activeTab }: {
@@ -473,9 +486,9 @@ export default function App() {
           setCurrentRoute(navigationRef.current?.getCurrentRoute()?.name);
           setActiveTab(getActiveTab());
         }}
-        onStateChange={() => {
+        onStateChange={state => {
           setCurrentRoute(navigationRef.current?.getCurrentRoute()?.name);
-          setActiveTab(getActiveTab());
+          setActiveTab(getActiveTab(state));
         }}
       >
         <AppFrame showChatFab={Boolean(user && !firstLogin)} currentRoute={currentRoute} activeTab={activeTab}>

@@ -55,7 +55,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const { isWebDesktop, gutter, width } = useBreakpoint();
   const recommendationColumns = width >= 1400 ? 5 : 4;
   const recommendationCellWidth = (count: number) => (Math.min(width, 1240) - gutter * 2 - (count - 1) * 16) / count;
-  const venueColumns = isWebDesktop ? 6 : 3;
+  const venueColumns = 3;
   const venueCellWidth = (Math.min(width, 1240) - gutter * 2 - (venueColumns - 1) * 12) / venueColumns;
   const topCardWidth = isWebDesktop
     ? (Math.min(width, 1240) - gutter * 2 - 32) / 3

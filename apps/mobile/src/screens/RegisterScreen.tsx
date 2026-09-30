@@ -350,8 +350,8 @@ const styles = StyleSheet.create({
   brandBenefit: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   brandBenefitText: { flex: 1, color: 'rgba(255,255,255,0.88)', fontSize: 16, lineHeight: 24 },
   logo: { width: 64, height: 64, marginBottom: 14 },
-  title: { fontSize: 30, fontWeight: 'bold', color: colors.text, marginBottom: 8 },
-  subtitle: { fontSize: 15, color: colors.textMuted, textAlign: 'center' },
+  title: { fontSize: 30, fontWeight: 'bold', color: colors.textInverse, marginBottom: 8 },
+  subtitle: { fontSize: 15, color: 'rgba(255,255,255,0.85)', textAlign: 'center' },
   modeSelector: {
     flexDirection: 'row',
     backgroundColor: colors.surfaceAlt,

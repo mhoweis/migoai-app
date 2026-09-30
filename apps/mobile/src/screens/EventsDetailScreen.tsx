@@ -496,9 +496,9 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <Ionicons name="chevron-forward" size={20} color={colors.primary} />
             </TouchableOpacity>
           )}
-        </View>
+          </View>
           {isWebDesktop ? (
-            <View style={styles.bookingCard}>
+            <View style={[styles.bookingCard, styles.stickyBookingCard]}>
               <Text style={styles.bookingPrice}>
                 {event.isFree || !event.priceFrom ? t('free') : formatPrice(Number(event.priceFrom), event.currency || 'AED')}
               </Text>
@@ -647,7 +647,8 @@ const styles = StyleSheet.create({
   desktopBody: { flexDirection: 'row', alignItems: 'flex-start', gap: 32, alignSelf: 'center' },
   desktopMain: { flex: 1, minWidth: 0, marginTop: 32, paddingHorizontal: 0 },
   infoCard: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, padding: 18 },
-  bookingCard: { width: 340, marginTop: 32, padding: 24, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, ...shadow.card },
+  bookingCard: { width: 340, alignSelf: 'flex-start', marginTop: 32, padding: 24, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, ...shadow.card },
+  stickyBookingCard: { position: 'sticky' as any, top: 92, zIndex: 10 },
   bookingPrice: { ...type.h1, color: colors.primary, fontVariant: ['tabular-nums'] },
   bookingInfo: { color: colors.textSecondary, fontSize: 14, lineHeight: 21, marginTop: 12 },
   bookingRefund: { color: colors.textMuted, fontSize: 12, lineHeight: 18, marginTop: 16 },

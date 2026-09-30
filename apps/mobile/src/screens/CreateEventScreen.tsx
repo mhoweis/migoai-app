@@ -25,6 +25,7 @@ import { uploadService } from '../services/upload.service';
 import { colors, type } from '../theme';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import Container from '../components/Container';
+import { addLocalDays, formatLocalDate, toLocalDateString } from '../utils/dateTime';
 
 const categories = ['Music', 'Sports', 'Art', 'Food', 'Tech', 'Business', 'Health', 'Theater', 'Comedy', 'Other'];
 const cities = ['Dubai', 'Abu Dhabi', 'Sharjah', 'Ajman', 'Ras Al Khaimah', 'Fujairah', 'Umm Al Quwain'];
@@ -36,9 +37,9 @@ const dressCodes = [
 type Navigation = NativeStackNavigationProp<ProfileStackParamList, 'CreateEvent'>;
 
 export default function CreateEventScreen({ navigation }: { navigation: Navigation }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { isWebDesktop } = useBreakpoint();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toLocalDateString(new Date());
   const [form, setForm] = useState({ title: '', description: '', category: 'Other', venueName: '', address: '', city: 'Dubai', isFree: true, price: '', ticketUrl: '', capacity: '0', notes: '', coverImage: '' });
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
@@ -56,7 +57,7 @@ export default function CreateEventScreen({ navigation }: { navigation: Navigati
   const regenerateDays = (from: string, to: string) => {
     const count = dayCount(from, to);
     if (!from || !to || count < 1 || count > 31) return;
-    setDays(Array.from({ length: count }, (_, index) => ({ date: new Date(new Date(`${from}T00:00:00`).getTime() + index * 86400000).toISOString().slice(0, 10), startTime: days[0]?.startTime || '', endTime: days[0]?.endTime || '' })));
+    setDays(Array.from({ length: count }, (_, index) => ({ date: addLocalDays(from, index), startTime: days[0]?.startTime || '', endTime: days[0]?.endTime || '' })));
   };
   const schedule = useMemo(() => multiDay ? days : (fromDate ? [{ date: fromDate, startTime: firstDay.startTime, ...(firstDay.endTime ? { endTime: firstDay.endTime } : {}) }] : []), [multiDay, days, fromDate, firstDay.startTime, firstDay.endTime]);
 
@@ -130,9 +131,9 @@ export default function CreateEventScreen({ navigation }: { navigation: Navigati
         ))}</View>
         <View style={styles.toggleRow}><Text style={styles.label}>{t('multiple_days')}</Text><Switch value={multiDay} onValueChange={(value: boolean) => { setMultiDay(value); if (value && fromDate && toDate) regenerateDays(fromDate, toDate); }} /></View>
         <Text style={styles.label}>{multiDay ? t('from_date') : t('start_date')}</Text>
-        <View style={styles.row}><DateField value={fromDate} onChange={value => { setFromDate(value); if (multiDay && toDate) regenerateDays(value, toDate); }} placeholder={t('start_date')} minimumDate={today} />{!multiDay ? <TimeField value={firstDay.startTime} onChange={value => setDays([{ ...firstDay, startTime: value }])} placeholder={t('start_time')} /> : null}</View>
-        {!multiDay ? <><Text style={styles.label}>{t('end_time')}</Text><TimeField value={firstDay.endTime || ''} onChange={value => setDays([{ ...firstDay, endTime: value }])} placeholder={t('end_time')} /></> : null}
-        {multiDay ? <><Text style={styles.label}>{t('to_date')}</Text><DateField value={toDate} onChange={value => { setToDate(value); regenerateDays(fromDate, value); }} placeholder={t('end_date')} minimumDate={fromDate || today} />{days.map((day, index) => <View key={day.date} style={styles.dayRow}><Text style={styles.dayLabel}>{day.date}</Text><TimeField value={day.startTime} onChange={value => setDays(current => current.map((entry, i) => i === index ? { ...entry, startTime: value } : entry))} placeholder={t('start_time')} /><TimeField value={day.endTime || ''} onChange={value => setDays(current => current.map((entry, i) => i === index ? { ...entry, endTime: value } : entry))} placeholder={t('end_time')} /></View>)}{days.length > 1 ? <TouchableOpacity style={styles.secondaryButton} onPress={() => setDays(current => current.map(day => ({ ...day, startTime: current[0].startTime, endTime: current[0].endTime })))}><Text style={styles.secondaryText}>{t('apply_to_all_days')}</Text></TouchableOpacity> : null}</> : null}
+        <View style={styles.row}><DateField value={fromDate} onChange={value => { setFromDate(value); if (multiDay && toDate) regenerateDays(value, toDate); }} placeholder={t('select_date')} label={multiDay ? t('from_date') : t('start_date')} minimumDate={today} />{!multiDay ? <TimeField value={firstDay.startTime} onChange={value => setDays([{ ...firstDay, startTime: value }])} placeholder={t('select_time')} label={t('start_time')} /> : null}</View>
+        {!multiDay ? <><Text style={styles.label}>{t('end_time')}</Text><TimeField value={firstDay.endTime || ''} onChange={value => setDays([{ ...firstDay, endTime: value }])} placeholder={t('select_time')} label={t('end_time')} /></> : null}
+        {multiDay ? <><Text style={styles.label}>{t('to_date')}</Text><DateField value={toDate} onChange={value => { setToDate(value); regenerateDays(fromDate, value); }} placeholder={t('select_date')} label={t('to_date')} minimumDate={fromDate || today} />{days.map((day, index) => <View key={day.date} style={styles.dayRow}><Text style={styles.dayLabel}>{formatLocalDate(day.date, locale, false)}</Text><TimeField value={day.startTime} onChange={value => setDays(current => current.map((entry, i) => i === index ? { ...entry, startTime: value } : entry))} placeholder={t('select_time')} label={t('start_time')} /><TimeField value={day.endTime || ''} onChange={value => setDays(current => current.map((entry, i) => i === index ? { ...entry, endTime: value } : entry))} placeholder={t('select_time')} label={t('end_time')} /></View>)}{days.length > 1 ? <TouchableOpacity style={styles.secondaryButton} onPress={() => setDays(current => current.map(day => ({ ...day, startTime: current[0].startTime, endTime: current[0].endTime })))}><Text style={styles.secondaryText}>{t('apply_to_all_days')}</Text></TouchableOpacity> : null}</> : null}
         <TextInput accessibilityLabel={t('venue_name')} style={styles.input} placeholder={t('venue_name')} value={form.venueName} onChangeText={(value: string) => set('venueName', value)} />
         <TextInput accessibilityLabel={t('address')} style={styles.input} placeholder={t('address')} value={form.address} onChangeText={(value: string) => set('address', value)} />
         <Text style={styles.label}>{t('city')}</Text>

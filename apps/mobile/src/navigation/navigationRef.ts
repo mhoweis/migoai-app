@@ -81,6 +81,13 @@ const TAB_ROUTE_MAP: Record<string, string> = {
   Wallet: 'WalletTab',
 };
 
+const TAB_STACK_ROOT_SCREENS: Record<string, string> = {
+  Home: 'HomeMain',
+  Events: 'EventsMain',
+  Profile: 'ProfileMain',
+  Wallet: 'WalletMain',
+};
+
 export function navigateToTab(
   tabName: string,
   nestedScreen?: string,
@@ -91,8 +98,12 @@ export function navigateToTab(
     return;
   }
   if (_tabNav) {
-    if (nestedScreen) {
-      _tabNav.navigate(tabName, { screen: nestedScreen, params: nestedParams });
+    const targetScreen = nestedScreen || TAB_STACK_ROOT_SCREENS[tabName];
+    if (targetScreen) {
+      _tabNav.navigate(tabName, {
+        screen: targetScreen,
+        ...(nestedParams ? { params: nestedParams } : {}),
+      });
     } else {
       _tabNav.navigate(tabName);
     }
@@ -103,7 +114,22 @@ export function navigateToTab(
   // mounted route names and passing nested params directly to the tab screen.
   const route = TAB_ROUTE_MAP[tabName] || tabName;
   if (navigationRef.current?.navigate) {
-    navigationRef.current.navigate('Main', { screen: route, params: nestedParams });
+    const rootState = navigationRef.current.getRootState();
+    const focusedRoute = rootState?.routes?.[rootState.index ?? 0];
+    if (
+      focusedRoute?.name !== 'Main' &&
+      rootState?.routes?.some((rootRoute: any) => rootRoute.name === 'Main')
+    ) {
+      navigationRef.current.goBack();
+    }
+    const nestedRoute = route === 'ProfileTab' ? nestedScreen || 'ProfileMain' : undefined;
+    const params = nestedRoute
+      ? { screen: nestedRoute, ...(nestedParams ? { params: nestedParams } : {}) }
+      : nestedParams;
+    navigationRef.current.navigate('Main', {
+      screen: route,
+      ...(params ? { params } : {}),
+    });
   } else {
     console.warn('[navigationRef] Tab navigation not ready');
   }
