@@ -47,6 +47,17 @@ const categoryColors: Record<string, string> = {
 
 const ticketColor = (category?: string) => categoryColors[category || ''] || categoryColors.Other;
 
+type WalletView = 'upcoming' | 'past';
+
+const ticketEndTime = (ticket: Ticket): number => {
+  if (ticket.event.endDate) return new Date(ticket.event.endDate).getTime();
+  const end = new Date(ticket.event.startDate);
+  end.setHours(23, 59, 59, 999);
+  return end.getTime();
+};
+
+const isPastTicket = (ticket: Ticket, now: number): boolean => ticketEndTime(ticket) < now;
+
 const formatDate = (value: string) => {
   const date = new Date(value);
   return `${date.toLocaleDateString('en-US', {
@@ -65,6 +76,7 @@ function TicketCard({
   onApple,
   onGoogle,
   capabilities,
+  past,
   t,
 }: {
   ticket: Ticket;
@@ -74,8 +86,13 @@ function TicketCard({
   onApple: (ticket: Ticket) => void;
   onGoogle: (ticket: Ticket) => void;
   capabilities: { apple: boolean; google: boolean };
+  past: boolean;
   t: ReturnType<typeof useLocale>['t'];
 }) {
+  const active = ticket.status === 'CONFIRMED' && !past;
+  const statusLabel = ticket.status === 'CHECKED_IN'
+    ? (past ? t('attended') : t('checked_in'))
+    : (past ? t('event_ended') : t('confirmed'));
   const color = ticketColor(ticket.event.category || undefined);
   const sendToWhatsApp = async () => {
     try {
@@ -98,8 +115,8 @@ function TicketCard({
         <View style={styles.cardBody}>
         <View style={styles.cardHeading}>
           <Text style={styles.category}>{categoryLabel(ticket.event.category)}</Text>
-          <View style={[styles.statusBadge, ticket.status === 'CHECKED_IN' && styles.usedBadge]}>
-            <Text style={styles.statusText}>{ticket.status === 'CHECKED_IN' ? t('checked_in') : t('confirmed')}</Text>
+          <View style={[styles.statusBadge, (ticket.status === 'CHECKED_IN' || past) && styles.usedBadge]}>
+            <Text style={[styles.statusText, past && styles.pastStatusText]}>{statusLabel}</Text>
           </View>
         </View>
         <Text style={styles.title}>{ticket.event.title}</Text>
@@ -113,18 +130,20 @@ function TicketCard({
             ? `${ticket.currency || ticket.event.currency || 'AED'} ${Number(ticket.totalAmount).toFixed(2)} paid`
             : t('free')}
         </Text>
-        <View style={styles.perforation}>
-          <View style={styles.perforationCircleLeft} />
-          <View style={styles.perforationLine} />
-          <View style={styles.perforationCircleRight} />
-        </View>
-        {ticket.qrCode ? (
+        {!past ? (
+          <View style={styles.perforation}>
+            <View style={styles.perforationCircleLeft} />
+            <View style={styles.perforationLine} />
+            <View style={styles.perforationCircleRight} />
+          </View>
+        ) : null}
+        {ticket.qrCode && !past ? (
           <View style={styles.qrSection}>
             <View style={styles.qrFrame}><QRCode value={ticket.qrCode} size={160} /></View>
             <Text style={styles.code}>{ticket.qrCode}</Text>
           </View>
         ) : null}
-        {ticket.status === 'CONFIRMED' && (
+        {active && (
           <View style={styles.actions}>
             {capabilities.apple && Platform.OS === 'web' ? (
               <TouchableOpacity style={styles.actionButton} onPress={() => onApple(ticket)}>
@@ -150,13 +169,13 @@ function TicketCard({
             )}
           </View>
         )}
-        {ticket.status === 'CONFIRMED' && (
+        {active && (
           <TouchableOpacity style={styles.shareTicketButton} onPress={sendToWhatsApp}>
             <Ionicons name="logo-whatsapp" size={16} color={colors.success} />
             <Text style={styles.shareTicketText}>{t('send_to_whatsapp')}</Text>
           </TouchableOpacity>
         )}
-        {ticket.status === 'CONFIRMED' && (
+        {active && (
           <TouchableOpacity style={styles.cancelButton} onPress={() => onCancel(ticket)}>
             <Ionicons name="close-circle-outline" size={16} color={colors.danger} />
             <Text style={styles.cancelText}>{t('cancel_ticket')}</Text>
@@ -172,6 +191,7 @@ export default function WalletScreen() {
   const { isWebDesktop } = useBreakpoint();
   const ticketColumns = isWebDesktop ? 2 : 1;
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [view, setView] = useState<WalletView>('upcoming');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [offline, setOffline] = useState(false);
@@ -300,6 +320,13 @@ export default function WalletScreen() {
     ]);
   };
 
+  const now = Date.now();
+  const upcomingTickets = tickets.filter(ticket => !isPastTicket(ticket, now));
+  const pastTickets = tickets
+    .filter(ticket => isPastTicket(ticket, now))
+    .sort((a, b) => ticketEndTime(b) - ticketEndTime(a));
+  const visibleTickets = view === 'upcoming' ? upcomingTickets : pastTickets;
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -320,10 +347,31 @@ export default function WalletScreen() {
         </Container>
       </LinearGradient>
       {offline ? <Text style={styles.offline}>{t('offline_saved_tickets')}</Text> : null}
+      <Container style={styles.segmentContainer}>
+        <View style={styles.segment} accessibilityRole="tablist">
+          {(['upcoming', 'past'] as WalletView[]).map(option => {
+            const selected = view === option;
+            const count = option === 'upcoming' ? upcomingTickets.length : pastTickets.length;
+            return (
+              <TouchableOpacity
+                key={option}
+                accessibilityRole="tab"
+                accessibilityState={{ selected }}
+                onPress={() => setView(option)}
+                style={[styles.segmentOption, selected && styles.segmentOptionActive]}
+              >
+                <Text style={[styles.segmentText, selected && styles.segmentTextActive]}>
+                  {t(option === 'upcoming' ? 'upcoming_tickets' : 'past_tickets')} ({count})
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </Container>
       <Container style={[styles.ticketListContainer, !isWebDesktop && styles.mobileTicketListContainer]}>
         <FlatList<Ticket>
           key={`wallet-${ticketColumns}`}
-          data={tickets}
+          data={visibleTickets}
           numColumns={ticketColumns}
           keyExtractor={(ticket: Ticket) => ticket.id}
           renderItem={({ item }: { item: Ticket }) => (
@@ -336,6 +384,7 @@ export default function WalletScreen() {
                 onApple={openApple}
                 onGoogle={openGoogle}
                 capabilities={capabilities}
+                past={view === 'past'}
                 t={t}
               />
             </View>
@@ -343,7 +392,7 @@ export default function WalletScreen() {
           columnWrapperStyle={ticketColumns > 1 ? styles.ticketRow : undefined}
           style={isWebDesktop ? styles.desktopList : undefined}
           contentContainerStyle={[
-            tickets.length ? styles.list : styles.emptyList,
+            visibleTickets.length ? styles.list : styles.emptyList,
             isWebDesktop && styles.desktopListContent,
           ]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadTickets(true)} />}
@@ -352,8 +401,8 @@ export default function WalletScreen() {
               <View style={styles.emptyIcon}>
                 <Ionicons name="ticket-outline" size={48} color={colors.primary} />
               </View>
-              <Text style={styles.emptyTitle}>{t('no_tickets')}</Text>
-              <Text style={styles.emptyText}>{t('no_tickets_help')}</Text>
+              <Text style={styles.emptyTitle}>{t(view === 'past' ? 'no_past_tickets' : 'no_tickets')}</Text>
+              <Text style={styles.emptyText}>{t(view === 'past' ? 'no_past_tickets_help' : 'no_tickets_help')}</Text>
               <GradientButton label={t('browse_events')} onPress={() => navigateToTab('Events')} />
             </View>
           )}
@@ -419,6 +468,13 @@ const styles = StyleSheet.create({
   category: { color: colors.primary, fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: colors.successSoft },
   usedBadge: { backgroundColor: colors.border },
+  pastStatusText: { color: colors.textSecondary },
+  segmentContainer: { paddingTop: 16 },
+  segment: { flexDirection: 'row', marginHorizontal: 20, padding: 4, borderRadius: radius.pill, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  segmentOption: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 40, borderRadius: radius.pill },
+  segmentOptionActive: { backgroundColor: colors.primary },
+  segmentText: { color: colors.textSecondary, fontSize: 14, fontWeight: '700' },
+  segmentTextActive: { color: colors.textInverse },
   statusText: { color: colors.success, fontSize: 12, fontWeight: '700' },
   title: { marginTop: 8, ...type.h2 },
   meta: { marginTop: 5, color: colors.textSecondary, fontSize: 14 },

@@ -862,7 +862,6 @@ private async getRelevantEvents(
             OR: [
               { startDate: { gte: todayStart } },
               { startDate: { lte: now }, endDate: { gte: now } },
-              { startDate: { lte: now }, endDate: null },
             ],
           },
     ],

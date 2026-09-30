@@ -35,10 +35,15 @@ const normalizeDate = (date: Date | string | undefined): Date | undefined => {
   return isNaN(d.getTime()) ? undefined : d;
 };
 
-function startOfToday(): Date {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
+export function notEndedWhere(now: Date = new Date()): Prisma.EventWhereInput {
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+  return {
+    OR: [
+      { endDate: { gte: now } },
+      { endDate: null, startDate: { gte: todayStart } },
+    ],
+  };
 }
 
 export class EventService {
@@ -62,6 +67,7 @@ export class EventService {
     const where: Prisma.EventWhereInput = {
       status: 'ACTIVE',
       visibility: { in: ['PUBLIC', 'UNLISTED'] },
+      AND: [notEndedWhere()],
     };
     
     // Apply filters
@@ -486,6 +492,7 @@ export class EventService {
             lt: tomorrow,
           },
           ...(city && { city }),
+          AND: [notEndedWhere()],
         },
         take: limit,
         select: this.getEventSelectFields(),
@@ -516,6 +523,7 @@ export class EventService {
             lte: weekendEnd,
           },
           ...(city && { city }),
+          AND: [notEndedWhere()],
         },
         take: limit,
         select: this.getEventSelectFields(),
@@ -552,13 +560,10 @@ export class EventService {
   
   async searchEvents(filters: any): Promise<any[]> {
     try {
-      const andClauses: Prisma.EventWhereInput[] = [];
+      const andClauses: Prisma.EventWhereInput[] = [notEndedWhere()];
       const where: Prisma.EventWhereInput = {
         status: 'ACTIVE',
         visibility: { in: ['PUBLIC', 'UNLISTED'] },
-        // Start-of-today, not "now": an event that began this evening is still
-        // happening and must not be dropped from results.
-        startDate: { gte: startOfToday() },
       };
       
       if (filters.categories && filters.categories.length > 0) {

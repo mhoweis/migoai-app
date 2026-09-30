@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { Event } from '@migo/shared';
 import prisma from '../database/prisma';
-import { eventService } from './events.service';
+import { eventService, notEndedWhere } from './events.service';
 import logger from '../utils/logger';
 
 export type SignalType = 'search' | 'view' | 'save' | 'unsave' | 'book' | 'attend' | 'click_out';
@@ -158,6 +158,7 @@ export async function recommendEvents(
         visibility: { in: ['PUBLIC', 'UNLISTED'] },
         city: { equals: opts.city, mode: 'insensitive' },
         startDate: { gte: opts.from, lte: opts.to },
+        AND: [notEndedWhere()],
         bookings: {
           none: {
             userId,

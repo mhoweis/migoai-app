@@ -265,16 +265,14 @@ const EventsScreen = () => {
 
       const allEvents = await fetchAllEvents(params);
 
-      // Filter out fully-past events: keep events that start today or later,
-      // or events that have already started but still have a future end date.
-      const todayStart = new Date();
+      // Keep events that have not finished yet: ongoing events until their end
+      // time, and events without an end time for the whole of their start day.
+      const now = new Date();
+      const todayStart = new Date(now);
       todayStart.setHours(0, 0, 0, 0);
       const currentEvents = allEvents.filter((event: any) => {
-        const start = new Date(event.startDate);
-        const end = event.endDate ? new Date(event.endDate) : null;
-        if (start >= todayStart) return true;
-        if (end && end >= todayStart) return true;
-        return false;
+        if (event.endDate) return new Date(event.endDate) >= now;
+        return new Date(event.startDate) >= todayStart;
       });
       setEvents(currentEvents);
     } catch (error) {
