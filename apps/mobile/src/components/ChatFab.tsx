@@ -38,7 +38,7 @@ export default function ChatFab() {
               : isCompactWebFab && styles.compactGradient,
         ]}
       >
-        <Ionicons name="sparkles" size={26} color={colors.textInverse} />
+        <Ionicons name="sparkles" size={isDesktopPill ? 24 : 26} color={colors.textInverse} />
         {isDesktopPill ? <Text style={styles.fabLabel}>{t('ask_migo')}</Text> : null}
       </LinearGradient>
     </PressableScale>
@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
     zIndex: 50,
   },
   desktopFab: {
-    right: 0,
+    right: 32,
     bottom: 32,
     width: 'auto',
     height: 56,
@@ -75,7 +75,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   desktopGradient: {
-    paddingHorizontal: 18,
+    paddingHorizontal: 8,
+    gap: 8,
   },
   compactDesktopGradient: { borderRadius: 24 },
   compactGradient: { borderRadius: 22 },
