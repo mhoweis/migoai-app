@@ -11,7 +11,6 @@ import {
   TextInput,
   RefreshControl,
   ActivityIndicator,
-  Image,
   Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,13 +21,16 @@ import { api } from '../services/api';
 import { Event } from '@migo/shared';
 import { useUserStore } from '../store/userStore';
 import { useSavedEventsStore } from '../store/savedEventsStore';
-import { categoryLabel, formatEventDate, formatPrice, useLocale } from '../i18n';
-import { sourceBadge } from '../utils/trust';
+import { categoryLabel, formatEventDate, useLocale } from '../i18n';
 import { radius, shadow, spacing, type } from '../theme';
 import Chip from '../components/Chip';
 import { EventListSkeleton } from '../components/Skeleton';
 import { trackSearch } from '../services/signals.service';
 import { fetchAllEvents } from '../utils/fetchAllEvents';
+import EventCard from '../components/EventCard';
+import Container from '../components/Container';
+import WebFooter from '../components/WebFooter';
+import { useBreakpoint } from '../hooks/useBreakpoint';
 
 // Event categories for filtering
 const EVENT_CATEGORIES = [
@@ -50,6 +52,8 @@ const EventsScreen = () => {
   const route = useRoute<any>();
   const { userLocation } = useUserStore();
   const { t } = useLocale();
+  const { width, isWebDesktop } = useBreakpoint();
+  const columnCount = width < 600 ? 1 : width < 1024 ? 2 : width < 1400 ? 3 : 4;
   const { savedIds, toggleSaved, loadSavedEvents } = useSavedEventsStore();
   const [events, setEvents] = useState<Event[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
@@ -539,117 +543,17 @@ const EventsScreen = () => {
     return `Until ${fmt(dateTo)}`;
   };
 
-  const renderEventItem = ({ item }: { item: Event }) => {
-    const priceDisplay = item.isFree || !item.priceFrom ? (
-      <Text style={styles.eventPrice} numberOfLines={1}>{t('free')}</Text>
-    ) : (
-      <View style={styles.priceContainerList}>
-        <Text style={styles.priceStartingList}>{t('starting')} </Text>
-        <Text style={styles.eventPrice} numberOfLines={1}>
-          {formatPrice(Number(item.priceFrom), item.currency || 'AED')}
-        </Text>
-      </View>
-    );
-
-    return (
-      <TouchableOpacity
-        style={styles.eventCard}
-        onPress={() => navigation.navigate('EventDetail', { eventId: item.id })}
-      >
-        {/* Event Image with overlay buttons */}
-        <View style={styles.eventCardImageContainer}>
-          {item.coverImage || item.thumbnail ? (
-            <Image
-              source={{ uri: item.coverImage || item.thumbnail }}
-              style={styles.eventCardImage}
-              resizeMode="cover"
-            />
-          ) : (
-            <View style={[styles.eventCardImage, styles.placeholderImageList]}>
-              <Ionicons name="image-outline" size={48} color={colors.border} />
-            </View>
-          )}
-          {/* Save & Share overlay */}
-          <View style={styles.imageOverlayButtons}>
-            <TouchableOpacity
-              style={styles.imageActionBtn}
-              onPress={() => toggleSaved(item)}
-            >
-              <Ionicons
-                name={savedIds.has(item.id) ? 'bookmark' : 'bookmark-outline'}
-                size={20}
-                color={colors.textInverse}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.imageActionBtn}
-              onPress={() => handleShare(item)}
-            >
-              <Ionicons name="share-social-outline" size={20} color={colors.textInverse} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.eventCardContent}>
-          <View style={styles.eventHeader}>
-            <View style={styles.categoryBadge}>
-              <Ionicons name={getCategoryIcon(item.category || '')} size={14} color={colors.primary} />
-              <Text style={styles.categoryText}>{categoryLabel(item.category)}</Text>
-            </View>
-            {sourceBadge((item as any).trust, 'en')?.kind && ['official', 'venue'].includes(sourceBadge((item as any).trust, 'en')?.kind || '') && (
-              <View style={styles.trustPill}>
-                <Ionicons name="shield-checkmark" size={12} color={colors.success} />
-                <Text style={styles.trustPillText}>{t('official')}</Text>
-              </View>
-            )}
-            {item.locationType === 'ONLINE' && (
-              <View style={styles.onlineBadge}>
-                <Text style={styles.onlineText}>{t('online')}</Text>
-              </View>
-            )}
-          </View>
-
-          <Text style={styles.eventTitle}>{item.title}</Text>
-          {(item.shortDescription || item.description) ? (
-            <Text style={styles.eventDescription} numberOfLines={2}>
-              {item.shortDescription || item.description}
-            </Text>
-          ) : null}
-
-          <View style={styles.eventDetails}>
-            <View style={styles.detailItem}>
-              <Ionicons name="calendar-outline" size={16} color={colors.textMuted} />
-              <Text style={styles.detailText}>
-                {formatEventDate(item.startDate, { withTime: true })}
-              </Text>
-            </View>
-
-            <View style={styles.detailItem}>
-              <Ionicons name="location-outline" size={16} color={colors.textMuted} />
-              <Text style={styles.detailText}>{item.city || item.venueName || t('location_tba')}</Text>
-            </View>
-
-            {(item.capacity || item.venueName || !item.city) ? (
-            <View style={styles.detailItem}>
-              <Ionicons name="people-outline" size={16} color={colors.textMuted} />
-              <Text style={styles.detailText}>{item.capacity ? `${item.capacity} ${t('capacity')}` : item.venueName || t('location_tba')}</Text>
-            </View>
-            ) : null}
-          </View>
-
-          <View style={styles.eventFooter}>
-            {priceDisplay}
-            <TouchableOpacity
-              style={styles.rsvpButton}
-              onPress={() => (navigation as any).navigate('EventDetail', { eventId: item.id })}
-            >
-              <Text style={styles.rsvpButtonText}>{t('view_details')}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  };
+  const renderEventItem = ({ item }: { item: Event }) => (
+    <View style={styles.eventCell}>
+      <EventCard
+        event={item}
+        onPress={() => (navigation as any).navigate('EventDetail', { eventId: item.id })}
+        onSave={() => toggleSaved(item)}
+        onShare={() => void handleShare(item)}
+        saved={savedIds.has(item.id)}
+      />
+    </View>
+  );
 
   const renderCityFilter = () => {
     // Get count for each city from dynamic filters
@@ -804,7 +708,7 @@ const EventsScreen = () => {
             );
           }}
         />
-        {(dateFrom || dateTo) && (
+        {!!(dateFrom || dateTo) && (
           <TouchableOpacity style={styles.dateChipClear} onPress={() => applyDatePreset('clear')}>
             <Ionicons name="close-circle" size={15} color={colors.danger} />
             <Text style={styles.dateChipClearText}>{t('clear')}</Text>
@@ -862,9 +766,10 @@ const EventsScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <Container style={styles.screenContent}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t('discover_events')}</Text>
+        <Text style={styles.headerTitle}>{t('discover')}</Text>
       </View>
 
       {/* Venue filter banner — shown when navigated from Top Venues */}
@@ -874,7 +779,7 @@ const EventsScreen = () => {
           <Text style={styles.venueBannerText} numberOfLines={1}>
             {t('showing_events_at', { venue: venueFilter })}
           </Text>
-          <TouchableOpacity onPress={() => setVenueFilter('')}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('clear')} onPress={() => setVenueFilter('')}>
             <Ionicons name="close-circle" size={18} color={colors.primaryDark} />
           </TouchableOpacity>
         </View>
@@ -887,7 +792,7 @@ const EventsScreen = () => {
           <Text style={styles.dateBannerText} numberOfLines={1}>
             {t('events_range', { range: getActiveDateLabel() })}
           </Text>
-          <TouchableOpacity onPress={() => { setDateFrom(''); setDateTo(''); }}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('clear')} onPress={() => { setDateFrom(''); setDateTo(''); }}>
             <Ionicons name="close-circle" size={18} color={colors.primary} />
           </TouchableOpacity>
         </View>
@@ -899,6 +804,7 @@ const EventsScreen = () => {
           <Ionicons name="search" size={20} color={colors.textMuted} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
+            accessibilityLabel={t('search_events')}
             placeholder={t('search_events')}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -909,12 +815,12 @@ const EventsScreen = () => {
             editable={true}
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('clear')} onPress={() => setSearchQuery('')}>
               <Ionicons name="close-circle" size={20} color={colors.textMuted} />
             </TouchableOpacity>
           )}
         </View>
-        <TouchableOpacity style={styles.filterButton} onPress={() => setFiltersVisible(!filtersVisible)}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel={filtersVisible ? t('hide_filters') : t('show_filters')} accessibilityState={{ expanded: filtersVisible }} style={styles.filterButton} onPress={() => setFiltersVisible(!filtersVisible)}>
           <Ionicons name={filtersVisible ? 'options' : 'options-outline'} size={22} color={colors.primary} />
         </TouchableOpacity>
       </View>
@@ -944,11 +850,15 @@ const EventsScreen = () => {
 
       {/* Events List */}
       <FlatList
+        key={`events-${columnCount}`}
         data={filteredEvents}
         renderItem={renderEventItem}
         keyExtractor={(item) => item.id}
+        numColumns={columnCount}
+        columnWrapperStyle={columnCount > 1 ? styles.eventRow : undefined}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.eventsList}
+        style={styles.list}
         onScroll={(e) => closeFiltersOnScroll(e.nativeEvent.contentOffset.y)}
         onScrollBeginDrag={() => filtersVisibleRef.current && setFiltersVisible(false)}
         scrollEventThrottle={16}
@@ -970,9 +880,23 @@ const EventsScreen = () => {
                 ? t('no_events_help')
                 : t('no_events_help')}
             </Text>
+            {venueFilter || sourceFilter || selectedCategory !== 'All' || dateFrom || dateTo || searchQuery ? (
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('clear_filters')} style={styles.clearFilters} onPress={() => {
+                setVenueFilter('');
+                setSourceFilter('');
+                setSelectedCategory('All');
+                setDateFrom('');
+                setDateTo('');
+                setSearchQuery('');
+              }}>
+                <Text style={styles.clearFiltersText}>{t('clear_filters')}</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         }
+        ListFooterComponent={isWebDesktop ? <WebFooter wide /> : null}
       />
+      </Container>
 
       {/* Custom date range calendar picker */}
       <DateRangePickerModal
@@ -995,6 +919,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
+  screenContent: { flex: 1, paddingHorizontal: 0 },
+  list: { flex: 1 },
+  eventRow: { gap: 16, paddingHorizontal: 20 },
+  eventCell: { flex: 1, minWidth: 0, marginBottom: 16 },
+  clearFilters: { marginTop: 18, paddingHorizontal: 18, paddingVertical: 10, borderRadius: radius.pill, backgroundColor: colors.primarySoft },
+  clearFiltersText: { color: colors.primaryDark, fontWeight: '700' },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -1204,13 +1134,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 9,
+    paddingVertical: 10,
     backgroundColor: colors.textInverse,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.border,
     marginRight: 8,
-    height: 36,
+    height: 44,
     gap: 5,
   },
   categoryChipSelected: {

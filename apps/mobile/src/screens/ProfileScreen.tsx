@@ -25,6 +25,8 @@ import { authService } from '../services/auth.service';
 import { setLocale, useLocale } from '../i18n';
 import { LinearGradient } from 'expo-linear-gradient';
 import { gradients, radius, shadow, type } from '../theme';
+import { useBreakpoint } from '../hooks/useBreakpoint';
+import Container from '../components/Container';
 
 type ProfileScreenNavigationProp = NavigationProp<ProfileStackParamList, 'ProfileMain'>;
 
@@ -32,6 +34,7 @@ const ProfileScreen = () => {
   const navigation = useNavigation<ProfileScreenNavigationProp>();
   const { user, logout, updateProfile, setUser } = useUserStore();
   const { locale, t } = useLocale();
+  const { isWebDesktop } = useBreakpoint();
 
   const [showNameModal, setShowNameModal] = useState(false);
   const [editName, setEditName] = useState('');
@@ -134,16 +137,19 @@ const ProfileScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView>
-        <View style={styles.header}>
-          <Text style={styles.title}>{t('profile')}</Text>
-        </View>
+        <Container style={[styles.desktopPage, !isWebDesktop && styles.mobileProfileContainer]}>
+          <View style={[styles.header, isWebDesktop && styles.desktopHeader]}>
+            <Text style={styles.title}>{t('profile')}</Text>
+          </View>
+          <View style={[styles.profileColumns, isWebDesktop && styles.desktopProfileColumns]}>
+            <View style={isWebDesktop ? styles.desktopSummary : undefined}>
 
         {/* ── User Info ── */}
         <View style={styles.section}>
           <View style={styles.userInfo}>
 
             {/* Tappable avatar */}
-            <TouchableOpacity onPress={handlePickAvatar} style={styles.avatarWrapper}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('profile')} onPress={handlePickAvatar} style={styles.avatarWrapper}>
               <LinearGradient colors={gradients.primary} style={styles.avatarRing}>
               {user?.avatar ? (
                 <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
@@ -168,6 +174,20 @@ const ProfileScreen = () => {
             </View>
           </View>
         </View>
+            {isWebDesktop ? (
+              <View style={styles.profileStats}>
+                <View style={styles.profileStat}>
+                  <Text style={styles.profileStatValue}>{user?.interests?.length || 0}</Text>
+                  <Text style={styles.profileStatLabel}>{t('your_interests')}</Text>
+                </View>
+                <View style={styles.profileStat}>
+                  <Text style={styles.profileStatValue}>{user?.preferences?.homeLayout?.order?.length || 0}</Text>
+                  <Text style={styles.profileStatLabel}>{t('home_sections')}</Text>
+                </View>
+              </View>
+            ) : null}
+            </View>
+            <View style={isWebDesktop ? styles.desktopSettings : undefined}>
 
         {/* ── Menu ── */}
         <View style={styles.section}>
@@ -264,6 +284,9 @@ const ProfileScreen = () => {
             </TouchableOpacity>
           </View>
         </View>
+            </View>
+          </View>
+        </Container>
       </ScrollView>
 
       {/* ── Edit Name Modal ── */}
@@ -317,6 +340,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
+  desktopPage: { flex: 1, width: '100%', maxWidth: 1240, alignSelf: 'center' },
+  mobileProfileContainer: { paddingHorizontal: 0 },
+  profileColumns: { width: '100%' },
+  desktopProfileColumns: { flexDirection: 'row', alignItems: 'flex-start', gap: 24 },
+  desktopHeader: { paddingHorizontal: 0 },
+  desktopSummary: { width: '34%' },
+  desktopSettings: { flex: 1, minWidth: 0 },
+  profileStats: { flexDirection: 'row', gap: 12, marginHorizontal: 20, marginTop: 16 },
+  profileStat: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.md, padding: 16, ...shadow.card },
+  profileStatValue: { ...type.h2, color: colors.primary },
+  profileStatLabel: { ...type.caption, marginTop: 4 },
   header: {
     paddingHorizontal: 20,
     paddingTop: 20,

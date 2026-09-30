@@ -10,7 +10,6 @@ import {
   Image,
   FlatList,
   RefreshControl,
-  useWindowDimensions,
   Platform,
   Modal,
   Share,
@@ -24,7 +23,7 @@ import { Event } from '@migo/shared';
 import { api } from '../services/api';
 import { socialService, SocialUser } from '../services/social.service';
 import { navigateToTab, navigationRef } from '../navigation/navigationRef';
-import { categoryLabel, formatEventDate, formatPrice, useLocale } from '../i18n';
+import { categoryLabel, formatEventDate, formatEventWhen, formatPrice, useLocale } from '../i18n';
 import { sourceBadge } from '../utils/trust';
 import { LinearGradient } from 'expo-linear-gradient';
 import Chip from '../components/Chip';
@@ -33,6 +32,12 @@ import { PressableScale } from '../components/PressableScale';
 import { Skeleton } from '../components/Skeleton';
 import { HomeSectionId, normalizeHomeLayout } from '../config/homeSections';
 import { fetchAllEvents } from '../utils/fetchAllEvents';
+import { useBreakpoint } from '../hooks/useBreakpoint';
+import Container from '../components/Container';
+import SectionHeader from '../components/SectionHeader';
+import EventCard from '../components/EventCard';
+import WebFooter from '../components/WebFooter';
+import DateBadge from '../components/DateBadge';
 
 type WeekendDigestPreview = {
   title: string;
@@ -44,8 +49,14 @@ interface Props {
 }
 
 const HomeScreen: React.FC<Props> = ({ navigation }) => {
-  const { width } = useWindowDimensions();
-  const topCardWidth = Math.min(width * 0.75, 360);
+  const { isWebDesktop, gutter, width } = useBreakpoint();
+  const recommendationColumns = width >= 1400 ? 5 : 4;
+  const recommendationCellWidth = (count: number) => (Math.min(width, 1240) - gutter * 2 - 40 - (count - 1) * 16) / count;
+  const venueColumns = isWebDesktop ? 6 : 3;
+  const venueCellWidth = (Math.min(width, 1240) - gutter * 2 - 40 - (venueColumns - 1) * 12) / venueColumns;
+  const topCardWidth = isWebDesktop
+    ? Math.min(360, (Math.min(width, 1240) - gutter * 2 - 32) / 3)
+    : Math.min(width * 0.75, 360);
   const { user, userLocation, setUserLocation } = useUserStore();
   const { t, locale } = useLocale();
   const { savedEvents, savedIds, loadSavedEvents, toggleSaved } = useSavedEventsStore();
@@ -304,6 +315,8 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
   const renderVenueCard = (item: { name: string; image?: string; city: string; count: number }, style?: object) => (
     <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel={item.name}
       style={[styles.venueCard, style]}
       onPress={() => navigateToVenue(item.name)}
     >
@@ -324,7 +337,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             </View>
           ) : null}
           <View style={styles.venueEventCount}>
-            <Text style={styles.venueEventCountText}>{item.count} event{item.count !== 1 ? 's' : ''}</Text>
+            <Text style={styles.venueEventCountText}>{item.count} {t(item.count === 1 ? 'events_count_one' : 'events_count_other')}</Text>
           </View>
         </View>
       </View>
@@ -353,75 +366,82 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const renderTopEventCard = ({ item }: { item: Event }) => {
-    const formattedDate = formatEventDate(item.startDate, { withTime: true });
+    const formattedDate = formatEventWhen(item, locale);
 
     const saved = savedIds.has(item.id);
 
     return (
-      <PressableScale
-        style={[styles.topEventCard, { width: topCardWidth }]}
-        onPress={() => navigation.navigate('EventDetail', { eventId: item.id })}
-      >
-        {item.coverImage ? (
-          <Image source={{ uri: item.coverImage }} style={styles.topEventImage} />
-        ) : (
-          <View style={[styles.topEventImage, styles.placeholderImageTop]}>
-            <Ionicons name="image-outline" size={48} color={colors.border} />
-          </View>
-        )}
-        <LinearGradient colors={['rgba(15,18,34,0.15)', 'rgba(15,18,34,0.05)', 'rgba(15,18,34,0.85)']} style={styles.topEventOverlay}>
-          {/* Top row: badge + action buttons */}
-          <View style={styles.topEventTopRow}>
-            <View style={styles.topEventBadge}>
-              <Text style={styles.topEventBadgeText}>{t('featured')}</Text>
+      <View style={[styles.topEventCard, { width: topCardWidth }]}>
+        <PressableScale
+          accessibilityRole="button"
+          accessibilityLabel={item.title}
+          style={styles.topEventCardContent}
+          onPress={() => navigation.navigate('EventDetail', { eventId: item.id })}
+        >
+          {item.coverImage ? (
+            <Image source={{ uri: item.coverImage }} style={styles.topEventImage} />
+          ) : (
+            <View style={[styles.topEventImage, styles.placeholderImageTop]}>
+              <Ionicons name="image-outline" size={48} color={colors.border} />
             </View>
-            {sourceBadge((item as any).trust, locale)?.kind && ['official', 'venue'].includes(sourceBadge((item as any).trust, locale)?.kind || '') && (
-              <View style={styles.topTrustPill}><Ionicons name="shield-checkmark" size={11} color={colors.textInverse} /><Text style={styles.topTrustPillText}>{t('official')}</Text></View>
-            )}
-            <View style={styles.topEventActions}>
-              <TouchableOpacity
-                style={styles.topEventActionBtn}
-                onPress={() => toggleSaved(item)}
-              >
-                <Ionicons
-                  name={saved ? 'bookmark' : 'bookmark-outline'}
-                  size={18}
-                  color={saved ? colors.accent : colors.textInverse}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.topEventActionBtn}
-                onPress={() => handleShare(item)}
-              >
-                <Ionicons name="share-outline" size={18} color={colors.textInverse} />
-              </TouchableOpacity>
+          )}
+          <LinearGradient colors={['rgba(15,18,34,0.15)', 'rgba(15,18,34,0.05)', 'rgba(15,18,34,0.85)']} style={styles.topEventOverlay}>
+            <View style={styles.topEventTopRow}>
+              <View style={styles.topEventBadge}>
+                <Text style={styles.topEventBadgeText}>{t('featured')}</Text>
+              </View>
+              {sourceBadge((item as any).trust, locale)?.kind && ['official', 'venue'].includes(sourceBadge((item as any).trust, locale)?.kind || '') && (
+                <View style={styles.topTrustPill}><Ionicons name="shield-checkmark" size={11} color={colors.textInverse} /><Text style={styles.topTrustPillText}>{t('official')}</Text></View>
+              )}
             </View>
-          </View>
 
-          <View style={styles.topEventContent}>
-            <Text style={styles.topEventTitle} numberOfLines={1}>
-              {item.title}
-            </Text>
-            <View style={styles.topEventMeta}>
-              <Ionicons name="calendar-outline" size={12} color={colors.textInverse} />
-              <Text style={styles.topEventMetaText}>
-                {formattedDate}
+            <View style={styles.topEventContent}>
+              <Text style={styles.topEventTitle} numberOfLines={1}>
+                {item.title}
               </Text>
+              <View style={styles.topEventMeta}>
+                <Ionicons name="calendar-outline" size={12} color={colors.textInverse} />
+                <Text style={[styles.topEventMetaText, formattedDate.startsWith(t('now_on')) && styles.topEventLiveWhen]}>
+                  {formattedDate}
+                </Text>
+              </View>
+              <View style={styles.topEventMeta}>
+                <Ionicons name="location-outline" size={12} color={colors.textInverse} />
+                <Text style={styles.topEventMetaText}>
+                  {item.city}
+                </Text>
+              </View>
             </View>
-            <View style={styles.topEventMeta}>
-              <Ionicons name="location-outline" size={12} color={colors.textInverse} />
-              <Text style={styles.topEventMetaText}>
-                {item.city}
-              </Text>
-            </View>
-          </View>
-        </LinearGradient>
-      </PressableScale>
+          </LinearGradient>
+        </PressableScale>
+        <View style={styles.topEventActions}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={saved ? t('remove_saved_event') : t('save_event')}
+            style={styles.topEventActionBtn}
+            onPress={() => toggleSaved(item)}
+          >
+            <Ionicons
+              name={saved ? 'bookmark' : 'bookmark-outline'}
+              size={18}
+              color={saved ? colors.accent : colors.textInverse}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={t('share')}
+            style={styles.topEventActionBtn}
+            onPress={() => handleShare(item)}
+          >
+            <Ionicons name="share-outline" size={18} color={colors.textInverse} />
+          </TouchableOpacity>
+        </View>
+      </View>
     );
   };
 
-  const renderEventCard = (item: Event, isToday = false) => {
-    const formattedDate = formatEventDate(item.startDate);
+  const renderEventCard = (item: Event, isToday = false, rank?: number) => {
+    const formattedDate = formatEventWhen(item, locale);
 
     // Format price with "Starting from" text
     const priceDisplay = item.isFree || !item.priceFrom ? (
@@ -438,54 +458,58 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
     const saved = savedIds.has(item.id);
 
     return (
-      <TouchableOpacity
-        key={item.id}
-        style={[styles.eventCard, isToday && styles.todayEventCard]}
-        onPress={() => navigation.navigate('EventDetail', { eventId: item.id })}
-      >
-        {item.coverImage || item.thumbnail ? (
-          <Image source={{ uri: item.coverImage || item.thumbnail }} style={styles.eventImage} />
-        ) : (
-          <View style={[styles.eventImage, styles.placeholderImageSmall]}>
-            <Ionicons name="image-outline" size={32} color={colors.border} />
-          </View>
-        )}
-        <View style={styles.eventContent}>
-          <View style={styles.eventHeader}>
-          <Text style={styles.eventCategory}>{categoryLabel(item.category)}</Text>
-          {sourceBadge((item as any).trust, locale)?.kind && ['official', 'venue'].includes(sourceBadge((item as any).trust, locale)?.kind || '') && (
-            <View style={styles.trustPill}><Ionicons name="shield-checkmark" size={11} color={colors.success} /><Text style={styles.trustPillText}>{t('official')}</Text></View>
+      <View key={item.id} style={[styles.eventCard, isToday && styles.todayEventCard]}>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={item.title}
+          style={styles.eventCardContent}
+          onPress={() => navigation.navigate('EventDetail', { eventId: item.id })}
+        >
+          {rank ? <View style={styles.eventRank}><Text style={styles.eventRankText}>{rank}</Text></View> : null}
+          {item.coverImage || item.thumbnail ? (
+            <Image source={{ uri: item.coverImage || item.thumbnail }} style={styles.eventImage} />
+          ) : (
+            <View style={[styles.eventImage, styles.placeholderImageSmall]}>
+              <Ionicons name="image-outline" size={32} color={colors.border} />
+            </View>
           )}
-          </View>
-          <Text style={styles.eventTitle} numberOfLines={2}>
-            {item.title}
-          </Text>
-          <View style={styles.eventMeta}>
-            <View style={styles.eventMetaItem}>
-              <Ionicons name="calendar-outline" size={14} color={colors.textMuted} />
-              <Text style={styles.eventMetaText}>{formattedDate}</Text>
+          <View style={styles.eventContent}>
+            <View style={styles.eventHeader}>
+              <Text style={styles.eventCategory}>{categoryLabel(item.category)}</Text>
+              {sourceBadge((item as any).trust, locale)?.kind && ['official', 'venue'].includes(sourceBadge((item as any).trust, locale)?.kind || '') && (
+                <View style={styles.trustPill}><Ionicons name="shield-checkmark" size={11} color={colors.info} /><Text style={styles.trustPillText}>{t('official')}</Text></View>
+              )}
             </View>
-            <View style={styles.eventMetaItem}>
-              <Ionicons name="location-outline" size={14} color={colors.textMuted} />
-              <Text style={styles.eventMetaText}>{item.city}</Text>
-            </View>
-          </View>
-          <View style={styles.eventFooter}>
-            {priceDisplay}
-            {!!item.capacity && (
-              <View style={styles.eventTickets}>
-                <Ionicons name="people-outline" size={14} color={colors.success} />
-                <Text style={styles.eventTicketsText}>
-                  {item.capacity} {t('capacity')}
-                </Text>
+            <Text style={styles.eventTitle} numberOfLines={2}>
+              {item.title}
+            </Text>
+            <View style={styles.eventMeta}>
+              <View style={styles.eventMetaItem}>
+                <Ionicons name="calendar-outline" size={14} color={colors.textMuted} />
+                <Text style={styles.eventMetaText}>{formattedDate}</Text>
               </View>
-            )}
+              <View style={styles.eventMetaItem}>
+                <Ionicons name="location-outline" size={14} color={colors.textMuted} />
+                <Text style={styles.eventMetaText}>{item.city}</Text>
+              </View>
+            </View>
+            <View style={styles.eventFooter}>
+              {priceDisplay}
+              {!!item.capacity && (
+                <View style={styles.eventTickets}>
+                  <Ionicons name="people-outline" size={14} color={colors.success} />
+                  <Text style={styles.eventTicketsText}>
+                    {item.capacity} {t('capacity')}
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
-        </View>
-
-        {/* Save & Share buttons — right side column */}
+        </TouchableOpacity>
         <View style={styles.eventCardActions}>
           <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={saved ? t('remove_saved_event') : t('save_event')}
             style={styles.eventCardActionBtn}
             onPress={() => toggleSaved(item)}
           >
@@ -496,13 +520,15 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             />
           </TouchableOpacity>
           <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={t('share')}
             style={styles.eventCardActionBtn}
             onPress={() => handleShare(item)}
           >
             <Ionicons name="share-outline" size={20} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
-      </TouchableOpacity>
+      </View>
     );
   };
 
@@ -525,6 +551,8 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
         {/* Update interests button */}
         <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={t('update_interests')}
           style={styles.editInterestsButton}
           onPress={() => navigation.push('Interests')}
         >
@@ -563,12 +591,17 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
   const renderFeatured = () => (
     <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{t('top_upcoming_events')}</Text>
-        <TouchableOpacity onPress={navigateToEvents}>
-          <Text style={styles.seeAll}>{t('see_all')}</Text>
-        </TouchableOpacity>
-      </View>
+      <SectionHeader title={t('top_upcoming_events')} onSeeAll={navigateToEvents} />
+      {isWebDesktop ? (
+        <View style={styles.carouselControls}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('previous')} style={styles.carouselArrow} onPress={() => topListRef.current?.scrollToOffset({ offset: Math.max(0, activeTopIndex - 1) * (topCardWidth + 16), animated: true })}>
+            <Ionicons name="arrow-back" size={18} color={colors.ink} />
+          </TouchableOpacity>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('next')} style={styles.carouselArrow} onPress={() => topListRef.current?.scrollToOffset({ offset: Math.min(filteredTopEvents.length - 1, activeTopIndex + 1) * (topCardWidth + 16), animated: true })}>
+            <Ionicons name="arrow-forward" size={18} color={colors.ink} />
+          </TouchableOpacity>
+        </View>
+      ) : null}
       <FlatList
         ref={topListRef}
         horizontal
@@ -598,35 +631,36 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
     </View>
   );
 
+  const thisWeekEvents = selectedInterest
+    ? recommendedThisWeek.filter(event => event.category?.toLowerCase().includes(selectedInterest.toLowerCase()))
+    : recommendedThisWeek;
+
   const renderThisWeek = () => (
     <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <View style={styles.sectionTitleBlock}>
-          <Text style={styles.sectionTitle}>{t('this_week_for_you')}</Text>
-          <Text style={styles.sectionSubtitle}>{t('personalised_for_you')}</Text>
-        </View>
-        <TouchableOpacity onPress={() => {
+      <SectionHeader title={t('this_week_for_you')} subtitle={t('personalised_for_you')} onSeeAll={() => {
           const { start, end } = getThisWeekRange();
           navigateToTab('Events', 'EventsMain', {
             dateFrom: toDateString(start),
             dateTo: toDateString(end),
           });
-        }}>
-          <Text style={styles.seeAll}>{t('see_all')}</Text>
-        </TouchableOpacity>
-      </View>
-      {(selectedInterest
-        ? recommendedThisWeek.filter((event) =>
-            event.category?.toLowerCase().includes(selectedInterest.toLowerCase())
-          )
-        : recommendedThisWeek
-      ).length > 0 ? (
-        (selectedInterest
-          ? recommendedThisWeek.filter((event) =>
-              event.category?.toLowerCase().includes(selectedInterest.toLowerCase())
-            )
-          : recommendedThisWeek
-        ).slice(0, 10).map((event) => renderEventCard(event))
+        }} />
+      {thisWeekEvents.length > 0 ? (
+        isWebDesktop ? (
+          <View style={styles.recommendationGrid}>
+            {thisWeekEvents.slice(0, 10).map((event, index) => (
+              <View key={event.id} style={[styles.recommendationCell, { width: recommendationCellWidth(recommendationColumns) }]}>
+                <EventCard
+                  event={event}
+                  rank={index + 1}
+                  onPress={() => navigation.navigate('EventDetail', { eventId: event.id })}
+                  onSave={() => toggleSaved(event)}
+                  onShare={() => void handleShare(event)}
+                  saved={savedIds.has(event.id)}
+                />
+              </View>
+            ))}
+          </View>
+        ) : thisWeekEvents.slice(0, 10).map((event, index) => renderEventCard(event, false, index + 1))
       ) : (
         <View style={styles.emptyState}>
           <Ionicons name="calendar-outline" size={48} color={colors.border} />
@@ -641,81 +675,80 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
   const renderVenues = () => topVenues.length > 0 ? (
     <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{t('top_venues')}</Text>
-        <TouchableOpacity onPress={() => setShowAllVenues((v) => !v)}>
-          <Text style={styles.seeAll}>
-            {showAllVenues ? t('show_less') : `${t('see_all')} (${topVenues.length})`}
-          </Text>
-        </TouchableOpacity>
+      <SectionHeader
+        title={t('top_venues')}
+        actionLabel={showAllVenues ? t('show_less') : `${t('see_all')} (${topVenues.length})`}
+        actionRole="button"
+        onSeeAll={() => setShowAllVenues(value => !value)}
+      />
+      <View style={styles.venuesGrid}>
+        {(showAllVenues ? topVenues : topVenues.slice(0, isWebDesktop ? 6 : 3)).map(item => (
+          <React.Fragment key={item.name}>
+            {renderVenueCard(item, [
+              isWebDesktop ? styles.venueGridDesktop : styles.venueGridCard,
+              { width: venueCellWidth },
+            ])}
+          </React.Fragment>
+        ))}
       </View>
-      {showAllVenues ? (
-        <View style={styles.venuesGrid}>
-          {topVenues.map((item) => (
-            <React.Fragment key={item.name}>
-              {renderVenueCard(item, styles.venueGridCard)}
-            </React.Fragment>
-          ))}
-        </View>
-      ) : (
-        <FlatList
-          horizontal
-          data={topVenues.slice(0, 15)}
-          keyExtractor={(item) => item.name}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.venuesContainer}
-          renderItem={({ item }) => renderVenueCard(item)}
-        />
-      )}
     </View>
   ) : null;
 
   const renderFriends = () => friendsGoingEvents.length > 0 ? (
     <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{t('friends_are_going')}</Text>
-      </View>
+      <SectionHeader title={t('friends_are_going')} />
+      <View style={isWebDesktop ? styles.friendsGrid : undefined}>
       {friendsGoingEvents.slice(0, 5).map((event) => {
         const friends = event.friendsGoing.slice(0, 3);
         const firstFriend = event.friendsGoing[0];
         const remainingCount = Math.max(0, event.friendsGoingCount - 1);
-        return (
-          <View key={event.id}>
-            {renderEventCard(event)}
-            <View style={styles.friendsRow}>
-              <View style={styles.friendsAvatars}>
-                {friends.map((friend, index) => (
-                  friend.avatar ? (
-                    <Image
-                      key={friend.id}
-                      source={{ uri: friend.avatar }}
-                      style={[styles.friendAvatar, index > 0 && styles.friendAvatarOverlap]}
-                    />
-                  ) : (
-                    <View key={friend.id} style={[styles.friendAvatar, styles.friendAvatarFallback, index > 0 && styles.friendAvatarOverlap]}>
-                      <Text style={styles.friendAvatarInitial}>{(friend.name || '?').charAt(0).toUpperCase()}</Text>
-                    </View>
-                  )
-                ))}
-              </View>
-              {firstFriend ? (
-                <Text style={styles.friendsGoingText}>
-                  {remainingCount > 0
-                    ? t('friends_going_names', { name: firstFriend.name || '', count: remainingCount })
-                    : t('friend_going_single', { name: firstFriend.name || '' })}
-                </Text>
-              ) : null}
+        const friendsRow = (
+          <View style={[styles.friendsRow, isWebDesktop && styles.friendsRowCard]}>
+            <View style={styles.friendsAvatars}>
+              {friends.map((friend, index) => (
+                friend.avatar ? (
+                  <Image
+                    key={friend.id}
+                    source={{ uri: friend.avatar }}
+                    style={[styles.friendAvatar, index > 0 && styles.friendAvatarOverlap]}
+                  />
+                ) : (
+                  <View key={friend.id} style={[styles.friendAvatar, styles.friendAvatarFallback, index > 0 && styles.friendAvatarOverlap]}>
+                    <Text style={styles.friendAvatarInitial}>{(friend.name || '?').charAt(0).toUpperCase()}</Text>
+                  </View>
+                )
+              ))}
             </View>
+            {firstFriend ? (
+              <Text style={styles.friendsGoingText}>
+                {remainingCount > 0
+                  ? t('friends_going_names', { name: firstFriend.name || '', count: remainingCount })
+                  : t('friend_going_single', { name: firstFriend.name || '' })}
+              </Text>
+            ) : null}
+          </View>
+        );
+        return (
+          <View key={event.id} style={isWebDesktop ? [styles.friendsCell, { width: recommendationCellWidth(3) }] : undefined}>
+            {isWebDesktop ? (
+              <EventCard event={event} onPress={() => navigation.navigate('EventDetail', { eventId: event.id })} onSave={() => toggleSaved(event)} onShare={() => void handleShare(event)} saved={savedIds.has(event.id)} footerSlot={friendsRow} />
+            ) : (
+              <>
+                {renderEventCard(event)}
+                {friendsRow}
+              </>
+            )}
           </View>
         );
       })}
+      </View>
     </View>
   ) : null;
 
   const renderToday = () => (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{t('todays_picks')}</Text>
+        <SectionHeader title={t('todays_picks')} horizontalInset={0} />
         <View style={styles.todayBadge}>
           <Ionicons name="flash" size={12} color={colors.textInverse} />
           <Text style={styles.todayBadgeText}>{t('live')}</Text>
@@ -735,12 +768,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
   const renderTickets = () => upcomingTickets().length > 0 ? (
     <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{t('your_tickets')}</Text>
-        <TouchableOpacity onPress={() => navigateToTab('Wallet')}>
-          <Text style={styles.seeAll}>{t('view_wallet')}</Text>
-        </TouchableOpacity>
-      </View>
+      <SectionHeader title={t('your_tickets')} actionLabel={t('view_wallet')} onSeeAll={() => navigateToTab('Wallet')} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
         {upcomingTickets().slice(0, 5).map((ticket) => (
           <TouchableOpacity key={ticket.id} style={styles.ticketPreviewCard} onPress={() => navigateToTab('Wallet')}>
@@ -760,13 +788,16 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
   const renderSaved = () => savedEvents.length > 0 ? (
     <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{t('your_saved_events')}</Text>
-        <TouchableOpacity onPress={() => navigateToTab('Events')}>
-          <Text style={styles.seeAll}>{t('see_all')}</Text>
-        </TouchableOpacity>
-      </View>
-      {savedEvents.slice(0, 4).map((event) => renderEventCard(event))}
+      <SectionHeader title={t('your_saved_events')} onSeeAll={() => navigateToTab('Events')} />
+      {isWebDesktop ? (
+        <View style={styles.recommendationGrid}>
+          {savedEvents.slice(0, 4).map(event => (
+            <View key={event.id} style={[styles.recommendationCell, { width: recommendationCellWidth(4) }]}>
+              <EventCard event={event} onPress={() => navigation.navigate('EventDetail', { eventId: event.id })} onSave={() => toggleSaved(event)} onShare={() => void handleShare(event)} saved={savedIds.has(event.id)} />
+            </View>
+          ))}
+        </View>
+      ) : savedEvents.slice(0, 4).map((event) => renderEventCard(event))}
     </View>
   ) : null;
 
@@ -805,49 +836,83 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         }
       >
         {/* Header */}
-        <LinearGradient colors={gradients.primary} style={styles.hero}>
-        <View style={styles.header}>
-          <View style={styles.headerText}>
-            <Text style={styles.greetingHero}>
-              {t('home_greeting', { name: user?.name?.split(' ')[0] || t('welcome') })}
-            </Text>
-            <Text style={styles.subtitleHero}>
-              {t('home_subtitle')}
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={styles.locationDisplayHero}
-            onPress={() => setShowLocationModal(true)}
-          >
-            <Ionicons name="location" size={20} color={colors.textInverse} />
-            <Text style={styles.locationTextHero}>
-              {userLocation || 'Dubai'}
-            </Text>
-            <Ionicons name="chevron-down" size={16} color={colors.textInverse} style={{ marginLeft: 4 }} />
-          </TouchableOpacity>
-        </View>
-        </LinearGradient>
-        <PressableScale style={styles.homeSearch} onPress={navigateToEvents} accessibilityRole="button" scaleTo={0.98}>
-          <Ionicons name="search" size={20} color={colors.primary} />
-          <Text style={styles.homeSearchText} numberOfLines={1}>{t('search_events')}</Text>
-          <View style={styles.homeSearchAction}>
-            <Ionicons name="options-outline" size={16} color={colors.textInverse} />
-          </View>
-        </PressableScale>
-
-        {layout.order
-          .filter(id => !layout.hidden.includes(id))
-          .map(id => <React.Fragment key={id}>{sectionRenderers[id]()}</React.Fragment>)}
-
-        <PressableScale
-          style={styles.customizeButton}
-          onPress={() => navigationRef.current?.navigate('CustomizeHome')}
-          accessibilityRole="button"
-          testID="customize-home-button"
+        <Container style={styles.heroShell}>
+        <LinearGradient
+          colors={isWebDesktop ? [colors.ink, ...gradients.dusk] : gradients.dusk}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.hero, isWebDesktop && styles.desktopHero]}
         >
-          <Ionicons name="options-outline" size={18} color={colors.primary} />
-          <Text style={styles.customizeButtonText}>{t('customize_home')}</Text>
-        </PressableScale>
+          <View style={[styles.heroContent, isWebDesktop && styles.desktopHeroContent]}>
+            <View style={styles.heroLeft}>
+              <View style={styles.header}>
+                <View style={styles.headerText}>
+                  <Text style={[styles.greetingHero, isWebDesktop && styles.desktopGreetingHero]}>{isWebDesktop
+                    ? t('home_desktop_headline', { city: userLocation || 'Dubai' })
+                    : t('home_greeting', { name: user?.name?.split(' ')[0] || t('welcome') })}</Text>
+                  <Text style={styles.subtitleHero}>{t('home_subtitle')}</Text>
+                </View>
+                <TouchableOpacity style={styles.locationDisplayHero} onPress={() => setShowLocationModal(true)} accessibilityRole="button" accessibilityLabel={t('select_location')}>
+                  <Ionicons name="location" size={20} color={colors.textInverse} />
+                  <Text style={styles.locationTextHero} numberOfLines={1}>{userLocation || 'Dubai'}</Text>
+                  <Ionicons name="chevron-down" size={16} color={colors.textInverse} style={{ marginLeft: 4 }} />
+                </TouchableOpacity>
+              </View>
+              {isWebDesktop ? (
+                <PressableScale style={[styles.homeSearch, styles.desktopHeroSearch]} onPress={navigateToEvents} accessibilityRole="button" scaleTo={0.98}>
+                  <Ionicons name="search" size={20} color={colors.primary} />
+                  <Text style={styles.homeSearchText} numberOfLines={1}>{t('search_events')}</Text>
+                  <View style={styles.homeSearchAction}><Ionicons name="options-outline" size={16} color={colors.textInverse} /></View>
+                </PressableScale>
+              ) : null}
+            </View>
+            {isWebDesktop ? (
+              <View style={styles.heroFan}>
+                {filteredTopEvents.slice(0, 3).map((event, index) => (
+                  <PressableScale
+                    key={event.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={event.title}
+                    onPress={() => navigation.navigate('EventDetail', { eventId: event.id })}
+                    style={[styles.heroFanImage, { transform: [{ rotate: `${(index - 1) * 6}deg` }, { translateY: Math.abs(index - 1) * 18 }] }]}
+                  >
+                    {event.coverImage || event.thumbnail ? (
+                      <Image source={{ uri: event.coverImage || event.thumbnail }} style={styles.heroFanCover} />
+                    ) : <LinearGradient colors={gradients.primary} style={styles.heroFanCover} />}
+                    {index === 1 ? <View style={styles.heroFanDateBadge}><DateBadge date={event.startDate} /></View> : null}
+                  </PressableScale>
+                ))}
+              </View>
+            ) : null}
+          </View>
+          <View pointerEvents="none" style={styles.heroOrb} />
+          <View pointerEvents="none" style={styles.heroOrbSmall} />
+        </LinearGradient>
+        </Container>
+        {!isWebDesktop ? (
+          <PressableScale style={styles.homeSearch} onPress={navigateToEvents} accessibilityRole="button" scaleTo={0.98}>
+            <Ionicons name="search" size={20} color={colors.primary} />
+            <Text style={styles.homeSearchText} numberOfLines={1}>{t('search_events')}</Text>
+            <View style={styles.homeSearchAction}><Ionicons name="options-outline" size={16} color={colors.textInverse} /></View>
+          </PressableScale>
+        ) : null}
+
+        <Container style={styles.pageContent}>
+          {layout.order
+            .filter(id => !layout.hidden.includes(id))
+            .map(id => <React.Fragment key={id}>{sectionRenderers[id]()}</React.Fragment>)}
+
+          <PressableScale
+            style={styles.customizeButton}
+            onPress={() => navigationRef.current?.navigate('CustomizeHome')}
+            accessibilityRole="button"
+            testID="customize-home-button"
+          >
+            <Ionicons name="options-outline" size={18} color={colors.primary} />
+            <Text style={styles.customizeButtonText}>{t('customize_home')}</Text>
+          </PressableScale>
+        </Container>
+        {isWebDesktop ? <WebFooter /> : null}
       </ScrollView>
 
       {/* Location Selection Modal */}
@@ -928,7 +993,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
+  heroShell: { paddingHorizontal: 0 },
   hero: { paddingTop: 8, paddingBottom: 28, borderBottomLeftRadius: radius.xl, borderBottomRightRadius: radius.xl, overflow: 'hidden' },
+  desktopHero: { height: 440, justifyContent: 'center', borderRadius: radius.xl, paddingVertical: 20 },
+  heroContent: { width: '100%' },
+  desktopHeroContent: { maxWidth: 1240, alignSelf: 'center', paddingHorizontal: 48, flex: 1, flexDirection: 'row', alignItems: 'center', gap: 36 },
+  heroLeft: { flex: 1, maxWidth: 560, zIndex: 1 },
+  desktopHeroSearch: { marginHorizontal: 20, marginTop: 20, maxWidth: 500 },
+  heroFan: { flex: 1, minWidth: 300, height: 330, alignItems: 'center', justifyContent: 'center' },
+  heroFanImage: { position: 'absolute', width: '52%', height: 270, borderRadius: radius.lg, borderWidth: 3, borderColor: colors.surface, overflow: 'hidden', ...shadow.float },
+  heroFanCover: { width: '100%', height: '100%' },
+  heroFanDateBadge: { position: 'absolute', top: 12, left: 12 },
+  heroOrb: { position: 'absolute', right: -80, top: -120, width: 380, height: 380, borderRadius: 190, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' },
+  heroOrbSmall: { position: 'absolute', right: 120, bottom: -220, width: 320, height: 320, borderRadius: 160, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
+  pageContent: { paddingHorizontal: 0 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -943,6 +1021,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   greetingHero: { ...type.h1, color: colors.textInverse },
+  desktopGreetingHero: { ...type.display, color: colors.textInverse },
   subtitleHero: { ...type.body, color: 'rgba(255,255,255,0.82)', marginTop: 4 },
   subtitle: {
     fontSize: 14,
@@ -1009,9 +1088,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   editInterestsButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.surfaceAlt,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1020,6 +1099,12 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 32,
   },
+  recommendationGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, paddingHorizontal: 20 },
+  recommendationCell: { minWidth: 0 },
+  carouselControls: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, paddingHorizontal: 20, marginBottom: 8 },
+  carouselArrow: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  friendsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, paddingHorizontal: 20 },
+  friendsCell: { width: '31%', minWidth: 0 },
   weekendCard: { padding: 18, borderRadius: radius.lg },
   weekendCardRing: { marginHorizontal: 20, marginBottom: 24, borderRadius: radius.lg, ...shadow.card },
   weekendCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -1057,6 +1142,7 @@ const styles = StyleSheet.create({
     marginTop: -6,
     marginBottom: 12,
   },
+  friendsRowCard: { flex: 1, minWidth: 0, paddingHorizontal: 0, marginTop: 0, marginBottom: 0 },
   friendsAvatars: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1104,6 +1190,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     ...shadow.card,
   },
+  topEventCardContent: { flex: 1 },
   topEventsSkeletonRow: { flexDirection: 'row', gap: 16 },
   topEventSkeleton: { height: 220, borderRadius: radius.lg },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 14 },
@@ -1141,13 +1228,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   topEventActions: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    zIndex: 1,
     flexDirection: 'row',
     gap: 8,
   },
   topEventActionBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(0,0,0,0.35)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1171,6 +1262,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginLeft: 6,
   },
+  topEventLiveWhen: {
+    color: colors.ink,
+    backgroundColor: colors.accent,
+    overflow: 'hidden',
+    borderRadius: radius.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    fontWeight: '800',
+  },
   eventCard: {
     flexDirection: 'row',
     backgroundColor: colors.textInverse,
@@ -1184,6 +1284,9 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  eventCardContent: { flex: 1, minWidth: 0, flexDirection: 'row' },
+  eventRank: { position: 'absolute', zIndex: 2, top: 12, left: 12, width: 32, height: 32, borderRadius: 16, backgroundColor: colors.ink, alignItems: 'center', justifyContent: 'center' },
+  eventRankText: { color: colors.accent, fontSize: 16, fontWeight: '800' },
   todayEventCard: {
     borderWidth: 2,
     borderColor: colors.primary,
@@ -1255,6 +1358,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: colors.primary,
+    fontVariant: ['tabular-nums'],
   },
   eventTickets: {
     flexDirection: 'row',
@@ -1280,9 +1384,9 @@ const styles = StyleSheet.create({
     borderLeftColor: colors.surfaceAlt,
   },
   eventCardActionBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.bg,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1432,13 +1536,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     gap: 12,
   },
-  venueGridCard: {
-    width: 'auto',
-    flexBasis: '30%',
-    flexGrow: 1,
-    maxWidth: '32%',
-    height: 150,
-  },
+  venueGridDesktop: { height: 160 },
+  venueGridCard: { height: 150 },
   venueCard: {
     width: 150,
     height: 180,

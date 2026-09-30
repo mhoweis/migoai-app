@@ -26,6 +26,7 @@ import { useLocale } from '../i18n';
 import Chip from '../components/Chip';
 import { gradients, shadow, type } from '../theme';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useBreakpoint } from '../hooks/useBreakpoint';
 
 interface Message {
   id: string;
@@ -49,6 +50,7 @@ interface SuggestedEvent {
 }
 
 const ChatScreen: React.FC = () => {
+  const { isWebDesktop } = useBreakpoint();
   const navigation = useNavigation<any>();
   const { user } = useUserStore();
   const { t } = useLocale();
@@ -459,7 +461,7 @@ const ChatScreen: React.FC = () => {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
+        style={[styles.keyboardView, isWebDesktop && styles.desktopKeyboard]}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         {/* Header */}
@@ -486,6 +488,8 @@ const ChatScreen: React.FC = () => {
             </View>
           </View>
           <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={t('chat_title')}
             style={styles.infoButton}
             onPress={() => Alert.alert(
               t('chat_title'),
@@ -585,6 +589,7 @@ const ChatScreen: React.FC = () => {
         <View style={styles.inputContainer}>
           <View style={styles.inputWrapper}>
             <TextInput
+              accessibilityLabel={t('chat_placeholder')}
               style={styles.textInput}
               value={inputText}
               onChangeText={setInputText}
@@ -608,6 +613,9 @@ const ChatScreen: React.FC = () => {
               }}
             />
             <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={t('send_message')}
+              accessibilityState={{ disabled: !inputText.trim() || isLoading }}
               style={[styles.sendButton, (!inputText.trim() || isLoading) && styles.sendButtonDisabled]}
               onPress={() => void handleSendMessage()}
               disabled={!inputText.trim() || isLoading}
@@ -640,6 +648,7 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
   },
+  desktopKeyboard: { width: '100%', maxWidth: 820, alignSelf: 'center' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -649,7 +658,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   backButton: {
-    padding: 4,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 8,
   },
   headerContent: {
@@ -674,7 +686,10 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   infoButton: {
-    padding: 4,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   messagesContainer: {
     flex: 1,

@@ -21,7 +21,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setLocale, STORAGE_KEY, useLocale } from '../i18n';
 import GradientButton from '../components/GradientButton';
 import { LinearGradient } from 'expo-linear-gradient';
-import { gradients, radius, type } from '../theme';
+import { gradients, radius, shadow, type } from '../theme';
+import { useBreakpoint } from '../hooks/useBreakpoint';
+import { Ionicons } from '@expo/vector-icons';
 
 interface Props {
   navigation: any;
@@ -35,6 +37,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { setUser, setFirstLogin } = useUserStore();
   const { locale, t } = useLocale();
+  const { isWebDesktop } = useBreakpoint();
 
   const handleLogin = async () => {
     if (!identifier.trim() || !password) {
@@ -113,11 +116,16 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
         style={styles.keyboardView}
       >
         <ScrollView 
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, isWebDesktop && styles.desktopScrollContent]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <LinearGradient colors={gradients.primary} style={styles.header}>
+          <LinearGradient
+            colors={[colors.ink, ...gradients.dusk]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.header, isWebDesktop && styles.desktopBrandPanel]}
+          >
             {/* Updated: Replaced Icon with actual logo */}
             <Image 
               source={require('../../assets/icon.png')}
@@ -126,12 +134,26 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
             />
             <Text style={styles.title}>{t('welcome')}</Text>
             <Text style={styles.subtitle}>{t('sign_in_continue')}</Text>
+            {isWebDesktop ? (
+              <>
+                <Text style={styles.brandStatement}>{t('login_brand_headline')}</Text>
+                <View style={styles.brandBenefits}>
+                  {(['login_value_1', 'login_value_2', 'login_value_3'] as const).map((key, index) => (
+                    <View key={key} style={styles.brandBenefit}>
+                      <Ionicons name={(['compass-outline', 'ticket-outline', 'people-outline'] as const)[index]} size={22} color={colors.accent} />
+                      <Text style={styles.brandBenefitText}>{t(key)}</Text>
+                    </View>
+                  ))}
+                </View>
+              </>
+            ) : null}
           </LinearGradient>
 
-          <View style={styles.form}>
+          <View style={[styles.form, isWebDesktop && styles.desktopForm]}>
             <View style={styles.inputContainer}>
               {/*<Icon name="mail-outline" size={20} color={colors.textMuted} style={styles.inputIcon} />*/}
               <TextInput
+                accessibilityLabel={t('email_or_phone')}
                 style={styles.input}
                 placeholder={t('email_or_phone')}
                 value={identifier}
@@ -150,6 +172,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.inputContainer}>
               {/*<Icon name="lock-closed-outline" size={20} color={colors.textMuted} style={styles.inputIcon} />*/}
               <TextInput
+                accessibilityLabel={t('password')}
                 style={styles.input}
                 placeholder={t('password')}
                 value={password}
@@ -164,6 +187,9 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 onSubmitEditing={handleLogin}
               />
               <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? t('hide_password') : t('show_password')}
+                style={styles.passwordToggle}
                 onPress={() => setShowPassword(!showPassword)}
                 disabled={loading}
               >
@@ -278,6 +304,7 @@ const styles = StyleSheet.create({
     padding: 24,
     justifyContent: 'center',
   },
+  desktopScrollContent: { flexDirection: 'row', alignItems: 'stretch', minHeight: '100%', padding: 0, gap: 0 },
   header: {
     alignItems: 'center',
     marginTop: 20,
@@ -287,6 +314,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     overflow: 'hidden',
   },
+  desktopBrandPanel: { width: '55%', margin: 0, borderRadius: 0, justifyContent: 'center', paddingHorizontal: 64, paddingVertical: 64 },
   logo: {
     width: 80,
     height: 80,
@@ -309,6 +337,11 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     padding: 20,
   },
+  desktopForm: { width: '45%', maxWidth: 420, alignSelf: 'center', marginHorizontal: 0, ...shadow.card },
+  brandStatement: { ...type.display, color: colors.textInverse, maxWidth: 440, textAlign: 'left', marginTop: 44 },
+  brandBenefits: { alignSelf: 'stretch', gap: 18, maxWidth: 460, marginTop: 36 },
+  brandBenefit: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  brandBenefitText: { flex: 1, color: 'rgba(255,255,255,0.88)', fontSize: 16, lineHeight: 24 },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -330,6 +363,8 @@ const styles = StyleSheet.create({
   },
   forgotPassword: {
     alignSelf: 'flex-end',
+    minHeight: 44,
+    justifyContent: 'center',
     marginBottom: 24,
   },
   forgotPasswordText: {
@@ -358,6 +393,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
   },
+  passwordToggle: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   loginIcon: {
     marginRight: 8,
   },

@@ -1,4 +1,4 @@
-import { colors } from '../theme';
+import { colors, radius } from '../theme';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -17,6 +17,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { authService } from '../services/auth.service';
 import { useUserStore } from '../store/userStore';
 import { useLocale } from '../i18n';
+import { useBreakpoint } from '../hooks/useBreakpoint';
+import { LinearGradient } from 'expo-linear-gradient';
+import { gradients, type } from '../theme';
+import { Ionicons } from '@expo/vector-icons';
 
 type SignupMode = 'phone' | 'email';
 
@@ -34,6 +38,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { setUser, setFirstLogin } = useUserStore();
   const { t } = useLocale();
+  const { isWebDesktop } = useBreakpoint();
 
   const showError = (message: string) => {
     setErrorMessage(message);
@@ -119,16 +124,38 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         style={styles.keyboardView}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, isWebDesktop && styles.desktopScrollContent]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.header}>
+          <LinearGradient
+            colors={[colors.ink, ...gradients.dusk]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.header, isWebDesktop && styles.desktopBrandPanel]}
+          >
             <Image source={require('../../assets/icon.png')} style={styles.logo} resizeMode="contain" />
-            <Text style={styles.title}>{t('create_account')}</Text>
-            <Text style={styles.subtitle}>{t('register_subtitle')}</Text>
-          </View>
+            {isWebDesktop ? (
+              <>
+                <Text style={styles.brandStatement}>{t('login_brand_headline')}</Text>
+                <View style={styles.brandBenefits}>
+                  {(['login_value_1', 'login_value_2', 'login_value_3'] as const).map((key, index) => (
+                    <View key={key} style={styles.brandBenefit}>
+                      <Ionicons name={(['compass-outline', 'ticket-outline', 'people-outline'] as const)[index]} size={22} color={colors.accent} />
+                      <Text style={styles.brandBenefitText}>{t(key)}</Text>
+                    </View>
+                  ))}
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={styles.title}>{t('create_account')}</Text>
+                <Text style={styles.subtitle}>{t('register_subtitle')}</Text>
+              </>
+            )}
+          </LinearGradient>
 
+          <View style={isWebDesktop ? styles.desktopForm : undefined}>
           <View style={styles.modeSelector}>
             <TouchableOpacity
               style={[styles.modeButton, mode === 'phone' && styles.modeButtonActive]}
@@ -149,7 +176,8 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </View>
 
           <View style={styles.inputContainer}>
-            <TextInput
+              <TextInput
+                accessibilityLabel={t('full_name')}
               style={styles.input}
               placeholder={t('full_name')}
               value={name}
@@ -163,6 +191,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <>
               <View style={styles.inputContainer}>
                 <TextInput
+                  accessibilityLabel={t('phone_number')}
                   style={styles.input}
                   placeholder={t('phone_number')}
                   value={phone}
@@ -181,6 +210,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               {otpSent && (
                 <View style={styles.inputContainer}>
                   <TextInput
+                    accessibilityLabel={t('verification_code')}
                     style={styles.input}
                     placeholder={t('verification_code')}
                     value={otp}
@@ -220,6 +250,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <>
               <View style={styles.inputContainer}>
                 <TextInput
+                  accessibilityLabel={t('email_address')}
                   style={styles.input}
                   placeholder={t('email_address')}
                   value={email}
@@ -231,6 +262,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               </View>
               <View style={styles.inputContainer}>
                 <TextInput
+                  accessibilityLabel={t('password')}
                   style={styles.input}
                   placeholder={t('password')}
                   value={password}
@@ -239,7 +271,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   autoCapitalize="none"
                   autoComplete="password-new"
                 />
-                <TouchableOpacity onPress={() => setShowPassword(value => !value)}>
+                <TouchableOpacity accessibilityRole="button" accessibilityLabel={showPassword ? t('hide_password') : t('show_password')} style={styles.passwordToggle} onPress={() => setShowPassword(value => !value)}>
                   <Image
                     source={require('../../assets/icons/show-password.png')}
                     style={styles.showPassword}
@@ -248,6 +280,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               </View>
               <View style={styles.inputContainer}>
                 <TextInput
+                  accessibilityLabel={t('confirm_password')}
                   style={styles.input}
                   placeholder={t('confirm_password')}
                   value={confirmPassword}
@@ -283,6 +316,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               <Text style={styles.link}>{t('sign_in')}</Text>
             </TouchableOpacity>
           </View>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -293,7 +327,14 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.textInverse },
   keyboardView: { flex: 1 },
   scrollContent: { flexGrow: 1, padding: 24, paddingBottom: 36 },
-  header: { marginTop: 24, marginBottom: 28, alignItems: 'center' },
+  desktopScrollContent: { flexDirection: 'row', alignItems: 'stretch', minHeight: '100%', padding: 0, gap: 0 },
+  header: { marginTop: 24, marginBottom: 28, alignItems: 'center', borderRadius: radius.xl, padding: 24 },
+  desktopBrandPanel: { width: '55%', margin: 0, justifyContent: 'center', paddingHorizontal: 64, borderRadius: 0, height: '100%' },
+  desktopForm: { width: '45%', maxWidth: 420, alignSelf: 'center', padding: 40 },
+  brandStatement: { ...type.display, color: colors.textInverse, maxWidth: 440, textAlign: 'left', marginTop: 44 },
+  brandBenefits: { alignSelf: 'stretch', gap: 18, maxWidth: 460, marginTop: 36 },
+  brandBenefit: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  brandBenefitText: { flex: 1, color: 'rgba(255,255,255,0.88)', fontSize: 16, lineHeight: 24 },
   logo: { width: 64, height: 64, marginBottom: 14 },
   title: { fontSize: 30, fontWeight: 'bold', color: colors.text, marginBottom: 8 },
   subtitle: { fontSize: 15, color: colors.textMuted, textAlign: 'center' },
@@ -320,6 +361,7 @@ const styles = StyleSheet.create({
   },
   input: { flex: 1, height: 56, fontSize: 16, color: colors.text },
   showPassword: { width: 20, height: 20 },
+  passwordToggle: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   hint: { color: colors.textMuted, fontSize: 12, marginBottom: 18 },
   primaryButton: {
     height: 56,

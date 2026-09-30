@@ -27,13 +27,16 @@ import { ticketsService } from '../services/tickets.service';
 import { navigateToTab } from '../navigation/navigationRef';
 import { socialService, EventSocial, InviteLinks } from '../services/social.service';
 import { inviteRef } from '../utils/inviteRef';
-import { categoryLabel, formatEventDate, formatPrice, useLocale } from '../i18n';
+import { categoryLabel, formatEventWhen, formatPrice, useLocale } from '../i18n';
 import { sourceBadge } from '../utils/trust';
 import { LinearGradient } from 'expo-linear-gradient';
 import GradientButton from '../components/GradientButton';
 import { gradients, radius, shadow, spacing, type } from '../theme';
 import { DetailSkeleton } from '../components/Skeleton';
 import { trackSignal } from '../services/signals.service';
+import { useBreakpoint } from '../hooks/useBreakpoint';
+import DateBadge from '../components/DateBadge';
+import Container from '../components/Container';
 
 interface Props {
   route: any;
@@ -53,6 +56,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [shareOpen, setShareOpen] = useState(false);
   const { user } = useUserStore();
   const { t, locale } = useLocale();
+  const { isWebDesktop } = useBreakpoint();
   const { savedIds, toggleSaved, loadSavedEvents } = useSavedEventsStore();
   const insets = useSafeAreaInsets();
 
@@ -169,6 +173,23 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   };
 
+  const handleBookingAction = () => {
+    if (event?.myBookingId) navigateToTab('Wallet');
+    else if (event?.canRsvp) void handleRsvp();
+    else if (event?.canBuy) setCheckoutOpen(true);
+    else handleBookTicket();
+  };
+
+  const bookingActionLabel = event?.myBookingId
+    ? t('view_ticket')
+    : event?.canRsvp
+      ? t('get_free_ticket')
+      : event?.canBuy
+        ? `${t('buy_ticket')} · ${formatPrice(Number(event.priceFrom || 0), event.currency || 'AED')}`
+        : event?.externalUrl
+          ? t('book_on', { supplier: supplierLabel(event) })
+          : t('book_now');
+
   const handleCheckout = async () => {
     if (!event) return;
     setCheckoutLoading(true);
@@ -219,8 +240,17 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView>
+        {isWebDesktop ? (
+          <Container style={styles.desktopBackContainer}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('back')} onPress={() => navigation.goBack()} style={styles.desktopBack}>
+              <Ionicons name="arrow-back" size={18} color={colors.primary} />
+              <Text style={styles.desktopBackText}>{t('back')}</Text>
+            </TouchableOpacity>
+          </Container>
+        ) : null}
         {/* Event Image */}
-        <View style={styles.imageContainer}>
+        <Container style={styles.imageWrapper}>
+        <View style={[styles.imageContainer, isWebDesktop && styles.desktopImageContainer]}>
           {event.coverImage ? (
             <Image source={{ uri: event.coverImage }} style={styles.eventImage} />
           ) : (
@@ -229,17 +259,27 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </View>
           )}
           <LinearGradient colors={gradients.dark} style={styles.imageOverlay}>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.backButton, { top: insets.top + spacing.md }]}
-              onPress={() => navigation.goBack()}
-              accessibilityRole="button"
-              accessibilityLabel={t('back')}
-            >
-              <Ionicons name="arrow-back" size={24} color={colors.textInverse} />
-            </TouchableOpacity>
-            <Text style={styles.imageTitle} numberOfLines={3}>{event.title}</Text>
+            {!isWebDesktop ? (
+              <TouchableOpacity
+                style={[styles.actionButton, styles.backButton, { top: insets.top + spacing.md }]}
+                onPress={() => navigation.goBack()}
+                accessibilityRole="button"
+                accessibilityLabel={t('back')}
+              >
+                <Ionicons name="arrow-back" size={24} color={colors.textInverse} />
+              </TouchableOpacity>
+            ) : null}
+              <View style={styles.heroTitleRow}>
+                <DateBadge date={event.startDate} />
+                <View style={styles.heroTitleContent}>
+                  <Text style={styles.heroCategory}>{categoryLabel(event.category)}</Text>
+                  <Text style={[styles.imageTitle, isWebDesktop && styles.desktopImageTitle]} numberOfLines={3}>{event.title}</Text>
+                </View>
+              </View>
             <View style={styles.imageActions}>
               <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={savedIds.has(event.id) ? t('remove_saved_event') : t('save_event')}
                 style={styles.actionButton}
                 onPress={handleBookmark}
               >
@@ -250,6 +290,8 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 />
               </TouchableOpacity>
               <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={t('share')}
                 style={styles.actionButton}
                 onPress={handleShare}
               >
@@ -258,9 +300,11 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </View>
           </LinearGradient>
         </View>
+        </Container>
 
-        {/* Event Content */}
-        <View style={styles.content}>
+          {/* Event Content */}
+          <Container style={[styles.detailContainer, isWebDesktop && styles.desktopBody]}>
+          <View style={[styles.content, isWebDesktop && styles.desktopMain]}>
           {/* Event Header */}
           <View style={styles.eventHeader}>
             <View style={styles.eventCategoryContainer}>
@@ -317,19 +361,12 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               {event.description || event.shortDescription || t('no_events_help')}
             </Text>
 
-            <View style={styles.detailsGrid}>
+            <View style={[styles.detailsGrid, styles.infoCard]}>
               <View style={styles.detailItem}>
                 <Ionicons name="calendar-outline" size={20} color={colors.primary} />
                 <View style={styles.detailText}>
                     <Text style={styles.detailLabel}>{t('date_time')}</Text>
-                  <Text style={styles.detailValue}>
-                    {formatEventDate(event.startDate, { withTime: true })}
-                  </Text>
-                  {event.endDate && (
-                    <Text style={styles.detailValueSecondary}>
-                      {formatEventDate(event.endDate)}
-                    </Text>
-                  )}
+                  <Text style={styles.detailValue}>{formatEventWhen(event, locale)}</Text>
                 </View>
               </View>
 
@@ -452,10 +489,38 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </TouchableOpacity>
           )}
         </View>
+          {isWebDesktop ? (
+            <View style={styles.bookingCard}>
+              <Text style={styles.bookingPrice}>
+                {event.isFree || !event.priceFrom ? t('free') : formatPrice(Number(event.priceFrom), event.currency || 'AED')}
+              </Text>
+              <Text style={styles.bookingInfo}>{formatEventWhen(event, locale)}</Text>
+              <Text style={styles.bookingInfo}>{event.venueName || t('location_tba')}{event.city ? ` · ${event.city}` : ''}</Text>
+              {event.capacity ? <Text style={styles.bookingInfo}>{t('capacity')}: {event.capacity}</Text> : null}
+              <Text style={styles.bookingRefund}>{t(`refund_${(event as any).trust?.refundKey || 'per_provider'}` as any)}</Text>
+              <GradientButton style={styles.bookingButton} label={bookingActionLabel} onPress={handleBookingAction} />
+              <View style={styles.bookingActions}>
+                <TouchableOpacity accessibilityRole="button" accessibilityLabel={savedIds.has(event.id) ? t('remove_saved_event') : t('save_event')} style={styles.bookingAction} onPress={handleBookmark}>
+                  <Ionicons name={savedIds.has(event.id) ? 'bookmark' : 'bookmark-outline'} size={18} color={colors.primary} />
+                  <Text style={styles.bookingActionText}>{t('save_event')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('share')} style={styles.bookingAction} onPress={handleShare}>
+                  <Ionicons name="share-outline" size={18} color={colors.primary} />
+                  <Text style={styles.bookingActionText}>{t('share')}</Text>
+                </TouchableOpacity>
+              </View>
+              {sourceBadge(event.trust, locale)?.text ? (
+                <View style={styles.bookingSourceChip}>
+                  <Text style={styles.bookingSource}>{sourceBadge(event.trust, locale)?.text}</Text>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+          </Container>
       </ScrollView>
 
       {/* Bottom Action Bar */}
-      <View style={styles.bottomBar}>
+      {!isWebDesktop ? <View style={styles.bottomBar}>
         <View style={styles.bottomBarInfo}>
           <Text style={styles.refundNote}>{t(`refund_${(event as any).trust?.refundKey || 'per_provider'}` as any)}</Text>
           <Text style={styles.bottomBarPrice}>
@@ -469,28 +534,10 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         </View>
         <GradientButton
           style={styles.bottomBarButton}
-          label={
-            event.myBookingId
-              ? t('view_ticket')
-              : event.canRsvp
-                ? t('get_free_ticket')
-                : event.canBuy
-                ? `${t('buy_ticket')} · ${formatPrice(Number(event.priceFrom || 0), event.currency || 'AED')}`
-                : event.externalUrl
-                  ? t('book_on', { supplier: supplierLabel(event) })
-                  : t('book_now')
-          }
-          onPress={
-            event.myBookingId
-              ? () => navigateToTab('Wallet')
-              : event.canRsvp
-                ? handleRsvp
-                : event.canBuy
-                  ? () => setCheckoutOpen(true)
-                  : handleBookTicket
-          }
+          label={bookingActionLabel}
+          onPress={handleBookingAction}
         />
-      </View>
+      </View> : null}
       <Modal
         visible={shareOpen}
         transparent
@@ -528,6 +575,8 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <Text style={styles.quantityLabel}>{t('quantity')}</Text>
               <View style={styles.stepper}>
                 <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel={t('decrease_quantity')}
                   style={styles.stepperButton}
                   onPress={() => setTicketCount(value => Math.max(1, value - 1))}
                   disabled={checkoutLoading || ticketCount === 1}
@@ -536,6 +585,8 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </TouchableOpacity>
                 <Text style={styles.stepperValue}>{ticketCount}</Text>
                 <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel={t('increase_quantity')}
                   style={styles.stepperButton}
                   onPress={() => setTicketCount(value => Math.min(4, value + 1))}
                   disabled={checkoutLoading || ticketCount === 4}
@@ -573,6 +624,29 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.textInverse,
   },
+  imageWrapper: { paddingHorizontal: 0 },
+  desktopBackContainer: { paddingHorizontal: 48, paddingTop: 16 },
+  desktopBack: { minHeight: 44, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 8 },
+  desktopBackText: { color: colors.primary, fontWeight: '700' },
+  desktopImageContainer: { height: 420, maxWidth: 1240, width: '100%', alignSelf: 'center', marginTop: 24, borderRadius: radius.xl, overflow: 'hidden' },
+  heroTitleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 14, flex: 1 },
+  heroTitleContent: { flex: 1, minWidth: 0 },
+  heroCategory: { color: colors.accent, fontSize: 13, fontWeight: '800', textTransform: 'uppercase', marginBottom: 6 },
+  desktopImageTitle: { fontSize: 40, lineHeight: 44, maxWidth: 760 },
+  detailContainer: { paddingHorizontal: 0 },
+  desktopBody: { flexDirection: 'row', alignItems: 'flex-start', gap: 32, maxWidth: 1240, paddingHorizontal: 48, alignSelf: 'center' },
+  desktopMain: { flex: 1, minWidth: 0, marginTop: 32, paddingHorizontal: 0 },
+  infoCard: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, padding: 18 },
+  bookingCard: { width: 340, marginTop: 32, padding: 24, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, ...shadow.card },
+  bookingPrice: { ...type.h1, color: colors.primary, fontVariant: ['tabular-nums'] },
+  bookingInfo: { color: colors.textSecondary, fontSize: 14, lineHeight: 21, marginTop: 12 },
+  bookingRefund: { color: colors.textMuted, fontSize: 12, lineHeight: 18, marginTop: 16 },
+  bookingButton: { width: '100%', marginTop: 20 },
+  bookingActions: { flexDirection: 'row', gap: 12, marginTop: 14 },
+  bookingAction: { flex: 1, minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md },
+  bookingActionText: { color: colors.textSecondary, fontSize: 13, fontWeight: '700' },
+  bookingSourceChip: { alignSelf: 'flex-start', marginTop: 18, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.sm, backgroundColor: colors.infoSoft },
+  bookingSource: { color: colors.info, fontSize: 12, fontWeight: '700' },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -905,11 +979,11 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   stepperButton: {
-    width: 36,
-    height: 36,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 18,
+    borderRadius: 22,
     backgroundColor: colors.primarySoft,
   },
   stepperValue: {

@@ -22,7 +22,9 @@ import TimeField from '../components/TimeField';
 import LocationPicker from '../components/LocationPicker';
 import { placesService } from '../services/places.service';
 import { uploadService } from '../services/upload.service';
-import { colors } from '../theme';
+import { colors, type } from '../theme';
+import { useBreakpoint } from '../hooks/useBreakpoint';
+import Container from '../components/Container';
 
 const categories = ['Music', 'Sports', 'Art', 'Food', 'Tech', 'Business', 'Health', 'Theater', 'Comedy', 'Other'];
 const cities = ['Dubai', 'Abu Dhabi', 'Sharjah', 'Ajman', 'Ras Al Khaimah', 'Fujairah', 'Umm Al Quwain'];
@@ -35,6 +37,7 @@ type Navigation = NativeStackNavigationProp<ProfileStackParamList, 'CreateEvent'
 
 export default function CreateEventScreen({ navigation }: { navigation: Navigation }) {
   const { t } = useLocale();
+  const { isWebDesktop } = useBreakpoint();
   const today = new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState({ title: '', description: '', category: 'Other', venueName: '', address: '', city: 'Dubai', isFree: true, price: '', ticketUrl: '', capacity: '0', notes: '', coverImage: '' });
   const [fromDate, setFromDate] = useState('');
@@ -114,10 +117,11 @@ export default function CreateEventScreen({ navigation }: { navigation: Navigati
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[styles.content, isWebDesktop && styles.desktopContent]} keyboardShouldPersistTaps="handled">
+      <Container style={isWebDesktop ? styles.desktopContainer : styles.mobileContainer}>
         <Text style={styles.heading}>{t('create_event')}</Text>
-        <TextInput style={styles.input} placeholder={t('event_title')} value={form.title} onChangeText={(value: string) => set('title', value)} />
-        <TextInput style={[styles.input, styles.multiline]} placeholder={t('description')} multiline value={form.description} onChangeText={(value: string) => set('description', value)} />
+        <TextInput accessibilityLabel={t('event_title')} style={styles.input} placeholder={t('event_title')} value={form.title} onChangeText={(value: string) => set('title', value)} />
+        <TextInput accessibilityLabel={t('description')} style={[styles.input, styles.multiline]} placeholder={t('description')} multiline value={form.description} onChangeText={(value: string) => set('description', value)} />
         <Text style={styles.label}>{t('event')}</Text>
         <View style={styles.chips}>{categories.map(category => (
           <TouchableOpacity key={category} style={[styles.chip, form.category === category && styles.selectedChip]} onPress={() => set('category', category)}>
@@ -129,8 +133,8 @@ export default function CreateEventScreen({ navigation }: { navigation: Navigati
         <View style={styles.row}><DateField value={fromDate} onChange={value => { setFromDate(value); if (multiDay && toDate) regenerateDays(value, toDate); }} placeholder={t('start_date')} minimumDate={today} />{!multiDay ? <TimeField value={firstDay.startTime} onChange={value => setDays([{ ...firstDay, startTime: value }])} placeholder={t('start_time')} /> : null}</View>
         {!multiDay ? <><Text style={styles.label}>{t('end_time')}</Text><TimeField value={firstDay.endTime || ''} onChange={value => setDays([{ ...firstDay, endTime: value }])} placeholder={t('end_time')} /></> : null}
         {multiDay ? <><Text style={styles.label}>{t('to_date')}</Text><DateField value={toDate} onChange={value => { setToDate(value); regenerateDays(fromDate, value); }} placeholder={t('end_date')} minimumDate={fromDate || today} />{days.map((day, index) => <View key={day.date} style={styles.dayRow}><Text style={styles.dayLabel}>{day.date}</Text><TimeField value={day.startTime} onChange={value => setDays(current => current.map((entry, i) => i === index ? { ...entry, startTime: value } : entry))} placeholder={t('start_time')} /><TimeField value={day.endTime || ''} onChange={value => setDays(current => current.map((entry, i) => i === index ? { ...entry, endTime: value } : entry))} placeholder={t('end_time')} /></View>)}{days.length > 1 ? <TouchableOpacity style={styles.secondaryButton} onPress={() => setDays(current => current.map(day => ({ ...day, startTime: current[0].startTime, endTime: current[0].endTime })))}><Text style={styles.secondaryText}>{t('apply_to_all_days')}</Text></TouchableOpacity> : null}</> : null}
-        <TextInput style={styles.input} placeholder={t('venue_name')} value={form.venueName} onChangeText={(value: string) => set('venueName', value)} />
-        <TextInput style={styles.input} placeholder={t('address')} value={form.address} onChangeText={(value: string) => set('address', value)} />
+        <TextInput accessibilityLabel={t('venue_name')} style={styles.input} placeholder={t('venue_name')} value={form.venueName} onChangeText={(value: string) => set('venueName', value)} />
+        <TextInput accessibilityLabel={t('address')} style={styles.input} placeholder={t('address')} value={form.address} onChangeText={(value: string) => set('address', value)} />
         <Text style={styles.label}>{t('city')}</Text>
         <View style={styles.chips}>{cities.map(city => (
           <TouchableOpacity key={city} style={[styles.chip, form.city === city && styles.selectedChip]} onPress={() => set('city', city)}>
@@ -159,10 +163,11 @@ export default function CreateEventScreen({ navigation }: { navigation: Navigati
         <Text style={styles.hint}>{t('cover_image_help')}</Text>
         {form.coverImage ? <View><Image source={{ uri: form.coverImage }} style={styles.cover} /><TouchableOpacity onPress={() => set('coverImage', '')}><Text style={styles.remove}>{t('remove')}</Text></TouchableOpacity></View> : null}
         <TouchableOpacity style={styles.secondaryButton} onPress={() => setShowUrl(value => !value)}><Text style={styles.secondaryText}>{t('paste_image_url')}</Text></TouchableOpacity>
-        {showUrl ? <TextInput style={styles.input} placeholder={t('cover_image_optional')} autoCapitalize="none" value={form.coverImage} onChangeText={(value: string) => set('coverImage', value)} /> : null}
+        {showUrl ? <TextInput accessibilityLabel={t('cover_image_optional')} style={styles.input} placeholder={t('cover_image_optional')} autoCapitalize="none" value={form.coverImage} onChangeText={(value: string) => set('coverImage', value)} /> : null}
         <TouchableOpacity style={styles.submit} disabled={saving} onPress={submit}>
           <Text style={styles.submitText}>{saving ? t('loading') : t('create_event')}</Text>
         </TouchableOpacity>
+      </Container>
       </ScrollView>
     </SafeAreaView>
   );
@@ -171,7 +176,10 @@ export default function CreateEventScreen({ navigation }: { navigation: Navigati
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 20, gap: 12 },
-  heading: { fontSize: 28, fontWeight: '700', color: colors.text, marginBottom: 6 },
+  desktopContent: { padding: 0 },
+  desktopContainer: { maxWidth: 840, paddingVertical: 32 },
+  mobileContainer: { paddingHorizontal: 0 },
+  heading: { ...type.h1, color: colors.ink, marginBottom: 6 },
   label: { color: colors.textSecondary, fontSize: 14, fontWeight: '700', marginTop: 4 },
   input: { borderWidth: 1, borderColor: colors.border, borderRadius: 10, backgroundColor: colors.textInverse, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15 },
   multiline: { minHeight: 90, textAlignVertical: 'top' },

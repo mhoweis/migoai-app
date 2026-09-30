@@ -1,4 +1,7 @@
 import { colors } from '../theme';
+import { useBreakpoint } from '../hooks/useBreakpoint';
+import { LinearGradient } from 'expo-linear-gradient';
+import { gradients } from '../theme';
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -27,6 +30,7 @@ import { formatEventDate, useLocale, categoryLabel } from '../i18n';
 import { radius, shadow, spacing, type } from '../theme';
 import GradientButton from '../components/GradientButton';
 import { EventListSkeleton } from '../components/Skeleton';
+import Container from '../components/Container';
 
 const categoryColors: Record<string, string> = {
   Music: colors.primaryDark,
@@ -165,6 +169,8 @@ function TicketCard({
 
 export default function WalletScreen() {
   const { t } = useLocale();
+  const { isWebDesktop } = useBreakpoint();
+  const ticketColumns = isWebDesktop ? 2 : 1;
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -304,39 +310,55 @@ export default function WalletScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t('wallet')}</Text>
-        <Ionicons name="wallet-outline" size={25} color={colors.primary} />
-      </View>
-      {offline ? <Text style={styles.offline}>{t('offline_saved_tickets')}</Text> : null}
-      <FlatList<Ticket>
-        data={tickets}
-        keyExtractor={(ticket: Ticket) => ticket.id}
-        renderItem={({ item }: { item: Ticket }) => (
-          <TicketCard
-            ticket={item}
-            onCancel={cancelTicket}
-            onTransfer={transferTicket}
-            onCancelTransfer={cancelTransfer}
-            onApple={openApple}
-            onGoogle={openGoogle}
-            capabilities={capabilities}
-            t={t}
-          />
-        )}
-        contentContainerStyle={tickets.length ? styles.list : styles.emptyList}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadTickets(true)} />}
-        ListEmptyComponent={(
-          <View style={styles.empty}>
-            <View style={styles.emptyIcon}>
-              <Ionicons name="ticket-outline" size={48} color={colors.primary} />
-            </View>
-            <Text style={styles.emptyTitle}>{t('no_tickets')}</Text>
-            <Text style={styles.emptyText}>{t('no_tickets_help')}</Text>
-            <GradientButton label={t('browse_events')} onPress={() => navigateToTab('Events')} />
+      <LinearGradient colors={gradients.dusk} style={styles.header}>
+        <View style={styles.headerContent}>
+          <View>
+            <Text style={styles.headerEyebrow}>{t('wallet')}</Text>
+            <Text style={styles.headerTitle}>{t('your_tickets')}</Text>
           </View>
-        )}
-      />
+          <View style={styles.headerIcon}><Ionicons name="ticket-outline" size={28} color={colors.textInverse} /></View>
+        </View>
+      </LinearGradient>
+      {offline ? <Text style={styles.offline}>{t('offline_saved_tickets')}</Text> : null}
+      <Container style={[styles.ticketListContainer, !isWebDesktop && styles.mobileTicketListContainer]}>
+        <FlatList<Ticket>
+          key={`wallet-${ticketColumns}`}
+          data={tickets}
+          numColumns={ticketColumns}
+          keyExtractor={(ticket: Ticket) => ticket.id}
+          renderItem={({ item }: { item: Ticket }) => (
+            <View style={ticketColumns > 1 ? styles.ticketCell : undefined}>
+              <TicketCard
+                ticket={item}
+                onCancel={cancelTicket}
+                onTransfer={transferTicket}
+                onCancelTransfer={cancelTransfer}
+                onApple={openApple}
+                onGoogle={openGoogle}
+                capabilities={capabilities}
+                t={t}
+              />
+            </View>
+          )}
+          columnWrapperStyle={ticketColumns > 1 ? styles.ticketRow : undefined}
+          style={isWebDesktop ? styles.desktopList : undefined}
+          contentContainerStyle={[
+            tickets.length ? styles.list : styles.emptyList,
+            isWebDesktop && styles.desktopListContent,
+          ]}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadTickets(true)} />}
+          ListEmptyComponent={(
+            <View style={styles.empty}>
+              <View style={styles.emptyIcon}>
+                <Ionicons name="ticket-outline" size={48} color={colors.primary} />
+              </View>
+              <Text style={styles.emptyTitle}>{t('no_tickets')}</Text>
+              <Text style={styles.emptyText}>{t('no_tickets_help')}</Text>
+              <GradientButton label={t('browse_events')} onPress={() => navigateToTab('Events')} />
+            </View>
+          )}
+        />
+      </Container>
       <Modal visible={Boolean(recipientTicket)} transparent animationType="fade" onRequestClose={() => setRecipientTicket(null)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
@@ -363,16 +385,22 @@ export default function WalletScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   loader: { flex: 1 },
+  headerContent: { width: '100%', maxWidth: 1240, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 48 },
+  headerEyebrow: { color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: '700' },
+  headerIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 18,
-    backgroundColor: colors.surface,
+    justifyContent: 'center',
+    minHeight: 156,
+    paddingVertical: 24,
   },
-  headerTitle: { ...type.h1 },
-  list: { padding: 16, gap: 16 },
+  headerTitle: { ...type.h1, color: colors.textInverse, marginTop: 6 },
+  desktopList: { width: '100%', maxWidth: 1240, alignSelf: 'center' },
+  ticketListContainer: { flex: 1 },
+  mobileTicketListContainer: { paddingHorizontal: 0 },
+  list: { paddingHorizontal: 20, paddingVertical: 24, gap: 16 },
+  desktopListContent: { paddingHorizontal: 0 },
+  ticketRow: { gap: 20, paddingHorizontal: 0 },
+  ticketCell: { flex: 1, minWidth: 0 },
   emptyList: { flexGrow: 1, padding: 24 },
   card: {
     overflow: 'hidden',
