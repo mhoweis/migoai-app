@@ -32,6 +32,7 @@ import { supplierRouter } from './routes/supplier.routes';
 import { suppliersRouter } from './routes/suppliers.routes';
 import { reviewsRouter } from './routes/reviews.routes';
 import { legalRouter } from './routes/legal.routes';
+import { marketingRouter } from './routes/marketing.routes';
 import config from './config/env';
 
 // Import middleware
@@ -175,13 +176,15 @@ app.use('/api/ai', aiRouter);
 // opened directly in a browser, and outside the IP limiter above.
 app.use('/go', goRouter);
 app.use(legalRouter);
+app.use(marketingRouter);
 
 if (config.WEB_DIST_DIR && fs.existsSync(config.WEB_DIST_DIR)) {
   app.use(express.static(config.WEB_DIST_DIR, { index: false }));
   app.get(/.*/, (req, res, next) => {
     const isApiOrGo = req.path === '/api' || req.path.startsWith('/api/')
       || req.path === '/go' || req.path.startsWith('/go/');
-    const isLegalPage = ['/privacy', '/terms', '/delete-account'].includes(req.path);
+    const isLegalPage = ['/privacy', '/terms', '/delete-account', '/welcome'].includes(req.path)
+      || req.path.startsWith('/welcome/');
     if (isApiOrGo || isLegalPage || !req.accepts('html')) return next();
     res.sendFile(path.join(config.WEB_DIST_DIR, 'index.html'), error => {
       if (error) next(error);

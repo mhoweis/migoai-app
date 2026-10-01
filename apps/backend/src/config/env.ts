@@ -19,6 +19,8 @@ const envSchema = z.object({
   WEB_DIST_DIR: z.string().default(''),
   UPLOADS_DIR: z.string().default(path.resolve(__dirname, '../../uploads')),
   SUPPORT_EMAIL: z.string().email().default('support@migoapp.com'),
+  APP_STORE_URL: z.string().default(''),
+  PLAY_STORE_URL: z.string().default(''),
   REDIS_URL: z.string().default('redis://localhost:6379'),
   
   // Rate limiting
@@ -197,6 +199,8 @@ export default {
   WEB_DIST_DIR: env.WEB_DIST_DIR ? path.resolve(env.WEB_DIST_DIR) : '',
   UPLOADS_DIR: path.resolve(env.UPLOADS_DIR),
   SUPPORT_EMAIL: env.SUPPORT_EMAIL,
+  APP_STORE_URL: env.APP_STORE_URL,
+  PLAY_STORE_URL: env.PLAY_STORE_URL,
   
   // Database
   DATABASE_URL: env.SUPABASE_DATABASE_URL,
