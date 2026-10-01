@@ -61,31 +61,24 @@ const CHECKOUT_CANCEL_QUERY = 'checkout=cancel';
 
 // Custom Tab Icon Component
 const CustomTabIcon = ({ routeName, focused }: { routeName: string, focused: boolean }) => {
-  const { t } = useLocale();
   let iconName: keyof typeof Ionicons.glyphMap = 'home-outline';
-  let label = 'home';
   switch (routeName) {
     case "HomeTab":
       iconName = focused ? 'home' : 'home-outline';
-      label = 'home';
       break;
     case "EventsTab":
       iconName = focused ? 'compass' : 'compass-outline';
-      label = 'events';
       break;
     case "WalletTab":
       iconName = focused ? 'wallet' : 'wallet-outline';
-      label = 'wallet';
       break;
     case "ProfileTab":
       iconName = focused ? 'person' : 'person-outline';
-      label = 'profile';
       break;
   }
   return (
     <View style={[styles.iconContainer, focused && styles.iconContainerFocused]}>
-      <Ionicons name={iconName} size={22} color={focused ? colors.primary : colors.textMuted} />
-      {focused ? <Text style={styles.activeTabLabel}>{t(label as any)}</Text> : null}
+      <Ionicons name={iconName} size={24} color={focused ? colors.primary : colors.textMuted} />
     </View>
   );
 };
@@ -678,15 +671,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
   },
   iconContainer: {
-    minWidth: 34,
+    width: 48,
     height: 36,
-    paddingHorizontal: 6,
-    flexDirection: 'row',
-    gap: 4,
-    borderRadius: 15,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
   },
   iconContainerFocused: { backgroundColor: colors.primarySoft },
-  activeTabLabel: { color: colors.primary, fontSize: 10, fontWeight: '700' },
 });
