@@ -16,11 +16,17 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.migo.eventapp",
+      "buildNumber": "1",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Migo uses your location to show events and venues near you, and to sort them by how far you'd have to travel."
+        "NSLocationWhenInUseUsageDescription": "Migo uses your location to show events and venues near you, and to sort them by how far you'd have to travel.",
+        "NSCameraUsageDescription": "Migo uses the camera to scan attendee tickets at check-in.",
+        "NSPhotoLibraryUsageDescription": "Migo lets you choose photos for your profile, cover and events.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
+      "package": "com.migo.eventapp",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundImage": "./assets/adaptive-icon-background.png",
@@ -30,13 +36,15 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
+        "ACCESS_FINE_LOCATION",
+        "CAMERA"
       ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "./with-camera-permission",
       [
         "expo-location",
         {
@@ -44,6 +52,21 @@
           "locationWhenInUsePermission": "Migo uses your location to show events and venues near you.",
           "isIosBackgroundLocationEnabled": false,
           "isAndroidBackgroundLocationEnabled": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Migo lets you choose photos for your profile, cover and events.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Migo uses the camera to scan attendee tickets at check-in.",
+          "recordAudioAndroid": false
         }
       ]
     ]

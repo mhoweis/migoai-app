@@ -28,6 +28,7 @@ import { useBreakpoint } from '../hooks/useBreakpoint';
 import { Ionicons } from '@expo/vector-icons';
 import { PressableScale } from '../components/PressableScale';
 import { LanguageToggle } from '../components/LanguageToggle';
+import { isProductionApp } from '../config/appEnv';
 
 type SocialProvider = 'google' | 'apple' | 'facebook';
 
@@ -270,36 +271,40 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
             <GradientButton label={t('sign_in')} onPress={handleLogin} loading={loading} />
 
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>{t('or_continue_with')}</Text>
-              <View style={styles.dividerLine} />
-            </View>
+            {!isProductionApp ? (
+              <>
+                <View style={styles.divider}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>{t('or_continue_with')}</Text>
+                  <View style={styles.dividerLine} />
+                </View>
 
-            <View style={styles.socialButtons}>
-              {SOCIAL_PROVIDERS.map(({ id, label }) => (
-                <PressableScale
-                  key={id}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${t('or_continue_with')} ${label}`}
-                  style={[styles.socialButton, !showSocialLabels && styles.socialButtonCompact]}
-                  onPress={() => handleSocialLogin(id)}
-                  disabled={loading}
-                >
-                  <View style={styles.socialMark}>
-                    <SocialMark provider={id} />
+                <View style={styles.socialButtons}>
+                  {SOCIAL_PROVIDERS.map(({ id, label }) => (
+                    <PressableScale
+                      key={id}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${t('or_continue_with')} ${label}`}
+                      style={[styles.socialButton, !showSocialLabels && styles.socialButtonCompact]}
+                      onPress={() => handleSocialLogin(id)}
+                      disabled={loading}
+                    >
+                      <View style={styles.socialMark}>
+                        <SocialMark provider={id} />
+                      </View>
+                      {showSocialLabels && <Text style={[styles.socialLabel, !isWebDesktop && styles.socialLabelCompact]}>{label}</Text>}
+                    </PressableScale>
+                  ))}
+                </View>
+
+                {socialNotice && (
+                  <View accessibilityRole="alert" style={styles.socialNotice}>
+                    <Ionicons name="information-circle" size={18} color={colors.info} />
+                    <Text style={styles.socialNoticeText}>{socialNotice}</Text>
                   </View>
-                  {showSocialLabels && <Text style={[styles.socialLabel, !isWebDesktop && styles.socialLabelCompact]}>{label}</Text>}
-                </PressableScale>
-              ))}
-            </View>
-
-            {socialNotice && (
-              <View accessibilityRole="alert" style={styles.socialNotice}>
-                <Ionicons name="information-circle" size={18} color={colors.info} />
-                <Text style={styles.socialNoticeText}>{socialNotice}</Text>
-              </View>
-            )}
+                )}
+              </>
+            ) : null}
 
             <View style={styles.footer}>
               <Text style={styles.footerText}>{t('no_account_yet')} </Text>
