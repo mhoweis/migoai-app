@@ -11,6 +11,11 @@ import { activateSubscription, withCheckoutResult } from '../services/plans.serv
 const router = Router();
 const publicRouter = Router();
 
+publicRouter.use('/mock', (req, res, next) => {
+  if (config.NODE_ENV === 'production') return res.sendStatus(404);
+  next();
+});
+
 const getQueryToken = (req: Request): string | undefined => (
   typeof req.query.token === 'string' ? req.query.token : undefined
 );

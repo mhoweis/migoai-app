@@ -23,6 +23,7 @@ enum UserRole {
 enum UserStatus {
   ACTIVE
   PAUSED
+  DELETED
 }
 
 enum SupplierStatus {
@@ -108,6 +109,7 @@ model User {
   bio                       String?             @db.Text
   role                      UserRole            @default(USER)
   status                    UserStatus          @default(ACTIVE)
+  deletedAt                 DateTime?           @map("deleted_at")
   isPrivate                 Boolean             @default(false) @map("is_private")
   pausedAt                  DateTime?           @map("paused_at")
   pausedReason              String?             @map("paused_reason") @db.Text

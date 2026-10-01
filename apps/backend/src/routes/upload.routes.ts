@@ -4,9 +4,10 @@ import fs from 'fs';
 import crypto from 'crypto';
 import multer from 'multer';
 import { authenticate, AuthRequest } from '../middlewares/auth.middleware';
+import config from '../config/env';
 
 const router = Router();
-const uploadsDir = path.resolve(__dirname, '../../uploads');
+const uploadsDir = config.UPLOADS_DIR;
 fs.mkdirSync(uploadsDir, { recursive: true });
 
 const upload = multer({

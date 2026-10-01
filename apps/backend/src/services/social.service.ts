@@ -227,6 +227,7 @@ export const searchUsers = async (userId: string, query: string) => {
   const users = await prisma.user.findMany({
     where: {
       id: { not: userId },
+      status: { not: 'DELETED' },
       OR: [
         { name: { contains: q, mode: 'insensitive' } },
         { email: { equals: q, mode: 'insensitive' } },
@@ -257,6 +258,7 @@ export const suggestedUsers = async (userId: string) => {
   const users = await prisma.user.findMany({
     where: {
       id: { not: userId },
+      status: { not: 'DELETED' },
       email: { not: 'system@migo.events' },
       isAdmin: false,
       followers: { none: { followerId: userId } },
@@ -322,7 +324,7 @@ export const unfollowUser = async (followerId: string, followingId: string) => {
 
 const listFollowedUsers = async (where: Prisma.FollowWhereInput) => {
   const follows = await prisma.follow.findMany({
-    where,
+    where: { ...where, following: { status: { not: 'DELETED' } } },
     select: { following: { select: { id: true, name: true, avatar: true, avatarUrl: true, isPrivate: true } } },
     orderBy: { createdAt: 'desc' },
   });
@@ -333,7 +335,7 @@ export const listFollowing = (userId: string) => listFollowedUsers({ followerId:
 
 export const listFollowers = async (userId: string) => {
   const follows = await prisma.follow.findMany({
-    where: { followingId: userId },
+    where: { followingId: userId, follower: { status: { not: 'DELETED' } } },
     select: { follower: { select: { id: true, name: true, avatar: true, avatarUrl: true, isPrivate: true } } },
     orderBy: { createdAt: 'desc' },
   });

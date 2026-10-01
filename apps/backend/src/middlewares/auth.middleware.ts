@@ -45,7 +45,7 @@ export const authenticate = async (
       where: { id: decoded.userId },
       select: { id: true, role: true, status: true },
     });
-    if (!user) {
+    if (!user || user.status === "DELETED") {
       res.status(401).json({ success: false, error: "Authentication failed" });
       return;
     }

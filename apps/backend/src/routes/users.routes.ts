@@ -1,6 +1,7 @@
 // src/routes/users.routes.ts
 import { Router, Response } from "express";
 import { Prisma } from "@prisma/client";
+import bcrypt from "bcryptjs";
 import { z } from "zod";
 import prisma from "../database/prisma";
 import { authenticate, AuthRequest, optionalAuthenticate, requireHost } from "../middlewares/auth.middleware";
@@ -287,7 +288,7 @@ router.post("/:id/follow", authenticate, asyncHandler(async (req: AuthRequest, r
     where: { id: req.params.id },
     select: { id: true, status: true, isPrivate: true },
   });
-  if (!target || (target.status === "PAUSED" && req.user?.role !== "ADMIN")) {
+  if (!target || target.status === "DELETED" || (target.status === "PAUSED" && req.user?.role !== "ADMIN")) {
     res.status(404).json({ success: false, error: "User not found" });
     return;
   }
@@ -359,6 +360,7 @@ const publicUserSelect = {
   coverImage: true,
   bio: true,
   isPrivate: true,
+  authMethod: true,
   preferences: true,
   role: true,
   createdAt: true,
@@ -578,6 +580,196 @@ router.put("/me", authenticate, async (req: AuthRequest, res: Response) => {
   }
 });
 
+router.delete("/me", authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const parsed = z.object({ password: z.string().max(128).optional() }).strict().safeParse(req.body ?? {});
+  if (!parsed.success) {
+    res.status(400).json({ success: false, error: "Invalid request" });
+    return;
+  }
+
+  const userId = req.userId!;
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { password: true },
+  });
+  if (!user) {
+    res.status(401).json({ success: false, error: "Authentication failed" });
+    return;
+  }
+  if (user.password && (!parsed.data.password || !await bcrypt.compare(parsed.data.password, user.password))) {
+    res.status(401).json({ success: false, error: "Invalid password", code: "INVALID_PASSWORD" });
+    return;
+  }
+
+  const now = new Date();
+  const futureEvent: Prisma.EventWhereInput = {
+    OR: [
+      { endDate: { gt: now } },
+      { endDate: null, startDate: { gt: now } },
+    ],
+  };
+  const [upcomingPaidBooking, upcomingHostedEvent] = await Promise.all([
+    prisma.booking.findFirst({
+      where: {
+        userId,
+        status: "CONFIRMED",
+        totalAmount: { gt: 0 },
+        event: futureEvent,
+      },
+      select: { id: true },
+    }),
+    prisma.event.findFirst({
+      where: {
+        organizerId: userId,
+        status: "ACTIVE",
+        ...futureEvent,
+        bookings: {
+          some: {
+            userId: { not: userId },
+            status: "CONFIRMED",
+          },
+        },
+      },
+      select: { id: true },
+    }),
+  ]);
+  if (upcomingPaidBooking) {
+    res.status(409).json({
+      success: false,
+      error: "Upcoming paid bookings must be cancelled before deleting your account",
+      code: "UPCOMING_PAID_BOOKINGS",
+    });
+    return;
+  }
+  if (upcomingHostedEvent) {
+    res.status(409).json({
+      success: false,
+      error: "Transfer or cancel upcoming hosted events before deleting your account",
+      code: "UPCOMING_HOSTED_EVENTS",
+    });
+    return;
+  }
+
+  await prisma.$transaction(async transaction => {
+    await transaction.booking.updateMany({
+      where: {
+        userId,
+        status: { in: ["PENDING", "CONFIRMED"] },
+        event: {
+          ...futureEvent,
+          isFree: true,
+        },
+      },
+      data: { status: "CANCELLED" },
+    });
+    await transaction.subscription.updateMany({
+      where: { userId, status: { in: ["ACTIVE", "PENDING"] } },
+      data: { status: "CANCELLED", cancelledAt: now },
+    });
+
+    const follows = await transaction.follow.findMany({
+      where: { OR: [{ followerId: userId }, { followingId: userId }] },
+      select: { followerId: true, followingId: true },
+    });
+    const affectedUserIds = new Set([userId]);
+    for (const follow of follows) {
+      affectedUserIds.add(follow.followerId);
+      affectedUserIds.add(follow.followingId);
+    }
+
+    await transaction.refreshToken.deleteMany({ where: { userId } });
+    await transaction.passkey.deleteMany({ where: { userId } });
+    await transaction.passkeyChallenge.deleteMany({ where: { userId } });
+    await transaction.deviceToken.deleteMany({ where: { userId } });
+    await transaction.follow.deleteMany({
+      where: { OR: [{ followerId: userId }, { followingId: userId }] },
+    });
+    await transaction.followRequest.deleteMany({
+      where: { OR: [{ requesterId: userId }, { targetId: userId }] },
+    });
+    await transaction.wishlist.deleteMany({ where: { userId } });
+    await transaction.notification.deleteMany({ where: { userId } });
+    await transaction.reviewLike.deleteMany({ where: { userId } });
+    await transaction.reviewComment.deleteMany({ where: { userId } });
+    await transaction.review.deleteMany({ where: { userId } });
+    await transaction.eventView.deleteMany({ where: { userId } });
+    await transaction.searchLog.deleteMany({ where: { userId } });
+    await transaction.userSignal.deleteMany({ where: { userId } });
+    await transaction.aiUsageDaily.deleteMany({ where: { userId } });
+    await transaction.conversationLog.deleteMany({ where: { userId } });
+    const chatSessions = await transaction.chatSession.findMany({
+      where: { userId },
+      select: { id: true },
+    });
+    await transaction.chatMessage.deleteMany({
+      where: { sessionId: { in: chatSessions.map(session => session.id) } },
+    });
+    await transaction.chatSession.deleteMany({ where: { userId } });
+    await transaction.affiliateClick.updateMany({
+      where: { userId },
+      data: { userId: null, ipHash: null, userAgent: null },
+    });
+    await transaction.organizerProfile.deleteMany({ where: { userId } });
+
+    for (const affectedUserId of affectedUserIds) {
+      const [followerCount, followingCount] = await Promise.all([
+        transaction.follow.count({ where: { followingId: affectedUserId } }),
+        transaction.follow.count({ where: { followerId: affectedUserId } }),
+      ]);
+      await transaction.user.update({
+        where: { id: affectedUserId },
+        data: { followerCount, followingCount },
+      });
+    }
+
+    await transaction.user.update({
+      where: { id: userId },
+      data: {
+        email: null,
+        phone: null,
+        password: null,
+        firebaseUid: null,
+        googleId: null,
+        appleId: null,
+        facebookId: null,
+        authMethod: null,
+        displayName: null,
+        avatar: null,
+        avatarUrl: null,
+        coverImage: null,
+        bio: null,
+        website: null,
+        twitter: null,
+        instagram: null,
+        linkedin: null,
+        interests: Prisma.DbNull,
+        preferences: Prisma.DbNull,
+        settings: Prisma.DbNull,
+        phoneVerificationCode: null,
+        phoneVerificationExpires: null,
+        name: "Deleted user",
+        isPrivate: true,
+        status: "DELETED",
+        deletedAt: now,
+        supplierId: null,
+        role: "USER",
+        emailVerified: false,
+        phoneVerified: false,
+        isOrganizer: false,
+        isAdmin: false,
+        pausedAt: null,
+        pausedReason: null,
+        lastLoginAt: null,
+        lastActiveAt: null,
+        followerCount: 0,
+        followingCount: 0,
+      },
+    });
+  });
+
+  res.json({ success: true, data: { deleted: true } });
+}));
+
 // Get user by ID (self or admin)
 router.get("/:id", authenticate, async (req: AuthRequest, res: Response) => {
   try {
@@ -590,6 +782,7 @@ router.get("/:id", authenticate, async (req: AuthRequest, res: Response) => {
       where: { id },
       select: {
         ...publicUserSelect,
+        status: true,
         bookings: true,
         reviews: true,
         wishlists: { include: { event: true } },
@@ -597,11 +790,12 @@ router.get("/:id", authenticate, async (req: AuthRequest, res: Response) => {
       },
     });
 
-    if (!user) {
+    if (!user || user.status === "DELETED") {
       return res.status(404).json({ error: "User not found" });
     }
 
-    res.json(user);
+    const { status, ...publicUser } = user;
+    res.json(publicUser);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch user" });
   }
@@ -646,6 +840,9 @@ router.put("/:id", authenticate, async (req: AuthRequest, res: Response) => {
 router.delete("/:id", authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const id = String(req.params.id);
+    if (req.userId === id) {
+      return res.status(400).json({ error: "Use DELETE /api/users/me to delete your account" });
+    }
     if (!(await isSelfOrAdmin(req, id))) {
       return res.status(403).json({ error: "Insufficient permissions" });
     }

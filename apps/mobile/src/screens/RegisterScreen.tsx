@@ -5,6 +5,7 @@ import {
   Alert,
   Image,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -22,6 +23,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { gradients, shadow, type } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { LanguageToggle } from '../components/LanguageToggle';
+import { API_BASE_URL } from '../services/api';
 
 const DesktopFormPanel = View as unknown as React.ComponentType<any>;
 const DesktopFormText = Text as unknown as React.ComponentType<any>;
@@ -47,6 +49,13 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const showError = (message: string) => {
     setErrorMessage(message);
     Alert.alert(t('signup_failed'), message);
+  };
+
+  const openLegalPage = (page: 'privacy' | 'terms') => {
+    const origin = Platform.OS === 'web' && typeof window !== 'undefined'
+      ? window.location.origin
+      : API_BASE_URL;
+    void Linking.openURL(`${origin}/${page}`);
   };
 
   const finishSignup = (response: Awaited<ReturnType<typeof authService.register>>) => {
@@ -320,6 +329,22 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
           <Text style={styles.termsText}>
             {t('terms_note')}
+            <Text
+              style={styles.link}
+              accessibilityRole="link"
+              onPress={() => openLegalPage('terms')}
+            >
+              {t('terms_of_service')}
+            </Text>
+            {t('terms_note_and')}
+            <Text
+              style={styles.link}
+              accessibilityRole="link"
+              onPress={() => openLegalPage('privacy')}
+            >
+              {t('privacy_policy')}
+            </Text>
+            {t('terms_note_end')}
           </Text>
           <View style={styles.loginRow}>
             <Text style={styles.secondaryText}>{t('already_have_account')} </Text>

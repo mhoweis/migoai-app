@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import compression from 'compression';
 import path from 'path';
+import fs from 'fs';
 
 // Load environment variables
 dotenv.config();
@@ -30,6 +31,8 @@ import { accountRouter } from './routes/account.routes';
 import { supplierRouter } from './routes/supplier.routes';
 import { suppliersRouter } from './routes/suppliers.routes';
 import { reviewsRouter } from './routes/reviews.routes';
+import { legalRouter } from './routes/legal.routes';
+import config from './config/env';
 
 // Import middleware
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
@@ -142,7 +145,7 @@ app.use('/digest', digestHtmlRouter);
 app.use('/api/events', eventsRouter); // Assuming events are public for browsing
 app.use('/api/suppliers', suppliersRouter);
 app.use('/api/digest', digestRouter);
-app.use('/api/uploads', express.static(path.resolve(__dirname, '../uploads'), {
+app.use('/api/uploads', express.static(config.UPLOADS_DIR, {
   maxAge: '7d',
   immutable: true,
 }));
@@ -171,6 +174,20 @@ app.use('/api/ai', aiRouter);
 // Tracked affiliate click-out. Deliberately mounted outside /api so it can be
 // opened directly in a browser, and outside the IP limiter above.
 app.use('/go', goRouter);
+app.use(legalRouter);
+
+if (config.WEB_DIST_DIR && fs.existsSync(config.WEB_DIST_DIR)) {
+  app.use(express.static(config.WEB_DIST_DIR, { index: false }));
+  app.get(/.*/, (req, res, next) => {
+    const isApiOrGo = req.path === '/api' || req.path.startsWith('/api/')
+      || req.path === '/go' || req.path.startsWith('/go/');
+    const isLegalPage = ['/privacy', '/terms', '/delete-account'].includes(req.path);
+    if (isApiOrGo || isLegalPage || !req.accepts('html')) return next();
+    res.sendFile(path.join(config.WEB_DIST_DIR, 'index.html'), error => {
+      if (error) next(error);
+    });
+  });
+}
 
 // 404 handler for undefined routes
 app.all(/.*/, (req, res) => {

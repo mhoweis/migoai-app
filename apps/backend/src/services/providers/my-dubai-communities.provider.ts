@@ -105,6 +105,7 @@ class MyDubaiCommunitiesProvider implements EventProvider {
   private async fetchListingInBrowser(): Promise<ListingItem[]> {
     const browser = await puppeteer.launch({
       headless: true,
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
       args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-blink-features=AutomationControlled'],
     });
     try {

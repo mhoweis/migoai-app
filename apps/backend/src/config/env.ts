@@ -1,5 +1,6 @@
 // src/config/env.ts - UPDATED VERSION
 import { z } from 'zod';
+import path from 'path';
 
 // Environment schema with sensible defaults
 const envSchema = z.object({
@@ -15,6 +16,9 @@ const envSchema = z.object({
   COOKIE_SECRET: z.string().default('dev-cookie-secret'),
   CLIENT_URL: z.string().default('http://localhost:3000'),
   APP_PUBLIC_URL: z.string().default(''),
+  WEB_DIST_DIR: z.string().default(''),
+  UPLOADS_DIR: z.string().default(path.resolve(__dirname, '../../uploads')),
+  SUPPORT_EMAIL: z.string().email().default('support@migoapp.com'),
   REDIS_URL: z.string().default('redis://localhost:6379'),
   
   // Rate limiting
@@ -160,6 +164,18 @@ if (env.NODE_ENV === 'production') {
   if (env.ALLOW_DEV_AUTH === 'true') {
     throw new Error('ALLOW_DEV_AUTH must not be enabled in production');
   }
+  if (!env.STRIPE_SECRET_KEY?.trim()) {
+    throw new Error('STRIPE_SECRET_KEY is required in production');
+  }
+  let publicUrl: URL;
+  try {
+    publicUrl = new URL(env.APP_PUBLIC_URL);
+  } catch {
+    throw new Error('APP_PUBLIC_URL must be a valid public URL in production');
+  }
+  if (!['http:', 'https:'].includes(publicUrl.protocol)) {
+    throw new Error('APP_PUBLIC_URL must use http or https in production');
+  }
   if (env.SUPPLIER_FEED_ALLOW_PRIVATE_HOSTS === 'true') {
     throw new Error('SUPPLIER_FEED_ALLOW_PRIVATE_HOSTS must not be enabled in production');
   }
@@ -178,6 +194,9 @@ export default {
   APP_URL: getAppUrl(),
   CLIENT_URL: env.CLIENT_URL,
   APP_PUBLIC_URL: env.APP_PUBLIC_URL,
+  WEB_DIST_DIR: env.WEB_DIST_DIR ? path.resolve(env.WEB_DIST_DIR) : '',
+  UPLOADS_DIR: path.resolve(env.UPLOADS_DIR),
+  SUPPORT_EMAIL: env.SUPPORT_EMAIL,
   
   // Database
   DATABASE_URL: env.SUPABASE_DATABASE_URL,

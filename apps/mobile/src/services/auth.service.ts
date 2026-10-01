@@ -12,7 +12,8 @@ export interface User {
   coverImage?: string | null;
   bio?: string | null;
   role: 'USER' | 'ORGANIZER' | 'SUPPLIER' | 'ADMIN';
-  status?: 'ACTIVE' | 'PAUSED';
+  status?: 'ACTIVE' | 'PAUSED' | 'DELETED';
+  authMethod?: string | null;
   supplierId?: string | null;
   isPrivate?: boolean;
   interests: string[];
@@ -164,6 +165,18 @@ export const authService = {
         error.message || 
         'Registration failed'
       );
+    }
+  },
+
+  async deleteAccount(password?: string): Promise<void> {
+    try {
+      await api.delete('/users/me', { data: { password } });
+    } catch (error: any) {
+      const deletionError = new Error(
+        error.response?.data?.error || error.message || 'Failed to delete account'
+      ) as Error & { code?: string };
+      deletionError.code = error.response?.data?.code;
+      throw deletionError;
     }
   },
 

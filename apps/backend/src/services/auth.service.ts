@@ -193,7 +193,7 @@ export class AuthService {
       },
     });
     
-    if (!user || !user.password) {
+    if (!user || user.status === 'DELETED' || !user.password) {
       throw new Error('Invalid credentials');
     }
     
@@ -341,7 +341,7 @@ export class AuthService {
         where: { id: decoded.userId },
       });
       
-      if (!user) {
+      if (!user || user.status === 'DELETED') {
         throw new Error('User not found');
       }
       if (user.status === 'PAUSED') {

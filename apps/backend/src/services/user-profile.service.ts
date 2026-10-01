@@ -23,7 +23,7 @@ const profileTarget = async (userId: string, viewerRole?: string) => {
       createdAt: true,
     },
   });
-  if (!user || (user.status === 'PAUSED' && viewerRole !== 'ADMIN')) return null;
+  if (!user || user.status === 'DELETED' || (user.status === 'PAUSED' && viewerRole !== 'ADMIN')) return null;
   return user;
 };
 

@@ -156,7 +156,7 @@ export async function listUserReviews(
     where: { id: userId },
     select: { status: true, isPrivate: true },
   });
-  if (!user || (user.status === 'PAUSED' && viewerRole !== 'ADMIN')) return null;
+  if (!user || user.status === 'DELETED' || (user.status === 'PAUSED' && viewerRole !== 'ADMIN')) return null;
   if (
     user.isPrivate
     && viewerId !== userId

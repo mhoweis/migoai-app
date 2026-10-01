@@ -13,6 +13,8 @@ import {
   Switch,
   ActivityIndicator,
   Alert,
+  Linking,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
@@ -30,6 +32,8 @@ import { gradients, radius, shadow, type } from '../theme';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import Container from '../components/Container';
 import { AdminBackButton } from '../components/AdminAnalyticsUI';
+import { isProductionApp } from '../config/appEnv';
+import { API_BASE_URL } from '../services/api';
 
 type ProfileScreenNavigationProp = NavigationProp<ProfileStackParamList, 'ProfileMain'>;
 const e164PhonePattern = /^\+[1-9]\d{7,14}$/;
@@ -44,6 +48,9 @@ const ProfileScreen = () => {
   const [editName, setEditName] = useState('');
   const [showBioModal, setShowBioModal] = useState(false);
   const [editBio, setEditBio] = useState('');
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [deleteAccountPassword, setDeleteAccountPassword] = useState('');
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [reminderSettings, setReminderSettings] = useState({
     email: user?.preferences?.reminders?.email ?? true,
@@ -244,6 +251,13 @@ const ProfileScreen = () => {
     }
   };
 
+  const openLegalPage = (page: 'privacy' | 'terms' | 'delete-account') => {
+    const origin = Platform.OS === 'web' && typeof window !== 'undefined'
+      ? window.location.origin
+      : API_BASE_URL;
+    void Linking.openURL(`${origin}/${page}`);
+  };
+
   const handlePrivacyChange = async (isPrivate: boolean) => {
     if (isSavingPrivacy) return;
     setIsSavingPrivacy(true);
@@ -286,6 +300,30 @@ const ProfileScreen = () => {
     }
   })();
   const accountPlanButtonText = t(accountPlan.button);
+  const deleteAccountNeedsPassword = !user?.authMethod
+    || ['email', 'email_password', 'email/password'].includes(user.authMethod);
+
+  const handleDeleteAccount = async () => {
+    if (isDeletingAccount) return;
+    setIsDeletingAccount(true);
+    try {
+      await authService.deleteAccount(deleteAccountNeedsPassword ? deleteAccountPassword : undefined);
+      setShowDeleteAccountModal(false);
+      await logout();
+    } catch (error: any) {
+      const code = error?.code;
+      const message = code === 'INVALID_PASSWORD'
+        ? t('account_delete_wrong_password')
+        : code === 'UPCOMING_PAID_BOOKINGS'
+          ? t('account_delete_upcoming_paid')
+          : code === 'UPCOMING_HOSTED_EVENTS'
+            ? t('account_delete_upcoming_hosted')
+            : t('account_delete_failed');
+      Alert.alert(t('account_delete_title'), message);
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -436,13 +474,15 @@ const ProfileScreen = () => {
             <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToConnectionTest}>
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="wifi-outline" size={24} color={colors.textSecondary} />
-              <Text style={styles.menuItemText}>{t('connection_test')}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-          </TouchableOpacity>
+          {!isProductionApp ? (
+            <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToConnectionTest}>
+              <View style={styles.menuItemLeft}>
+                <Ionicons name="wifi-outline" size={24} color={colors.textSecondary} />
+                <Text style={styles.menuItemText}>{t('connection_test')}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         <View style={[styles.section, styles.remindersCard, isWebDesktop && styles.desktopSection]}>
@@ -631,6 +671,45 @@ const ProfileScreen = () => {
         </View>
 
         <View style={[styles.section, isWebDesktop && styles.desktopSection]}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            accessibilityRole="button"
+            onPress={() => openLegalPage('privacy')}
+          >
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="document-text-outline" size={24} color={colors.textSecondary} />
+              <Text style={styles.menuItemText}>{t('privacy_policy')}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.menuItem}
+            accessibilityRole="button"
+            onPress={() => openLegalPage('terms')}
+          >
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="document-outline" size={24} color={colors.textSecondary} />
+              <Text style={styles.menuItemText}>{t('terms_of_service')}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.menuItem}
+            accessibilityRole="button"
+            onPress={() => {
+              setDeleteAccountPassword('');
+              setShowDeleteAccountModal(true);
+            }}
+          >
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="trash-outline" size={24} color={colors.danger} />
+              <Text style={[styles.menuItemText, { color: colors.danger }]}>{t('delete_account')}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={[styles.section, isWebDesktop && styles.desktopSection]}>
           <TouchableOpacity style={styles.menuItem} onPress={logout}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="log-out-outline" size={24} color={colors.danger} />
@@ -728,6 +807,52 @@ const ProfileScreen = () => {
               </TouchableOpacity>
               <TouchableOpacity style={styles.saveBtn} onPress={handleSaveBio} disabled={isSaving}>
                 {isSaving ? <ActivityIndicator size="small" color={colors.textInverse} /> : <Text style={styles.saveBtnText}>{t('save')}</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+      <Modal
+        visible={showDeleteAccountModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDeleteAccountModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={[styles.modalTitle, isRTL && styles.deleteModalRtl]}>{t('account_delete_title')}</Text>
+            <Text style={[styles.deleteModalBody, isRTL && styles.deleteModalRtl]}>{t('account_delete_body')}</Text>
+            {deleteAccountNeedsPassword ? (
+              <TextInput
+                accessibilityLabel={t('password')}
+                style={[styles.nameInput, isRTL && styles.deleteModalRtl]}
+                value={deleteAccountPassword}
+                onChangeText={setDeleteAccountPassword}
+                placeholder={t('password')}
+                placeholderTextColor={colors.textMuted}
+                secureTextEntry
+                autoCapitalize="none"
+                autoComplete="current-password"
+              />
+            ) : null}
+            <View style={[styles.modalButtons, isRTL && styles.rowRtl]}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => setShowDeleteAccountModal(false)}
+                disabled={isDeletingAccount}
+              >
+                <Text style={styles.cancelBtnText}>{t('cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteAccountButton}
+                onPress={() => void handleDeleteAccount()}
+                disabled={isDeletingAccount}
+                accessibilityRole="button"
+                accessibilityLabel={t('delete_account')}
+              >
+                {isDeletingAccount
+                  ? <ActivityIndicator size="small" color={colors.textInverse} />
+                  : <Text style={styles.saveBtnText}>{t('delete_account')}</Text>}
               </TouchableOpacity>
             </View>
           </View>
@@ -1095,6 +1220,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.textInverse,
   },
+  deleteAccountButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: colors.danger,
+    alignItems: 'center',
+  },
+  deleteModalBody: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    lineHeight: 21,
+    marginBottom: 18,
+  },
+  deleteModalRtl: { textAlign: 'right' },
 });
 
 export default ProfileScreen;
