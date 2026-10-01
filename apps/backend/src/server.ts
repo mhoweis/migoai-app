@@ -4,6 +4,7 @@ import prisma from './config/database';
 import config from './config/env';
 import { startPlaceWorker, stopPlaceWorker } from './services/places/place-worker';
 import * as eventSyncScheduler from './services/event-sync.scheduler';
+import { refreshSupplierSourceCache } from './services/providers/source-registry';
 
 const PORT = config.PORT || 5000;
 
@@ -77,6 +78,9 @@ async function ensureOllama(): Promise<void> {
 async function bootstrap() {
   // Start Ollama before Express so first AI request doesn't time out
   await ensureOllama();
+  await refreshSupplierSourceCache().catch(error => {
+    console.warn('Supplier source cache could not be initialized', error.message);
+  });
 
   const server = app.listen(PORT, () => {
     console.log(`🚀 Server running in ${config.NODE_ENV} mode`);

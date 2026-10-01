@@ -26,6 +26,9 @@ import placesRouter from './routes/places.routes';
 import bookingsRouter from './routes/bookings.routes';
 import digestRouter, { digestHtmlRouter } from './routes/digest.routes';
 import { uploadRouter } from './routes/upload.routes';
+import { accountRouter } from './routes/account.routes';
+import { supplierRouter } from './routes/supplier.routes';
+import { suppliersRouter } from './routes/suppliers.routes';
 
 // Import middleware
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
@@ -136,6 +139,7 @@ app.use('/api/auth', authRouter);
 app.use('/e', shareRouter);
 app.use('/digest', digestHtmlRouter);
 app.use('/api/events', eventsRouter); // Assuming events are public for browsing
+app.use('/api/suppliers', suppliersRouter);
 app.use('/api/digest', digestRouter);
 app.use('/api/uploads', express.static(path.resolve(__dirname, '../uploads'), {
   maxAge: '7d',
@@ -146,6 +150,8 @@ app.use('/api/uploads', express.static(path.resolve(__dirname, '../uploads'), {
 app.use('/api/users', authenticate, usersRouter);
 app.use('/api/payments', authenticate, paymentsRouter);
 app.use('/api/bookings', authenticate, bookingsRouter);
+app.use('/api/account', accountRouter);
+app.use('/api/supplier', supplierRouter);
 app.use('/api/external-events', externalEventsRouter);
 app.use('/api/wishlists', wishlistsRouter);
 

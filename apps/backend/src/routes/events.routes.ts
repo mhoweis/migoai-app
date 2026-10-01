@@ -1,7 +1,7 @@
 // src/routes/events.routes.ts - COMPLETE FIXED VERSION
 import { Router, Request, Response } from "express";
 import { eventService, EventFilters } from "../services/events.service";
-import { authenticate, AuthRequest, optionalAuthenticate } from "../middlewares/auth.middleware";
+import { authenticate, AuthRequest, optionalAuthenticate, requireHost } from "../middlewares/auth.middleware";
 import { asyncHandler } from "../middlewares/error.middleware";
 import { z } from "zod";
 import prisma from "../database/prisma";
@@ -132,7 +132,7 @@ router.get("/friends-going", authenticate, asyncHandler(async (req: AuthRequest,
   res.json({ success: true, data: { events } });
 }));
 
-router.get("/mine", authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+router.get("/mine", authenticate, requireHost, asyncHandler(async (req: AuthRequest, res: Response) => {
   const result = await eventService.getMyEvents(req.userId!);
   res.json({ success: true, data: result });
 }));
@@ -173,7 +173,11 @@ router.get("/:id", optionalAuthenticate, asyncHandler(async (req: AuthRequest, r
   const { id } = req.params;
   const userId = req.userId;
   
-  const result = await eventService.getEventById(id, userId);
+  const result = await eventService.getEventById(id, userId, req.user?.role);
+  if (!result) {
+    res.status(404).json({ success: false, error: 'Event not found' });
+    return;
+  }
   res.json({ success: true, data: result });
 }));
 
@@ -199,7 +203,7 @@ router.get("/filters/quick", asyncHandler(async (req: Request, res: Response) =>
 }));
 
 // Create event (organizer)
-router.post("/", authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+router.post("/", authenticate, requireHost, asyncHandler(async (req: AuthRequest, res: Response) => {
   // Validation schema for event creation
   const eventSchema = z.object({
     title: z.string().min(3).max(200),
@@ -248,7 +252,7 @@ router.post("/", authenticate, asyncHandler(async (req: AuthRequest, res: Respon
 }));
 
 // Update event (organizer)
-router.put("/:id", authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+router.put("/:id", authenticate, requireHost, asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const updateData = req.body;
   const userId = req.userId!;
@@ -300,7 +304,7 @@ router.put("/:id", authenticate, asyncHandler(async (req: AuthRequest, res: Resp
 }));
 
 // Delete event (organizer)
-router.delete("/:id", authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+router.delete("/:id", authenticate, requireHost, asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const userId = req.userId!;
   

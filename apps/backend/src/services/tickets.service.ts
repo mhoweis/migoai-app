@@ -495,15 +495,24 @@ class TicketsService {
       prisma.booking.findUnique({ where: { id: bookingId }, include: { event: true } }),
       prisma.user.findUnique({
         where: { id: staffUserId },
-        select: { role: true, isOrganizer: true },
+        select: { role: true, isOrganizer: true, supplierId: true },
       }),
     ]);
     if (!booking) {
       throw serviceError('Booking not found', 404, 'BOOKING_NOT_FOUND');
     }
+    const supplier = staff?.supplierId
+      ? await prisma.supplier.findUnique({
+          where: { id: staff.supplierId },
+          select: { sourceKey: true },
+        })
+      : null;
+    const supplierOwnsEvent = staff?.role === 'SUPPLIER'
+      && Boolean(supplier?.sourceKey && booking.event.externalSource === supplier.sourceKey);
     if (!staff || (
       staff.role !== 'ADMIN'
       && !(booking.event.organizerId === staffUserId && staff.isOrganizer)
+      && !supplierOwnsEvent
     )) {
       throw serviceError('You are not authorized to check in attendees', 403, 'FORBIDDEN');
     }
@@ -540,18 +549,30 @@ class TicketsService {
 
   async eventAttendance(eventId: string, staffUserId: string): Promise<any> {
     const [event, staff] = await Promise.all([
-      prisma.event.findUnique({ where: { id: eventId }, select: { organizerId: true, capacity: true } }),
+      prisma.event.findUnique({
+        where: { id: eventId },
+        select: { organizerId: true, capacity: true, externalSource: true },
+      }),
       prisma.user.findUnique({
         where: { id: staffUserId },
-        select: { role: true, isOrganizer: true },
+        select: { role: true, isOrganizer: true, supplierId: true },
       }),
     ]);
     if (!event) {
       throw serviceError('Event not found', 404, 'EVENT_NOT_FOUND');
     }
+    const supplier = staff?.supplierId
+      ? await prisma.supplier.findUnique({
+          where: { id: staff.supplierId },
+          select: { sourceKey: true },
+        })
+      : null;
+    const supplierOwnsEvent = staff?.role === 'SUPPLIER'
+      && Boolean(supplier?.sourceKey && event.externalSource === supplier.sourceKey);
     if (!staff || (
       staff.role !== 'ADMIN'
       && !(event.organizerId === staffUserId && staff.isOrganizer)
+      && !supplierOwnsEvent
     )) {
       throw serviceError('You are not authorized to view attendance', 403, 'FORBIDDEN');
     }

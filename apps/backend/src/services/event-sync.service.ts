@@ -19,7 +19,9 @@ import { uaeGovProvider } from './providers/uae-gov.provider';
 import { yasIslandProvider } from './providers/yas-island.provider';
 import { alserkalProvider } from './providers/alserkal.provider';
 import { EventProvider, NormalizedEvent } from './providers/types';
+import { SupplierFeedProvider } from './providers/supplier-feed.provider';
 import { geocodeVenue } from './places/geocode.service';
+import { refreshSupplierSourceCache } from './providers/source-registry';
 
 export interface ProviderSyncSummary {
   fetched: number;
@@ -38,6 +40,7 @@ export interface SyncSummary {
 }
 
 let running = false;
+const supplierFeedLocks = new Set<string>();
 
 export class EventSyncService {
   readonly providers: EventProvider[] = [
@@ -70,6 +73,7 @@ export class EventSyncService {
     const syncedSources = new Set<string>();
 
     try {
+      await refreshSupplierSourceCache();
       for (const provider of this.providers) {
         if (!provider.isConfigured()) {
           continue;
@@ -106,6 +110,28 @@ export class EventSyncService {
             });
           }
         }
+      }
+
+      const suppliers = await prisma.supplier.findMany({
+        where: { status: 'ACTIVE', feedUrl: { not: null } },
+        select: { id: true, sourceKey: true, feedUrl: true },
+      });
+      for (const supplier of suppliers) {
+        const result = await this.syncSupplierFeed(supplier.id);
+        const summary = perProvider[supplier.sourceKey] || {
+          fetched: 0,
+          created: 0,
+          updated: 0,
+          skipped: 0,
+          errors: 0,
+        };
+        summary.fetched += result.fetched;
+        summary.created += result.created;
+        summary.updated += result.updated;
+        summary.skipped += result.skipped;
+        summary.errors += result.errors;
+        perProvider[supplier.sourceKey] = summary;
+        syncedSources.add(supplier.sourceKey);
       }
 
       const coordinates = await this.backfillCoordinates(120);
@@ -184,7 +210,7 @@ export class EventSyncService {
         if (existing) {
           await prisma.event.update({
             where: { id: existing.id },
-            data: this.eventUpdateData(normalized, now),
+            data: this.eventUpdateData(normalized, now, existing.status === 'BANNED'),
           });
           summary.updated += 1;
           continue;
@@ -223,6 +249,73 @@ export class EventSyncService {
           error: error.message,
         });
       }
+    }
+  }
+
+  async syncSupplierFeed(supplierId: string): Promise<ProviderSyncSummary & { fetched: number; upserted: number }> {
+    const empty = { fetched: 0, created: 0, updated: 0, skipped: 0, errors: 0, upserted: 0 };
+    if (supplierFeedLocks.has(supplierId)) return empty;
+    supplierFeedLocks.add(supplierId);
+    try {
+      const supplier = await prisma.supplier.findUnique({
+        where: { id: supplierId },
+        select: { id: true, sourceKey: true, feedUrl: true, status: true },
+      });
+      if (!supplier || supplier.status !== 'ACTIVE' || !supplier.feedUrl) {
+        const feedLastStatus = !supplier ? 'ERROR: Supplier not found' : 'ERROR: No active feed URL configured';
+        if (supplier) {
+          await prisma.supplier.update({
+            where: { id: supplier.id },
+            data: { feedLastSyncAt: new Date(), feedLastStatus },
+          });
+        }
+        return { ...empty, errors: 1 };
+      }
+
+      const provider = new SupplierFeedProvider(supplier);
+      const summary: ProviderSyncSummary = {
+        fetched: 0,
+        created: 0,
+        updated: 0,
+        skipped: 0,
+        errors: 0,
+      };
+      try {
+        const events = await provider.fetchEvents({ city: 'Dubai' });
+        summary.fetched = provider.lastFetchedCount;
+        summary.errors = provider.lastValidationErrors;
+        await this.upsertEvents(events, summary);
+        await prisma.supplier.update({
+          where: { id: supplier.id },
+          data: {
+            feedLastSyncAt: new Date(),
+            feedLastStatus: `OK: fetched ${provider.lastFetchedCount}, upserted ${summary.created + summary.updated}, errors ${summary.errors}`,
+          },
+        });
+      } catch (error: any) {
+        summary.errors += 1;
+        await prisma.supplier.update({
+          where: { id: supplier.id },
+          data: {
+            feedLastSyncAt: new Date(),
+            feedLastStatus: `ERROR: ${String(error.message || error).slice(0, 500)}`,
+          },
+        });
+        logger.error('Supplier feed sync failed', {
+          supplierId: supplier.id,
+          sourceKey: supplier.sourceKey,
+          error: error.message,
+        });
+      }
+
+      const fetched = provider.lastFetchedCount;
+      return {
+        ...summary,
+        fetched,
+        upserted: summary.created + summary.updated,
+      };
+    } finally {
+      supplierFeedLocks.delete(supplierId);
     }
   }
 
@@ -289,9 +382,13 @@ export class EventSyncService {
     };
   }
 
-  private eventUpdateData(normalized: NormalizedEvent, now: Date): Prisma.EventUpdateInput {
+  private eventUpdateData(
+    normalized: NormalizedEvent,
+    now: Date,
+    preserveModeration = false,
+  ): Prisma.EventUpdateInput {
     const isFree = normalized.isFree === true;
-    return {
+    const data: Prisma.EventUpdateInput = {
       title: normalized.title,
       description: normalized.description || normalized.title,
       category: normalized.category || 'Other',
@@ -313,10 +410,11 @@ export class EventSyncService {
       externalUrl: normalized.externalUrl,
       source: normalized.externalSource,
       bookingType: isFree ? 'RSVP' : 'PAID',
-      status: 'ACTIVE',
       visibility: 'PUBLIC',
       lastSyncedAt: now,
     };
+    if (!preserveModeration) data.status = 'ACTIVE';
+    return data;
   }
 
   private async markExpiredEvents(sources: Set<string>): Promise<void> {

@@ -1,3 +1,5 @@
+import prisma from '../../database/prisma';
+
 export type SourceKind = 'official' | 'venue' | 'ticketing' | 'community' | 'organizer' | 'demo';
 export type RefundPolicy = 'external' | 'organizer' | 'free';
 
@@ -149,9 +151,43 @@ const sources: Record<string, SourceInfo> = {
   },
 };
 
+const supplierSources = new Map<string, { info: SourceInfo; slug: string | null }>();
+
+export function updateSupplierSourceCache(supplier: {
+  sourceKey: string;
+  name: string;
+  website?: string | null;
+  slug?: string | null;
+}): void {
+  supplierSources.set(supplier.sourceKey.trim().toLowerCase(), {
+    info: {
+      id: supplier.sourceKey,
+      label: supplier.name,
+      labelAr: supplier.name,
+      kind: 'organizer',
+      url: supplier.website || '',
+      refundPolicy: 'external',
+    },
+    slug: supplier.slug || null,
+  });
+}
+
+export async function refreshSupplierSourceCache(): Promise<void> {
+  const suppliers = await prisma.supplier.findMany({
+    select: { sourceKey: true, name: true, website: true, slug: true },
+  });
+  supplierSources.clear();
+  suppliers.forEach(updateSupplierSourceCache);
+}
+
+export function getSupplierSlug(sourceKey?: string | null): string | undefined {
+  if (!sourceKey) return undefined;
+  return supplierSources.get(sourceKey.trim().toLowerCase())?.slug || undefined;
+}
+
 export function getSourceInfo(externalSource?: string | null, source?: string | null): SourceInfo {
   const slug = (externalSource || source || 'unknown').trim().toLowerCase();
-  return sources[slug] || {
+  return sources[slug] || supplierSources.get(slug)?.info || {
     id: slug,
     label: slug,
     labelAr: slug,

@@ -25,6 +25,8 @@ export async function getHostDashboard(userId: string) {
       startDate: true,
       endDate: true,
       status: true,
+      bannedAt: true,
+      bannedReason: true,
       venueName: true,
       capacity: true,
     },

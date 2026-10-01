@@ -12,6 +12,18 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const bookingStatuses = [BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN];
 const sourceInfos = Object.values(sourceRegistry).filter(source => source.kind !== 'demo');
 
+export function supplierEventWhere(
+  supplier: { sourceKey: string },
+  memberIds: string[],
+): Prisma.EventWhereInput {
+  return {
+    OR: [
+      { externalSource: supplier.sourceKey },
+      { organizerId: { in: memberIds } },
+    ],
+  };
+}
+
 export function parseSupplierDateRange(
   input: { from?: string; to?: string },
   now = new Date(),
@@ -76,7 +88,7 @@ function signalQuery(context: Prisma.JsonValue | null): string {
 }
 
 async function ensureSuppliers() {
-  return Promise.all(sourceInfos.map(source => prisma.supplier.upsert({
+  await Promise.all(sourceInfos.map(source => prisma.supplier.upsert({
     where: { sourceKey: source.id },
     update: {},
     create: {
@@ -85,16 +97,26 @@ async function ensureSuppliers() {
       website: source.url || null,
     },
   })));
+  return prisma.supplier.findMany({
+    include: { members: { select: { id: true } } },
+  });
 }
 
 async function loadSupplierAnalytics(range: SupplierDateRange) {
   const suppliers = await ensureSuppliers();
   const sourceKeys = suppliers.map(supplier => supplier.sourceKey);
+  const memberIds = [...new Set(suppliers.flatMap(supplier => supplier.members.map(member => member.id)))];
   const events = await prisma.event.findMany({
-    where: { externalSource: { in: sourceKeys } },
+    where: {
+      OR: [
+        { externalSource: { in: sourceKeys } },
+        { organizerId: { in: memberIds } },
+      ],
+    },
     select: {
       id: true,
       externalSource: true,
+      organizerId: true,
       title: true,
       startDate: true,
       status: true,
@@ -102,6 +124,11 @@ async function loadSupplierAnalytics(range: SupplierDateRange) {
       city: true,
     },
   });
+  const eventsBySupplier = new Map(suppliers.map(supplier => [
+    supplier.id,
+    events.filter(event => event.externalSource === supplier.sourceKey
+      || supplier.members.some(member => member.id === event.organizerId)),
+  ] as const));
   const eventIds = events.map(event => event.id);
   const supplierIds = suppliers.map(supplier => supplier.id);
   const createdAt = { gte: range.from, lte: range.to };
@@ -148,14 +175,7 @@ async function loadSupplierAnalytics(range: SupplierDateRange) {
     }),
   ]);
 
-  const eventsBySource = new Map<string, typeof events>();
-  for (const event of events) {
-    if (!event.externalSource) continue;
-    const grouped = eventsBySource.get(event.externalSource) || [];
-    grouped.push(event);
-    eventsBySource.set(event.externalSource, grouped);
-  }
-  const metricsBySource = new Map<string, {
+  const metricsBySupplier = new Map<string, {
     eventsListed: number;
     upcomingEvents: number;
     impressions: number;
@@ -172,7 +192,7 @@ async function loadSupplierAnalytics(range: SupplierDateRange) {
   const now = new Date();
 
   for (const supplier of suppliers) {
-    const sourceEvents = eventsBySource.get(supplier.sourceKey) || [];
+    const sourceEvents = eventsBySupplier.get(supplier.id) || [];
     const sourceEventIds = new Set(sourceEvents.map(event => event.id));
     const sourceClicks = clicks.filter(row => sourceEventIds.has(row.eventId));
     const sourceImpressions = impressions.filter(row => sourceEventIds.has(row.eventId));
@@ -183,7 +203,7 @@ async function loadSupplierAnalytics(range: SupplierDateRange) {
     const clickCount = sourceClicks.length;
     const viewCount = sourceViews.length;
     const activeCampaignCount = campaigns.filter(campaign => campaign.supplierId === supplier.id).length;
-    metricsBySource.set(supplier.sourceKey, {
+    metricsBySupplier.set(supplier.id, {
       eventsListed: sourceEvents.filter(event => event.status !== 'DELETED').length,
       upcomingEvents: sourceEvents.filter(event => event.status !== 'DELETED' && event.startDate >= now).length,
       impressions: sourceImpressions.length,
@@ -210,13 +230,13 @@ async function loadSupplierAnalytics(range: SupplierDateRange) {
     } : {
       label: supplier.name,
       labelAr: supplier.name,
-      kind: 'community',
+      kind: 'organizer',
       url: supplier.website || '',
     };
     return {
       ...supplier,
       ...sourceDetails,
-      ...(metricsBySource.get(supplier.sourceKey) || {
+      ...(metricsBySupplier.get(supplier.id) || {
       eventsListed: 0,
       upcomingEvents: 0,
       impressions: 0,
@@ -236,6 +256,7 @@ async function loadSupplierAnalytics(range: SupplierDateRange) {
   return {
     rows,
     events,
+    eventsBySupplier,
     clicks,
     impressions,
     views,
@@ -338,7 +359,7 @@ export async function getSupplierDetail(supplierId: string, range: SupplierDateR
   const supplier = data.rows.find(row => row.id === supplierId);
   if (!supplier) return null;
 
-  const eventRows = data.events.filter(event => event.externalSource === supplier.sourceKey);
+  const eventRows = data.eventsBySupplier.get(supplierId) || [];
   const eventIds = new Set(eventRows.map(event => event.id));
   const clicks = data.clicks.filter(row => eventIds.has(row.eventId));
   const bookings = data.bookings.filter(row => eventIds.has(row.eventId));
@@ -650,14 +671,20 @@ export async function createSupplierCampaign(input: {
   priceAed?: number;
   notes?: string | null;
 }) {
-  const supplier = await prisma.supplier.findUnique({ where: { id: input.supplierId } });
+  const supplier = await prisma.supplier.findUnique({
+    where: { id: input.supplierId },
+    include: { members: { select: { id: true } } },
+  });
   if (!supplier) throw new Error('Supplier not found');
   const supplierPackage = getSupplierPackage(input.packageKey);
   if (!supplierPackage) throw new Error('Unknown campaign package');
   if (input.endsAt <= input.startsAt) throw new Error('Campaign end must be after start');
   if (input.eventId) {
     const event = await prisma.event.findFirst({
-      where: { id: input.eventId, externalSource: supplier.sourceKey },
+      where: {
+        id: input.eventId,
+        ...supplierEventWhere(supplier, supplier.members.map(member => member.id)),
+      },
       select: { id: true },
     });
     if (!event) throw new Error('Event does not belong to this supplier');

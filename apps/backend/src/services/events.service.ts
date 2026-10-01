@@ -1,7 +1,7 @@
 import prisma from '../config/database';
 import { BookingType, EventStatus, EventVisibility, Prisma } from '@prisma/client';
 import config from '../config/env';
-import { getSourceInfo } from './providers/source-registry';
+import { getSourceInfo, getSupplierSlug } from './providers/source-registry';
 
 export interface EventFilters {
   page?: number;
@@ -240,7 +240,7 @@ export class EventService {
     }
   }
   
-  async getEventById(eventId: string, userId?: string): Promise<any> {
+  async getEventById(eventId: string, userId?: string, role?: string): Promise<any> {
     try {
       // First try to find by ID, then by migoId (as string), then by slug
       const whereConditions: Prisma.EventWhereInput[] = [
@@ -266,6 +266,13 @@ export class EventService {
       
       // Cast event to any to access id property safely
       const eventWithId = event as any;
+      if (
+        eventWithId.status === 'BANNED'
+        && eventWithId.organizerId !== userId
+        && role !== 'ADMIN'
+      ) {
+        return null;
+      }
       
       // Log the view
       if (userId) {
@@ -944,6 +951,10 @@ export class EventService {
       notes: true,
       ageRestriction: true,
       status: true,
+      bannedAt: true,
+      bannedReason: true,
+      bannedById: true,
+      supplierRank: true,
       visibility: true,
       isFeatured: true,
       isSponsored: true,
@@ -1109,6 +1120,10 @@ export class EventService {
       externalId: eventAny.externalId,
       externalSource: eventAny.externalSource || eventAny.source,
       externalUrl: eventAny.externalUrl,
+      supplierSlug: getSupplierSlug(eventAny.externalSource || eventAny.source),
+      bannedAt: eventAny.bannedAt,
+      bannedReason: eventAny.bannedReason,
+      supplierRank: eventAny.supplierRank,
 
       // Contact - flat structure
       organizerEmail: eventAny.organizerEmail,
@@ -1267,16 +1282,22 @@ export class EventService {
   
   async updateEvent(eventId: string, userId: string, updateData: any): Promise<any> {
     try {
-      const event = await prisma.event.findUnique({
-        where: { id: eventId },
-        select: { organizerId: true, status: true, ticketsSold: true },
-      });
+      const [event, user] = await Promise.all([
+        prisma.event.findUnique({
+          where: { id: eventId },
+          select: { organizerId: true, status: true, ticketsSold: true },
+        }),
+        prisma.user.findUnique({
+          where: { id: userId },
+          select: { role: true, isAdmin: true },
+        }),
+      ]);
       
       if (!event) {
         throw new Error('Event not found');
       }
       
-      if (event.organizerId !== userId) {
+      if (event.organizerId !== userId && user?.role !== 'ADMIN' && !user?.isAdmin) {
         throw new Error('Not authorized to update this event');
       }
       
@@ -1345,7 +1366,7 @@ export class EventService {
         }),
         prisma.user.findUnique({
           where: { id: userId },
-          select: { isAdmin: true },
+          select: { role: true, isAdmin: true },
         }),
       ]);
       
@@ -1353,7 +1374,7 @@ export class EventService {
         throw new Error('Event not found');
       }
       
-      if (event.organizerId !== userId && !user?.isAdmin) {
+      if (event.organizerId !== userId && user?.role !== 'ADMIN' && !user?.isAdmin) {
         throw new Error('Not authorized to delete this event');
       }
       

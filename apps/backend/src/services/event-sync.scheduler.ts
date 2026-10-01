@@ -5,6 +5,7 @@ import { whatsappService } from './messaging/whatsapp.service';
 import { buildWeekendDigest } from './digest.service';
 import { runReminders } from './reminders.service';
 import { expireSupplierCampaigns } from './supplier-campaigns.service';
+import { expireSubscriptions } from './plans.service';
 
 let intervalHandle: NodeJS.Timeout | undefined;
 let bootHandle: NodeJS.Timeout | undefined;
@@ -24,6 +25,15 @@ const runSupplierCampaignExpiry = async (): Promise<void> => {
     if (summary.expired) logger.info('[supplier campaigns] expired campaigns', summary);
   } catch (error: any) {
     logger.error('[supplier campaigns] expiry failed', { error: error.message });
+  }
+};
+
+const runSubscriptionExpiry = async (): Promise<void> => {
+  try {
+    const summary = await expireSubscriptions();
+    if (summary.expired) logger.info('[subscriptions] expired subscriptions', summary);
+  } catch (error: any) {
+    logger.error('[subscriptions] expiry failed', { error: error.message });
   }
 };
 
@@ -87,9 +97,11 @@ export const start = (): void => {
   if (config.REMINDERS_INTERVAL_MINUTES > 0) {
     reminderTimeout = setTimeout(() => {
       void runReminders().catch(error => logger.error('[reminders] run failed', { error }));
+      void runSubscriptionExpiry();
     }, 60_000);
     reminderInterval = setInterval(() => {
       void runReminders().catch(error => logger.error('[reminders] run failed', { error }));
+      void runSubscriptionExpiry();
     }, config.REMINDERS_INTERVAL_MINUTES * 60 * 1000);
   }
   supplierCampaignTimeout = setTimeout(() => {
