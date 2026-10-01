@@ -14,6 +14,7 @@ import {
   unfollowUser,
 } from "../services/social.service";
 import { recordSignal, SignalType } from "../services/recommendation.service";
+import { getHostDashboard } from "../services/host-dashboard.service";
 
 const router = Router();
 
@@ -53,6 +54,10 @@ router.post("/me/signals", asyncHandler(async (req: AuthRequest, res: Response) 
 
 router.get("/me/followers", asyncHandler(async (req: AuthRequest, res: Response) => {
   res.json({ success: true, data: await listFollowers(req.userId!) });
+}));
+
+router.get("/me/dashboard", asyncHandler(async (req: AuthRequest, res: Response) => {
+  res.json({ success: true, data: await getHostDashboard(req.userId!) });
 }));
 
 router.post("/:id/follow", asyncHandler(async (req: AuthRequest, res: Response) => {

@@ -31,6 +31,7 @@ import FindFriendsScreen from "./src/screens/FindFriendsScreen";
 import ClaimTicketScreen from "./src/screens/ClaimTicketScreen";
 import WeekendDigestScreen from "./src/screens/WeekendDigestScreen";
 import VerifyOrganizersScreen from "./src/screens/VerifyOrganizersScreen";
+import HostDashboardScreen from "./src/screens/HostDashboardScreen";
 import CustomizeHomeScreen from "./src/screens/CustomizeHomeScreen";
 import { inviteRef } from "./src/utils/inviteRef";
 import { ticketsService } from "./src/services/tickets.service";
@@ -555,6 +556,11 @@ export default function App() {
                   name="CustomizeHome"
                   component={CustomizeHomeScreen}
                   options={{ title: t('customize_home'), headerBackTitle: t('back') }}
+                />
+                <Stack.Screen
+                  name="HostDashboard"
+                  component={HostDashboardScreen}
+                  options={{ headerShown: false }}
                 />
               </>
             )}

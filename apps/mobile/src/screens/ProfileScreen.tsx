@@ -142,6 +142,10 @@ const ProfileScreen = () => {
     navigation.navigate('MyEvents');
   };
 
+  const handleNavigateToHostDashboard = () => {
+    navigationRef.current?.navigate('HostDashboard');
+  };
+
   const handleNavigateToFindFriends = () => {
     navigation.navigate('FindFriends');
   };
@@ -361,6 +365,13 @@ const ProfileScreen = () => {
             <View style={styles.menuItemLeft}>
               <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
               <Text style={styles.menuItemText}>{t('create_event')}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToHostDashboard}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="stats-chart-outline" size={24} color={colors.primary} />
+              <Text style={styles.menuItemText}>{t('host_dashboard')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>

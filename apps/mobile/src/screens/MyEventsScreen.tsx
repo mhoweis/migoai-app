@@ -18,6 +18,7 @@ import { HostedEvent, ticketsService } from '../services/tickets.service';
 import { socialService } from '../services/social.service';
 import type { ProfileStackParamList } from '../navigation/MainTabNavigator';
 import { formatEventDate, useLocale } from '../i18n';
+import { navigationRef } from '../navigation/navigationRef';
 
 type Navigation = NativeStackNavigationProp<ProfileStackParamList, 'MyEvents'>;
 
@@ -68,12 +69,19 @@ export default function MyEventsScreen({ navigation }: { navigation: Navigation 
           <View>
             <View style={styles.headingRow}>
               <Text style={styles.heading}>{t('my_events')}</Text>
-              {organizerVerified ? (
-                <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
-              ) : (
-                <Text style={styles.verificationHint}>{t('verification_hint')}</Text>
-              )}
+              <View style={styles.headingActions}>
+                {organizerVerified ? <Ionicons name="checkmark-circle" size={22} color={colors.primary} /> : null}
+                <TouchableOpacity
+                  style={styles.dashboardButton}
+                  onPress={() => navigationRef.current?.navigate('HostDashboard')}
+                  accessibilityRole="button"
+                >
+                  <Ionicons name="stats-chart-outline" size={15} color={colors.primary} />
+                  <Text style={styles.dashboardButtonText}>{t('dashboard')}</Text>
+                </TouchableOpacity>
+              </View>
             </View>
+            {!organizerVerified ? <Text style={styles.verificationHint}>{t('verification_hint')}</Text> : null}
           </View>
         )}
         ListEmptyComponent={<Text style={styles.empty}>{t('no_hosted_events_help')}</Text>}
@@ -109,7 +117,10 @@ const styles = StyleSheet.create({
   list: { padding: 20, gap: 14 },
   emptyList: { flexGrow: 1, padding: 20 },
   heading: { fontSize: 28, fontWeight: '700', color: colors.text, marginBottom: 4 },
-  headingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  headingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 },
+  headingActions: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  dashboardButton: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9, backgroundColor: colors.primarySoft },
+  dashboardButtonText: { color: colors.primary, fontSize: 12, fontWeight: '700' },
   verificationHint: { flex: 1, color: colors.textMuted, fontSize: 12 },
   empty: { marginTop: 24, color: colors.textMuted, textAlign: 'center' },
   card: { backgroundColor: colors.textInverse, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 16 },
