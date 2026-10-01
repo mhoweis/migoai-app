@@ -29,7 +29,6 @@ import { trackSearch } from '../services/signals.service';
 import { fetchAllEvents } from '../utils/fetchAllEvents';
 import EventCard from '../components/EventCard';
 import Container from '../components/Container';
-import WebFooter from '../components/WebFooter';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 
 // Event categories for filtering
@@ -892,7 +891,6 @@ const EventsScreen = () => {
             ) : null}
           </View>
         }
-        ListFooterComponent={isWebDesktop ? <WebFooter wide /> : null}
       />
       </Container>
 
