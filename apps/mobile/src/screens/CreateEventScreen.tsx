@@ -28,6 +28,7 @@ import Container from '../components/Container';
 import { addLocalDays, formatLocalDate, toLocalDateString } from '../utils/dateTime';
 import { isHost } from '../services/auth.service';
 import { useUserStore } from '../store/userStore';
+import { canPurchasePlansInApp } from '../config/appEnv';
 
 const categories = ['Music', 'Sports', 'Art', 'Food', 'Tech', 'Business', 'Health', 'Theater', 'Comedy', 'Other'];
 const cities = ['Dubai', 'Abu Dhabi', 'Sharjah', 'Ajman', 'Ras Al Khaimah', 'Fujairah', 'Umm Al Quwain'];
@@ -124,13 +125,17 @@ export default function CreateEventScreen({ navigation }: { navigation: Navigati
       <SafeAreaView style={styles.container}>
         <Container style={[styles.desktopContainer, styles.upgradePrompt]}>
           <Text style={styles.heading}>{t('upgrade_host_title')}</Text>
-          <Text style={styles.upgradeText}>{t('upgrade_host_help')}</Text>
-          <TouchableOpacity
-            style={styles.upgradeButton}
-            onPress={() => navigation.navigate('Plans', { selectedPlan: 'HOST' })}
-          >
-            <Text style={styles.upgradeButtonText}>{t('upgrade_to_host')}</Text>
-          </TouchableOpacity>
+          <Text style={styles.upgradeText}>
+            {t(canPurchasePlansInApp ? 'upgrade_host_help' : 'upgrade_host_help_store')}
+          </Text>
+          {canPurchasePlansInApp ? (
+            <TouchableOpacity
+              style={styles.upgradeButton}
+              onPress={() => navigation.navigate('Plans', { selectedPlan: 'HOST' })}
+            >
+              <Text style={styles.upgradeButtonText}>{t('upgrade_to_host')}</Text>
+            </TouchableOpacity>
+          ) : null}
         </Container>
       </SafeAreaView>
     );

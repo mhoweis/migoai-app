@@ -23,6 +23,7 @@ import {
   StatusPill,
 } from '../components/AdminAnalyticsUI';
 import { colors, radius, type } from '../theme';
+import { canPurchasePlansInApp } from '../config/appEnv';
 
 export default function PlansScreen({ navigation }: { navigation: any }) {
   const route = useRoute<any>();
@@ -64,6 +65,7 @@ export default function PlansScreen({ navigation }: { navigation: any }) {
   const price = (key: PlanKey) => planDetails(key)?.priceAed ?? (key === 'HOST' ? 99 : 499);
 
   const subscribe = async (plan: PlanKey) => {
+    if (!canPurchasePlansInApp) return;
     if (plan === 'SUPPLIER' && businessName.trim().length < 2) {
       setNotice(t('plans_business_name_required'));
       return;
@@ -159,15 +161,18 @@ export default function PlansScreen({ navigation }: { navigation: any }) {
   return (
     <AdminShell>
       <AdminBackButton label={t('back')} rtl={isRTL} onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('ProfileMain')} />
-      <AdminHeader title={t('plans_title')} subtitle={t('plans_subtitle')} />
+      <AdminHeader
+        title={t(canPurchasePlansInApp ? 'plans_title' : 'plans_current_plan')}
+        subtitle={canPurchasePlansInApp ? t('plans_subtitle') : undefined}
+      />
       {loading ? <ActivityIndicator color={colors.primary} /> : null}
-      {!loading ? (
+      {canPurchasePlansInApp && !loading ? (
         <View style={styles.plansGrid}>
           {renderPlan('HOST')}
           {renderPlan('SUPPLIER')}
         </View>
       ) : null}
-      {selectedPlan === 'SUPPLIER' && canSubscribeSelected ? (
+      {canPurchasePlansInApp && selectedPlan === 'SUPPLIER' && canSubscribeSelected ? (
         <Panel>
           <SectionTitle title={t('plans_business_details')} subtitle={t('plans_business_details_help')} />
           <TextInput
@@ -188,16 +193,18 @@ export default function PlansScreen({ navigation }: { navigation: any }) {
           />
         </Panel>
       ) : null}
-      {currentPlan ? (
+      {!canPurchasePlansInApp || currentPlan ? (
         <Panel>
-          <SectionTitle title={t('plans_current_plan')} />
-          <Text style={styles.currentPlanName}>{t(currentPlan === 'HOST' ? 'plans_host' : 'plans_supplier')}</Text>
-          {subscription.status === 'ACTIVE' ? (
+          {canPurchasePlansInApp ? <SectionTitle title={t('plans_current_plan')} /> : null}
+          <Text style={styles.currentPlanName}>
+            {currentPlan ? t(currentPlan === 'HOST' ? 'plans_host' : 'plans_supplier') : t('account_role_user')}
+          </Text>
+          {currentPlan && subscription.status === 'ACTIVE' ? (
             <ActionButton label={busy ? t('loading') : t('plans_cancel')} secondary disabled={busy} onPress={() => void cancelPlan()} />
           ) : null}
         </Panel>
       ) : null}
-      {canSubscribeSelected ? (
+      {canPurchasePlansInApp && canSubscribeSelected ? (
         <ActionButton
           label={busy ? t('loading') : t('plans_subscribe', { plan: t(selectedPlan === 'HOST' ? 'plans_host' : 'plans_supplier') })}
           disabled={busy || loading}

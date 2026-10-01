@@ -530,6 +530,7 @@ const en = {
   become_supplier: 'Become a Supplier',
   upgrade_host_title: 'Host tools are part of Migo Host',
   upgrade_host_help: 'Choose a plan to create events and manage your host dashboard.',
+  upgrade_host_help_store: 'Creating events and the Host dashboard are available on the Host plan.',
   plans_title: 'Plans for every kind of host',
   plans_subtitle: 'Choose the tools that fit your events and business.',
   plans_host: 'Host',

@@ -12,7 +12,7 @@ Release builds should be created from a reviewed, tagged commit. This checklist 
 - Store signing credentials and final app icons, screenshots, age ratings, privacy declarations, and support contact information.
 - Production secrets and provider credentials stored in the deployment secret manager, not in source control or build logs.
 - A public privacy policy, terms page, and account-deletion instructions at `/privacy`, `/terms`, and `/delete-account`.
-- Review paid-plan checkout against current Apple and Google store policies before submission. This runbook does not change purchase behavior.
+- Store builds (`EXPO_PUBLIC_APP_ENV=production` on iOS/Android) don't sell plans. Every upgrade/purchase entry point is hidden and only the current plan is shown. Host and Supplier plans are sold on the website through Stripe. Don't mention web purchase inside the app, in the store listing or in review notes. Event tickets are services used outside the app, so they keep Stripe checkout.
 
 ## Backend environment
 
@@ -82,6 +82,7 @@ The production profile uses remote app-version management and automatic version 
 
 - [ ] Confirm production API, CORS origin, HTTPS certificates, migrations, backups, monitoring, and support mailbox.
 - [ ] Prepare an App Review demo account and its review instructions; do not use a real user's credentials.
+- [ ] Give App Review a demo account that is already on the Host plan so reviewers can see host features.
 - [ ] Verify `/privacy`, `/terms`, and `/delete-account` in English and Arabic on mobile web.
 - [ ] Confirm the public support URL, privacy URL (`/privacy`), terms URL (`/terms`), and account-deletion URL (`/delete-account`) in both store consoles.
 - [ ] Verify account deletion in-app, including password confirmation, upcoming-booking safeguards, and the retained accounting records described in the privacy notice.

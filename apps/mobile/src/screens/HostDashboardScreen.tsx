@@ -18,6 +18,7 @@ import { dashboardService, HostDashboardData, HostDashboardEvent } from '../serv
 import { isHost } from '../services/auth.service';
 import { useUserStore } from '../store/userStore';
 import { colors, radius, shadow, type } from '../theme';
+import { canPurchasePlansInApp } from '../config/appEnv';
 
 type Kpi = { label: string; value: string; detail?: string; icon: keyof typeof Ionicons.glyphMap };
 
@@ -154,13 +155,17 @@ export default function HostDashboardScreen() {
         <Container style={styles.upgradeContainer}>
           <Ionicons name="lock-closed-outline" size={40} color={colors.primary} />
           <Text style={styles.upgradeTitle}>{t('upgrade_host_title')}</Text>
-          <Text style={styles.upgradeText}>{t('upgrade_host_help')}</Text>
-          <TouchableOpacity
-            style={styles.upgradeButton}
-            onPress={() => navigation.navigate('Main', { screen: 'ProfileTab', params: { screen: 'Plans', params: { selectedPlan: 'HOST' } } })}
-          >
-            <Text style={styles.upgradeButtonText}>{t('upgrade_to_host')}</Text>
-          </TouchableOpacity>
+          <Text style={styles.upgradeText}>
+            {t(canPurchasePlansInApp ? 'upgrade_host_help' : 'upgrade_host_help_store')}
+          </Text>
+          {canPurchasePlansInApp ? (
+            <TouchableOpacity
+              style={styles.upgradeButton}
+              onPress={() => navigation.navigate('Main', { screen: 'ProfileTab', params: { screen: 'Plans', params: { selectedPlan: 'HOST' } } })}
+            >
+              <Text style={styles.upgradeButtonText}>{t('upgrade_to_host')}</Text>
+            </TouchableOpacity>
+          ) : null}
         </Container>
       </View>
     );

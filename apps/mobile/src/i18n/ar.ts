@@ -532,6 +532,7 @@ const ar: Record<keyof typeof en, string> = {
   become_supplier: 'انضم كمزود',
   upgrade_host_title: 'أدوات الاستضافة ضمن باقة منظم ميجو',
   upgrade_host_help: 'اختر باقة لإنشاء الفعاليات وإدارة لوحة المنظم.',
+  upgrade_host_help_store: 'تتوفر إمكانية إنشاء الفعاليات واستخدام لوحة تحكم المنظم ضمن باقة المنظم.',
   plans_title: 'باقات تناسب كل منظم',
   plans_subtitle: 'اختر الأدوات المناسبة لفعالياتك وأعمالك.',
   plans_host: 'منظم',

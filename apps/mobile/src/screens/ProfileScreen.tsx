@@ -32,7 +32,7 @@ import { gradients, radius, shadow, type } from '../theme';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import Container from '../components/Container';
 import { AdminBackButton } from '../components/AdminAnalyticsUI';
-import { isProductionApp } from '../config/appEnv';
+import { canPurchasePlansInApp, isProductionApp } from '../config/appEnv';
 import { API_BASE_URL } from '../services/api';
 
 type ProfileScreenNavigationProp = NavigationProp<ProfileStackParamList, 'ProfileMain'>;
@@ -418,14 +418,16 @@ const ProfileScreen = () => {
               </Text>
               <Text style={styles.accountPlanHelp}>{t(accountPlan.help)}</Text>
             </View>
-            <TouchableOpacity
-              accessibilityRole="button"
-              accessibilityLabel={accountPlanButtonText}
-              style={styles.accountPlanButton}
-              onPress={() => handleNavigateToPlans(accountPlan.plan)}
-            >
-              <Text style={styles.accountPlanButtonText}>{accountPlanButtonText}</Text>
-            </TouchableOpacity>
+            {canPurchasePlansInApp ? (
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={accountPlanButtonText}
+                style={styles.accountPlanButton}
+                onPress={() => handleNavigateToPlans(accountPlan.plan)}
+              >
+                <Text style={styles.accountPlanButtonText}>{accountPlanButtonText}</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         </View>
 
@@ -574,9 +576,11 @@ const ProfileScreen = () => {
           </View>
         </View>
 
+        {canPurchasePlansInApp || isHost(user) ? (
         <View style={[styles.section, isWebDesktop && styles.desktopSection]}>
           <Text style={styles.sectionTitle}>{t('host')}</Text>
           {!isHost(user) ? (
+            canPurchasePlansInApp ? (
             <>
               <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigateToPlans('HOST')}>
                 <View style={styles.menuItemLeft}>
@@ -593,6 +597,7 @@ const ProfileScreen = () => {
                 <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
               </TouchableOpacity>
             </>
+            ) : null
           ) : (
             <>
               <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToCreateEvent}>
@@ -616,7 +621,7 @@ const ProfileScreen = () => {
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
               </TouchableOpacity>
-              {user?.role === 'ORGANIZER' ? (
+              {canPurchasePlansInApp && user?.role === 'ORGANIZER' ? (
                 <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigateToPlans('SUPPLIER')}>
                   <View style={styles.menuItemLeft}>
                     <Ionicons name="storefront-outline" size={24} color={colors.primary} />
@@ -669,6 +674,17 @@ const ProfileScreen = () => {
             </>
           ) : null}
         </View>
+        ) : (
+          <View style={[styles.section, isWebDesktop && styles.desktopSection]}>
+            <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToFindFriends}>
+              <View style={styles.menuItemLeft}>
+                <Ionicons name="people-outline" size={24} color={colors.primary} />
+                <Text style={styles.menuItemText}>{t('find_friends')}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View style={[styles.section, isWebDesktop && styles.desktopSection]}>
           <TouchableOpacity
