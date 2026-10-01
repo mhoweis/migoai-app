@@ -136,7 +136,7 @@ const ar: Record<keyof typeof en, string> = {
   home_desktop_headline: 'ما الفعاليات في {{city}}؟',
   home_sections: 'أقسام الصفحة الرئيسية',
   all_events: 'جميع الفعاليات',
-  footer_sources_list: 'Visit Dubai · DWTC · Visit Abu Dhabi · Expo City Dubai · Visit Sharjah · Dubai Exhibition Centre',
+  footer_sources_list: 'Visit Dubai · DWTC · Visit Abu Dhabi · Expo City Dubai · Visit Sharjah · Dubai Exhibition Centre · MyDubai Communities',
   login_value_1: 'اكتشف الفعاليات من المصادر الرسمية في الإمارات',
   login_value_2: 'احجز تذاكرك واحتفظ بها في محفظتك',
   login_value_3: 'اكتشف الفعاليات التي سيحضرها أصدقاؤك',

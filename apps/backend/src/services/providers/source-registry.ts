@@ -99,6 +99,14 @@ const sources: Record<string, SourceInfo> = {
     url: 'https://abudhabifestival.ae',
     refundPolicy: 'external',
   },
+  'my-dubai-communities': {
+    id: 'my-dubai-communities',
+    label: 'MyDubai Communities',
+    labelAr: 'مجتمعات دبي',
+    kind: 'community',
+    url: 'https://mydubaicommunities.com',
+    refundPolicy: 'external',
+  },
   ticketmaster: {
     id: 'ticketmaster',
     label: 'Ticketmaster',

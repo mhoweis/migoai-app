@@ -8,6 +8,7 @@ import { ticketmasterProvider } from './providers/ticketmaster.provider';
 import { expoCityProvider } from './providers/expo-city.provider';
 import { dwtcProvider } from './providers/dwtc.provider';
 import { dubaiExhibitionCentreProvider } from './providers/dubai-exhibition-centre.provider';
+import { myDubaiCommunitiesProvider } from './providers/my-dubai-communities.provider';
 import { visitDubaiProvider } from './providers/visit-dubai.provider';
 import { visitAbuDhabiProvider } from './providers/visit-abu-dhabi.provider';
 import { lumaProvider } from './providers/luma.provider';
@@ -45,6 +46,7 @@ export class EventSyncService {
     expoCityProvider,
     dwtcProvider,
     dubaiExhibitionCentreProvider,
+    myDubaiCommunitiesProvider,
     visitDubaiProvider,
     visitAbuDhabiProvider,
     lumaProvider,
