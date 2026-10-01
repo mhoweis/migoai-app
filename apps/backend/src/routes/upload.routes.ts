@@ -31,7 +31,8 @@ router.post('/image', authenticate, upload.single('image'), async (req: AuthRequ
   await fs.promises.writeFile(path.join(uploadsDir, filename), req.file.buffer);
   const protocol = String(req.get('x-forwarded-proto') || req.protocol).split(',')[0].trim();
   const host = String(req.get('x-forwarded-host') || req.get('host'));
-  res.json({ success: true, data: { url: `${protocol}://${host}/api/uploads/${filename}` } });
+  const uploadPath = `/api/uploads/${filename}`;
+  res.json({ success: true, data: { url: `${protocol}://${host}${uploadPath}`, path: uploadPath } });
 });
 
 export { router as uploadRouter };
