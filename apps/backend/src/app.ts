@@ -29,6 +29,7 @@ import { uploadRouter } from './routes/upload.routes';
 import { accountRouter } from './routes/account.routes';
 import { supplierRouter } from './routes/supplier.routes';
 import { suppliersRouter } from './routes/suppliers.routes';
+import { reviewsRouter } from './routes/reviews.routes';
 
 // Import middleware
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
@@ -147,7 +148,8 @@ app.use('/api/uploads', express.static(path.resolve(__dirname, '../uploads'), {
 }));
 
 // Protected routes (authentication required)
-app.use('/api/users', authenticate, usersRouter);
+app.use('/api/users', usersRouter);
+app.use('/api/reviews', authenticate, reviewsRouter);
 app.use('/api/payments', authenticate, paymentsRouter);
 app.use('/api/bookings', authenticate, bookingsRouter);
 app.use('/api/account', accountRouter);

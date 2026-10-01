@@ -40,6 +40,8 @@ import PlansScreen from "./src/screens/PlansScreen";
 import SupplierPortalScreen from "./src/screens/SupplierPortalScreen";
 import SupplierPageScreen from "./src/screens/SupplierPageScreen";
 import AdminModerationScreen from "./src/screens/AdminModerationScreen";
+import UserProfileScreen from "./src/screens/UserProfileScreen";
+import FollowListScreen from "./src/screens/FollowListScreen";
 import { inviteRef } from "./src/utils/inviteRef";
 import { ticketsService } from "./src/services/tickets.service";
 import { navigateToTab } from "./src/navigation/navigationRef";
@@ -135,7 +137,7 @@ function MainTabs() {
       />
       <Tab.Screen
         name="ProfileTab"
-        component={ProfileScreen}
+        component={ProfileStack}
         options={{ title: t('profile') }}
       />
     </Tab.Navigator>
@@ -146,7 +148,12 @@ function MainTabs() {
 export function ProfileStack() {
   const { t } = useLocale();
   return (
-    <Stack.Navigator>
+    <Stack.Navigator initialRouteName="MyProfile">
+      <Stack.Screen
+        name="MyProfile"
+        component={UserProfileScreen}
+        options={{ headerShown: false }}
+      />
       <Stack.Screen
         name="ProfileMain"
         component={ProfileScreen}
@@ -205,6 +212,16 @@ export function ProfileStack() {
       <Stack.Screen
         name="AdminModeration"
         component={AdminModerationScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="UserProfile"
+        component={UserProfileScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="FollowList"
+        component={FollowListScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

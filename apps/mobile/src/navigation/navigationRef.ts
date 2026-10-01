@@ -84,7 +84,7 @@ const TAB_ROUTE_MAP: Record<string, string> = {
 const TAB_STACK_ROOT_SCREENS: Record<string, string> = {
   Home: 'HomeMain',
   Events: 'EventsMain',
-  Profile: 'ProfileMain',
+  Profile: 'MyProfile',
   Wallet: 'WalletMain',
 };
 
@@ -122,7 +122,7 @@ export function navigateToTab(
     ) {
       navigationRef.current.goBack();
     }
-    const nestedRoute = route === 'ProfileTab' ? nestedScreen || 'ProfileMain' : undefined;
+    const nestedRoute = route === 'ProfileTab' ? nestedScreen || 'MyProfile' : undefined;
     const params = nestedRoute
       ? { screen: nestedRoute, ...(nestedParams ? { params: nestedParams } : {}) }
       : nestedParams;

@@ -104,9 +104,11 @@ model User {
   displayName               String?             @map("display_name") @db.VarChar(255)
   avatar                    String?             @db.Text
   avatarUrl                 String?             @map("avatar_url") @db.Text
+  coverImage                String?             @map("cover_image") @db.Text
   bio                       String?             @db.Text
   role                      UserRole            @default(USER)
   status                    UserStatus          @default(ACTIVE)
+  isPrivate                 Boolean             @default(false) @map("is_private")
   pausedAt                  DateTime?           @map("paused_at")
   pausedReason              String?             @map("paused_reason") @db.Text
   supplierId                String?             @map("supplier_id")
@@ -153,6 +155,8 @@ model User {
   organizedEvents           Event[]             @relation("Organizer")
   bookings                  Booking[]
   reviews                   Review[]
+  reviewLikes               ReviewLike[]
+  reviewComments            ReviewComment[]
   wishlists                 Wishlist[]
   eventViews                EventView[]
   searchLogs                SearchLog[]
@@ -163,6 +167,8 @@ model User {
   chatSessions              ChatSession[]
   following                 Follow[]            @relation("Following")
   followers                 Follow[]            @relation("Followers")
+  followRequestsSent        FollowRequest[]     @relation("FollowRequestsSent")
+  followRequestsReceived    FollowRequest[]     @relation("FollowRequestsReceived")
   createdInvites            EventInvite[]       @relation("Inviter")
   transfersSent             TicketTransfer[]   @relation("TransfersSent")
   transfersReceived         TicketTransfer[]   @relation("TransfersReceived")
@@ -390,6 +396,18 @@ model Follow {
   @@map("follows")
 }
 
+model FollowRequest {
+  requesterId String   @map("requester_id")
+  targetId    String   @map("target_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  requester   User     @relation("FollowRequestsSent", fields: [requesterId], references: [id], onDelete: Cascade)
+  target      User     @relation("FollowRequestsReceived", fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@id([requesterId, targetId])
+  @@index([targetId])
+  @@map("follow_requests")
+}
+
 model EventInvite {
   id        String   @id @default(cuid())
   code      String   @unique @db.VarChar(16)
@@ -419,6 +437,8 @@ model Review {
   // Relations
   user            User      @relation(fields: [userId], references: [id])
   event           Event     @relation(fields: [eventId], references: [id])
+  likes           ReviewLike[]
+  comments        ReviewComment[]
 
   @@unique([userId, eventId])
   @@map("reviews")
@@ -427,6 +447,32 @@ model Review {
   @@index([overallRating])
   @@index([isFeatured])
   @@index([createdAt])
+}
+
+model ReviewLike {
+  reviewId  String   @map("review_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([reviewId, userId])
+  @@index([userId])
+  @@map("review_likes")
+}
+
+model ReviewComment {
+  id        String   @id @default(cuid())
+  reviewId  String   @map("review_id")
+  userId    String   @map("user_id")
+  body      String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId, createdAt])
+  @@map("review_comments")
 }
 
 model Wishlist {

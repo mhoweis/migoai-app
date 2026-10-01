@@ -8,6 +8,7 @@ import prisma from "../database/prisma";
 import { createEventInvite, getEventSocial, getFriendsGoingEvents } from "../services/social.service";
 import { getWebBase } from "./share.routes";
 import { recommendEvents } from "../services/recommendation.service";
+import { createEventReview, listEventReviews } from "../services/reviews.service";
 
 const router = Router();
 
@@ -166,6 +167,57 @@ router.post("/:id/invite", authenticate, asyncHandler(async (req: AuthRequest, r
     return;
   }
   res.json({ success: true, data: result });
+}));
+
+router.get("/:id/reviews", optionalAuthenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const event = await prisma.event.findFirst({
+    where: { OR: [{ id: req.params.id }, { migoId: req.params.id }, { slug: req.params.id }] },
+    select: { status: true, organizerId: true },
+  });
+  if (
+    !event
+    || (
+      event.status === "BANNED"
+      && event.organizerId !== req.userId
+      && req.user?.role !== "ADMIN"
+    )
+  ) {
+    res.status(404).json({ success: false, error: "Event not found" });
+    return;
+  }
+  const page = req.query.page === undefined ? 1 : Number(req.query.page);
+  const pageSize = req.query.pageSize === undefined ? 5 : Number(req.query.pageSize);
+  if (
+    !Number.isInteger(page) || page < 1
+    || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 50
+  ) {
+    res.status(400).json({ success: false, error: "Invalid pagination" });
+    return;
+  }
+  const data = await listEventReviews(req.params.id, req.userId, page, pageSize, req.user?.role);
+  res.json({ success: true, data });
+}));
+
+router.post("/:id/reviews", authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const input = z.object({
+    rating: z.number().int().min(1).max(5),
+    title: z.string().trim().max(120).nullable().optional(),
+    comment: z.string().trim().max(2000).nullable().optional(),
+  }).strict().safeParse(req.body);
+  if (!input.success) {
+    res.status(400).json({ success: false, error: "Invalid review" });
+    return;
+  }
+  const result = await createEventReview(req.params.id, req.userId!, input.data);
+  if (!result) {
+    res.status(404).json({ success: false, error: "Event not found" });
+    return;
+  }
+  if ("error" in result) {
+    res.status(403).json({ success: false, error: "A confirmed booking is required to review", code: result.error });
+    return;
+  }
+  res.json({ success: true, data: result.review });
 }));
 
 // Get event by ID

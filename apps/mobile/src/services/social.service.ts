@@ -6,6 +6,8 @@ export interface SocialUser {
   name?: string | null;
   avatar?: string | null;
   isFollowing?: boolean;
+  followRequested?: boolean;
+  isPrivate?: boolean;
   goingCount?: number;
 }
 
@@ -33,8 +35,8 @@ export const socialService = {
   async searchUsers(q: string): Promise<SocialUser[]> {
     return data(await api.get('/users/search', { params: { q } }));
   },
-  async follow(id: string): Promise<void> {
-    await api.post(`/users/${id}/follow`);
+  async follow(id: string): Promise<{ status: 'requested' | 'following' }> {
+    return data(await api.post(`/users/${id}/follow`));
   },
   async unfollow(id: string): Promise<void> {
     await api.delete(`/users/${id}/follow`);

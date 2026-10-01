@@ -10,9 +10,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { socialService, SocialUser } from '../services/social.service';
 import { useLocale } from '../i18n';
+import { navigateToTab } from '../navigation/navigationRef';
 
 type FriendSection = {
   title: string;
@@ -59,14 +61,23 @@ export default function FindFriendsScreen() {
 
   const toggle = async (person: SocialUser) => {
     try {
-      if (person.isFollowing) await socialService.unfollow(person.id);
-      else await socialService.follow(person.id);
-      const updated = { ...person, isFollowing: !person.isFollowing };
+      let updated: SocialUser;
+      if (person.isFollowing || person.followRequested) {
+        await socialService.unfollow(person.id);
+        updated = { ...person, isFollowing: false, followRequested: false };
+      } else {
+        const result = await socialService.follow(person.id);
+        updated = {
+          ...person,
+          isFollowing: result.status === 'following',
+          followRequested: result.status === 'requested',
+        };
+      }
       setResults(items => items.map(item => item.id === person.id ? updated : item));
-      setFollowing(items => person.isFollowing
+      setFollowing(items => !updated.isFollowing
         ? items.filter(item => item.id !== person.id)
         : [...items.filter(item => item.id !== person.id), updated]);
-      setSuggested(items => person.isFollowing
+      setSuggested(items => updated.isFollowing
         ? items
         : items.filter(item => item.id !== person.id));
     } catch {
@@ -99,15 +110,22 @@ export default function FindFriendsScreen() {
         renderSectionHeader={({ section }: { section: FriendSection }) => section.title ? <Text style={styles.sectionTitle}>{section.title}</Text> : null}
         renderItem={({ item }: { item: SocialUser }) => (
           <View style={styles.row}>
-            {item.avatar ? <Image source={{ uri: item.avatar }} style={styles.avatar} /> : <View style={styles.avatarFallback}><Text style={styles.initial}>{(item.name || '?')[0]}</Text></View>}
-            <View style={styles.personDetails}>
-              <Text style={styles.name}>{item.name || 'Migo'}</Text>
+            <TouchableOpacity accessibilityRole="button" onPress={() => navigateToTab('Profile', 'UserProfile', { userId: item.id })}>
+              {item.avatar ? <Image source={{ uri: item.avatar }} style={styles.avatar} /> : <View style={styles.avatarFallback}><Text style={styles.initial}>{(item.name || '?')[0]}</Text></View>}
+            </TouchableOpacity>
+            <TouchableOpacity accessibilityRole="button" onPress={() => navigateToTab('Profile', 'UserProfile', { userId: item.id })} style={styles.personDetails}>
+              <View style={styles.nameRow}>
+                <Text style={styles.name}>{item.name || 'Migo'}</Text>
+                {item.isPrivate ? <Ionicons name="lock-closed" size={13} color={colors.textMuted} /> : null}
+              </View>
               {item.goingCount && item.goingCount > 0 ? (
                 <Text style={styles.subtitle}>{t('going_to_events', { count: item.goingCount })}</Text>
               ) : null}
-            </View>
-            <TouchableOpacity style={[styles.button, item.isFollowing && styles.following]} onPress={() => toggle(item)}>
-              <Text style={[styles.buttonText, item.isFollowing && styles.followingText]}>{item.isFollowing ? t('following') : t('follow')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.button, (item.isFollowing || item.followRequested) && styles.following]} onPress={() => toggle(item)}>
+              <Text style={[styles.buttonText, (item.isFollowing || item.followRequested) && styles.followingText]}>
+                {item.isFollowing ? t('following') : item.followRequested ? t('requested') : t('follow')}
+              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -130,6 +148,7 @@ const styles = StyleSheet.create({
   avatarFallback: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
   initial: { color: colors.primaryDark, fontWeight: '700' },
   personDetails: { flex: 1 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   name: { color: colors.text, fontWeight: '600' },
   subtitle: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
   button: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: colors.primary },

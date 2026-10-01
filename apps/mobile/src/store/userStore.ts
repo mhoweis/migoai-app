@@ -171,13 +171,11 @@ export const useUserStore = create<UserStore>((set, get) => ({
     try {
       set({ isLoading: true });
 
-      // Load all data atomically — localProfileAvatar / localProfileName survive logout
-      const [userString, firstLoginString, accessToken, userLocation, localAvatar, localName] = await Promise.all([
+      const [userString, firstLoginString, accessToken, userLocation, localName] = await Promise.all([
         AsyncStorage.getItem('user'),
         AsyncStorage.getItem('firstLogin'),
         tokenStorage.get('accessToken'),
         AsyncStorage.getItem('userLocation'),
-        AsyncStorage.getItem('localProfileAvatar'),
         AsyncStorage.getItem('localProfileName'),
       ]);
 
@@ -214,11 +212,8 @@ export const useUserStore = create<UserStore>((set, get) => ({
         }
       }
 
-      // Merge local profile overrides that survive logout/re-login.
-      // localProfileAvatar: always local (no server upload in MVP).
-      // localProfileName: set only when the API update failed.
+      // Keep names from older offline profile edits when the API was unavailable.
       if (updates.user) {
-        if (localAvatar) updates.user = { ...updates.user, avatar: localAvatar };
         if (localName)  updates.user = { ...updates.user, name: localName };
       }
 

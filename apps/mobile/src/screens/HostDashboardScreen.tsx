@@ -235,25 +235,25 @@ export default function HostDashboardScreen() {
 
                     <Text style={styles.subsectionTitle}>{t('dashboard_recent_followers')}</Text>
                     {dashboard.community.recentFollowers.length ? dashboard.community.recentFollowers.map(follower => (
-                      <View key={follower.id} style={styles.personRow}>
+                      <TouchableOpacity key={follower.id} accessibilityRole="button" onPress={() => navigateToTab('Profile', 'UserProfile', { userId: follower.id })} style={styles.personRow}>
                         <Avatar name={follower.name} uri={follower.avatar} />
                         <View style={styles.personCopy}>
                           <Text style={styles.personName} numberOfLines={1}>{follower.name}</Text>
                           <Text style={styles.personMeta}>{formatEventDate(follower.followedAt)}</Text>
                         </View>
                         {follower.followsBack ? <Text style={styles.followBack}>{t('dashboard_follows_you_back')}</Text> : null}
-                      </View>
+                      </TouchableOpacity>
                     )) : <Text style={styles.mutedText}>{t('dashboard_no_followers')}</Text>}
 
                     <Text style={styles.subsectionTitle}>{t('dashboard_repeat_attendees')}</Text>
                     {dashboard.community.repeatAttendees.length ? dashboard.community.repeatAttendees.map(person => (
-                      <View key={person.id} style={styles.personRow}>
+                      <TouchableOpacity key={person.id} accessibilityRole="button" onPress={() => navigateToTab('Profile', 'UserProfile', { userId: person.id })} style={styles.personRow}>
                         <Avatar name={person.name} uri={person.avatar} />
                         <View style={styles.personCopy}>
                           <Text style={styles.personName} numberOfLines={1}>{person.name}</Text>
                         </View>
                         <Text style={styles.attendedCount}>{person.eventsAttended} {t('dashboard_events_attended')}</Text>
-                      </View>
+                      </TouchableOpacity>
                     )) : <Text style={styles.mutedText}>{t('dashboard_no_repeat_attendees')}</Text>}
                   </View>
                 </View>

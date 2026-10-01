@@ -181,6 +181,16 @@ function TicketCard({
             <Text style={styles.cancelText}>{t('cancel_ticket')}</Text>
           </TouchableOpacity>
         )}
+        {past && (ticket.status === 'CONFIRMED' || ticket.status === 'CHECKED_IN') ? (
+          <TouchableOpacity
+            accessibilityRole="button"
+            style={styles.reviewTicketButton}
+            onPress={() => navigateToTab('Events', 'EventDetail', { eventId: ticket.event.id })}
+          >
+            <Ionicons name="star-outline" size={16} color={colors.primary} />
+            <Text style={styles.reviewTicketText}>{t('write_review')}</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
     </View>
   );
@@ -490,6 +500,8 @@ const styles = StyleSheet.create({
   cancelButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: 14 },
   cancelText: { color: colors.danger, fontSize: 14, fontWeight: '600' },
   shareTicketButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: 14 },
+  reviewTicketButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: 14 },
+  reviewTicketText: { color: colors.primary, fontWeight: '800', fontSize: 13 },
   shareTicketText: { color: colors.success, fontSize: 14, fontWeight: '600' },
   actions: { gap: 10, marginTop: 14 },
   actionButton: { paddingVertical: 10, borderRadius: 8, backgroundColor: colors.primarySoft, alignItems: 'center' },

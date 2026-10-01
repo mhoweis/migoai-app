@@ -8,10 +8,13 @@ export interface User {
   email: string | null;
   name: string;
   phone?: string | null;
-  avatar?: string;
+  avatar?: string | null;
+  coverImage?: string | null;
+  bio?: string | null;
   role: 'USER' | 'ORGANIZER' | 'SUPPLIER' | 'ADMIN';
   status?: 'ACTIVE' | 'PAUSED';
   supplierId?: string | null;
+  isPrivate?: boolean;
   interests: string[];
   preferences?: {
     notifications?: boolean;
@@ -237,7 +240,7 @@ export const authService = {
 
   async updateProfile(data: Partial<User>): Promise<User> {
     try {
-      const response = await api.put<ApiResponse<User>>('/auth/profile', data);
+      const response = await api.put<ApiResponse<User>>('/users/me', data);
       
       if (!response.data.success) {
         throw new Error(response.data.error || 'Failed to update profile');

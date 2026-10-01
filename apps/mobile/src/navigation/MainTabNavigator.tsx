@@ -27,11 +27,16 @@ import PlansScreen from '../screens/PlansScreen';
 import SupplierPortalScreen from '../screens/SupplierPortalScreen';
 import SupplierPageScreen from '../screens/SupplierPageScreen';
 import AdminModerationScreen from '../screens/AdminModerationScreen';
+import UserProfileScreen from '../screens/UserProfileScreen';
+import FollowListScreen from '../screens/FollowListScreen';
+import FindFriendsScreen from '../screens/FindFriendsScreen';
 
 // Param list types — exported so screens can type their navigation props
 export type HomeStackParamList = {
   HomeMain: undefined;
   EventDetail: { eventId: string };
+  UserProfile: { userId: string };
+  FollowList: { userId: string; tab: 'followers' | 'following' };
   ConnectionTest: undefined;
   Interests: undefined;
 };
@@ -39,6 +44,8 @@ export type HomeStackParamList = {
 export type EventsStackParamList = {
   EventsMain: { venueFilter?: string; dateFrom?: string; dateTo?: string } | undefined;
   EventDetail: { eventId: string };
+  UserProfile: { userId: string };
+  FollowList: { userId: string; tab: 'followers' | 'following' };
 };
 
 export type ChatStackParamList = {
@@ -49,6 +56,7 @@ export type ChatStackParamList = {
 };
 
 export type ProfileStackParamList = {
+  MyProfile: undefined;
   ProfileMain: undefined;
   Interests: undefined;
   ConnectionTest: undefined;
@@ -56,6 +64,8 @@ export type ProfileStackParamList = {
   MyEvents: undefined;
   CheckIn: { eventId?: string };
   FindFriends: undefined;
+  UserProfile: { userId: string };
+  FollowList: { userId: string; tab: 'followers' | 'following' | 'requests' };
   Plans: { selectedPlan?: 'HOST' | 'SUPPLIER' } | undefined;
   SupplierPortal: { supplierId?: string } | undefined;
   SupplierPage: { slug: string };
@@ -97,6 +107,8 @@ function HomeStackNavigator() {
           headerBackTitle: 'Back',
         }}
       />
+      <HomeStack.Screen name="UserProfile" component={UserProfileScreen} options={{ headerShown: false }} />
+      <HomeStack.Screen name="FollowList" component={FollowListScreen} options={{ headerShown: false }} />
       <HomeStack.Screen
         name="ConnectionTest"
         component={ConnectionTestScreen}
@@ -128,6 +140,8 @@ function EventsStackNavigator() {
           headerBackTitle: 'Back',
         }}
       />
+      <EventsStack.Screen name="UserProfile" component={UserProfileScreen} options={{ headerShown: false }} />
+      <EventsStack.Screen name="FollowList" component={FollowListScreen} options={{ headerShown: false }} />
     </EventsStack.Navigator>
   );
 }
@@ -164,7 +178,12 @@ function ChatStackNavigator() {
 // Profile Stack Navigator
 function ProfileStackNavigator() {
   return (
-    <ProfileStack.Navigator>
+    <ProfileStack.Navigator initialRouteName="MyProfile">
+      <ProfileStack.Screen
+        name="MyProfile"
+        component={UserProfileScreen}
+        options={{ headerShown: false }}
+      />
       <ProfileStack.Screen
         name="ProfileMain"
         component={ProfileScreen}
@@ -198,10 +217,17 @@ function ProfileStackNavigator() {
         component={CheckInScreen}
         options={{ title: 'Check in', headerBackTitle: 'Back' }}
       />
+      <ProfileStack.Screen
+        name="FindFriends"
+        component={FindFriendsScreen}
+        options={{ title: 'Find friends', headerBackTitle: 'Back' }}
+      />
       <ProfileStack.Screen name="Plans" component={PlansScreen} options={{ headerShown: false }} />
       <ProfileStack.Screen name="SupplierPortal" component={SupplierPortalScreen} options={{ headerShown: false }} />
       <ProfileStack.Screen name="SupplierPage" component={SupplierPageScreen} options={{ headerShown: false }} />
       <ProfileStack.Screen name="AdminModeration" component={AdminModerationScreen} options={{ headerShown: false }} />
+      <ProfileStack.Screen name="UserProfile" component={UserProfileScreen} options={{ headerShown: false }} />
+      <ProfileStack.Screen name="FollowList" component={FollowListScreen} options={{ headerShown: false }} />
     </ProfileStack.Navigator>
   );
 }

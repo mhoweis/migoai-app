@@ -23,11 +23,13 @@ import { useUserStore } from '../store/userStore';
 import { ProfileStackParamList } from '../navigation/MainTabNavigator';
 import { navigationRef } from '../navigation/navigationRef';
 import { authService, isAdmin, isHost, isSupplier } from '../services/auth.service';
+import { uploadService } from '../services/upload.service';
 import { setLocale, useLocale } from '../i18n';
 import { LinearGradient } from 'expo-linear-gradient';
 import { gradients, radius, shadow, type } from '../theme';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import Container from '../components/Container';
+import { AdminBackButton } from '../components/AdminAnalyticsUI';
 
 type ProfileScreenNavigationProp = NavigationProp<ProfileStackParamList, 'ProfileMain'>;
 const e164PhonePattern = /^\+[1-9]\d{7,14}$/;
@@ -35,11 +37,13 @@ const e164PhonePattern = /^\+[1-9]\d{7,14}$/;
 const ProfileScreen = () => {
   const navigation = useNavigation<ProfileScreenNavigationProp>();
   const { user, logout, updateProfile, updateReminders, setUser } = useUserStore();
-  const { locale, t } = useLocale();
+  const { locale, isRTL, t } = useLocale();
   const { isWebDesktop } = useBreakpoint();
 
   const [showNameModal, setShowNameModal] = useState(false);
   const [editName, setEditName] = useState('');
+  const [showBioModal, setShowBioModal] = useState(false);
+  const [editBio, setEditBio] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [reminderSettings, setReminderSettings] = useState({
     email: user?.preferences?.reminders?.email ?? true,
@@ -50,6 +54,7 @@ const ProfileScreen = () => {
   const [isSavingReminders, setIsSavingReminders] = useState(false);
   const [remindersSaved, setRemindersSaved] = useState(false);
   const [remindersError, setRemindersError] = useState('');
+  const [isSavingPrivacy, setIsSavingPrivacy] = useState(false);
   const phoneIsInvalid = reminderPhone.trim().length > 0 && !e164PhonePattern.test(reminderPhone.trim());
 
   useEffect(() => {
@@ -83,10 +88,49 @@ const ProfileScreen = () => {
     });
 
     if (!result.canceled && result.assets[0]) {
-      const uri = result.assets[0].uri;
-      // 'localProfileAvatar' key is NOT removed on logout, so it survives re-login
-      await AsyncStorage.setItem('localProfileAvatar', uri);
-      if (user) await setUser({ ...user, avatar: uri });
+      const asset = result.assets[0];
+      setIsSaving(true);
+      try {
+        const avatar = await uploadService.uploadImage(asset.uri, {
+          name: asset.fileName || 'avatar.jpg',
+          type: asset.mimeType || 'image/jpeg',
+        });
+        const updated = await authService.updateProfile({ avatar });
+        await setUser(updated);
+      } catch {
+        Alert.alert(t('error'), t('profile_image_upload_failed'));
+      } finally {
+        setIsSaving(false);
+      }
+    }
+  };
+
+  const handlePickCover = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(t('profile_photo_permission'), t('profile_photo_permission_help'));
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.82,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    setIsSaving(true);
+    try {
+      const coverImage = await uploadService.uploadImage(asset.uri, {
+        name: asset.fileName || 'profile-cover.jpg',
+        type: asset.mimeType || 'image/jpeg',
+      });
+      const updated = await authService.updateProfile({ coverImage });
+      await setUser(updated);
+    } catch {
+      Alert.alert(t('error'), t('profile_image_upload_failed'));
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -94,6 +138,25 @@ const ProfileScreen = () => {
   const openNameModal = () => {
     setEditName(user?.name || '');
     setShowNameModal(true);
+  };
+
+  const openBioModal = () => {
+    setEditBio(user?.bio || '');
+    setShowBioModal(true);
+  };
+
+  const handleSaveBio = async () => {
+    if (!user) return;
+    setIsSaving(true);
+    try {
+      const updated = await authService.updateProfile({ bio: editBio.trim() || null });
+      await setUser(updated);
+      setShowBioModal(false);
+    } catch {
+      Alert.alert(t('error'), t('profile_save_failed'));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSaveName = async () => {
@@ -181,6 +244,19 @@ const ProfileScreen = () => {
     }
   };
 
+  const handlePrivacyChange = async (isPrivate: boolean) => {
+    if (isSavingPrivacy) return;
+    setIsSavingPrivacy(true);
+    try {
+      const updated = await authService.updateProfile({ isPrivate });
+      await setUser(updated);
+    } catch {
+      Alert.alert(t('error'), t('profile_save_failed'));
+    } finally {
+      setIsSavingPrivacy(false);
+    }
+  };
+
   const handleSaveReminders = async () => {
     if (phoneIsInvalid) return;
     setIsSavingReminders(true);
@@ -201,13 +277,23 @@ const ProfileScreen = () => {
       <ScrollView>
         <Container style={[styles.desktopPage, !isWebDesktop && styles.mobileProfileContainer]}>
           <View style={[styles.header, isWebDesktop && styles.desktopHeader]}>
-            <Text style={styles.title}>{t('profile')}</Text>
+            {navigation.canGoBack() ? <AdminBackButton label={t('back')} rtl={isRTL} onPress={() => navigation.goBack()} /> : null}
+            <Text style={styles.title}>{t('account_settings')}</Text>
           </View>
           <View style={[styles.profileColumns, isWebDesktop && styles.desktopProfileColumns]}>
             <View style={isWebDesktop ? styles.desktopSummary : undefined}>
 
         {/* ── User Info ── */}
         <View style={[styles.section, isWebDesktop && styles.desktopSection]}>
+          <TouchableOpacity accessibilityRole="button" onPress={handlePickCover} style={styles.profileCover}>
+            {user?.coverImage ? <Image source={{ uri: user.coverImage }} style={styles.profileCoverImage} /> : (
+              <LinearGradient colors={gradients.primary} style={styles.profileCoverImage} />
+            )}
+            <View style={[styles.coverAction, isRTL && styles.coverActionRtl]}>
+              <Ionicons name="camera-outline" size={16} color={colors.textInverse} />
+              <Text style={styles.coverActionText}>{t('profile_change_cover')}</Text>
+            </View>
+          </TouchableOpacity>
           <View style={styles.userInfo}>
 
             {/* Tappable avatar */}
@@ -233,9 +319,22 @@ const ProfileScreen = () => {
                 <Ionicons name="pencil" size={14} color={colors.textMuted} style={{ marginLeft: 6 }} />
               </TouchableOpacity>
               <Text style={styles.userEmail} numberOfLines={1} ellipsizeMode="middle">{user?.email || 'user@example.com'}</Text>
+              <TouchableOpacity accessibilityRole="button" onPress={openBioModal} style={styles.bioEditRow}>
+                <Text numberOfLines={2} style={styles.profileBio}>{user?.bio || t('profile_add_bio')}</Text>
+                <Ionicons name="pencil-outline" size={14} color={colors.textMuted} />
+              </TouchableOpacity>
               <View style={styles.accountBadge}>
                 <Text style={styles.accountBadgeText}>{t(`account_role_${(user?.role || 'USER').toLowerCase()}` as any)}</Text>
               </View>
+              <TouchableOpacity
+                accessibilityRole="button"
+                disabled={!user?.id}
+                onPress={() => user?.id && navigation.navigate('MyProfile')}
+                style={[styles.publicProfileLink, isRTL && styles.rowRtl]}
+              >
+                <Ionicons name="person-circle-outline" size={16} color={colors.primary} />
+                <Text style={styles.publicProfileLinkText}>{t('profile_view_my_profile')}</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -253,6 +352,25 @@ const ProfileScreen = () => {
             ) : null}
             </View>
             <View style={isWebDesktop ? styles.desktopSettings : undefined}>
+
+        <View style={[styles.section, isWebDesktop && styles.desktopSection]}>
+          <View style={styles.remindersContent}>
+            <View style={[styles.reminderRow, isRTL && styles.rowRtl]}>
+              <View style={styles.privacySettingCopy}>
+                <Text style={styles.menuItemText}>{t('profile_private_label')}</Text>
+                <Text style={[styles.remindersHelp, locale === 'ar' && styles.reminderLabelRtl]}>{t('profile_private_explanation')}</Text>
+              </View>
+              <Switch
+                accessibilityLabel={t('profile_private_label')}
+                value={Boolean(user?.isPrivate)}
+                disabled={isSavingPrivacy}
+                onValueChange={(value: boolean) => void handlePrivacyChange(value)}
+                trackColor={{ false: colors.borderStrong, true: colors.primarySoft }}
+                thumbColor={user?.isPrivate ? colors.primary : colors.surface}
+              />
+            </View>
+          </View>
+        </View>
 
         {/* ── Menu ── */}
         <View style={[styles.section, isWebDesktop && styles.desktopSection]}>
@@ -547,6 +665,36 @@ const ProfileScreen = () => {
           </View>
         </View>
       </Modal>
+      <Modal
+        visible={showBioModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowBioModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{t('profile_bio')}</Text>
+            <TextInput
+              style={[styles.nameInput, styles.bioInput]}
+              value={editBio}
+              onChangeText={setEditBio}
+              placeholder={t('profile_bio_placeholder')}
+              placeholderTextColor={colors.textMuted}
+              maxLength={500}
+              multiline
+              textAlignVertical="top"
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowBioModal(false)}>
+                <Text style={styles.cancelBtnText}>{t('cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.saveBtn} onPress={handleSaveBio} disabled={isSaving}>
+                {isSaving ? <ActivityIndicator size="small" color={colors.textInverse} /> : <Text style={styles.saveBtnText}>{t('save')}</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -591,6 +739,7 @@ const styles = StyleSheet.create({
   remindersContent: {
     paddingHorizontal: 20,
   },
+  privacySettingCopy: { flex: 1, paddingVertical: 10, paddingEnd: 14 },
   reminderRow: {
     minHeight: 56,
     flexDirection: 'row',
@@ -710,6 +859,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
+  profileCover: {
+    height: 126,
+    marginHorizontal: 20,
+    marginTop: 10,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+    backgroundColor: colors.primarySoft,
+  },
+  profileCoverImage: { width: '100%', height: '100%' },
+  coverAction: {
+    position: 'absolute',
+    right: 10,
+    bottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(20,15,46,0.72)',
+  },
+  coverActionRtl: { right: undefined, left: 10 },
+  coverActionText: { color: colors.textInverse, fontSize: 12, fontWeight: '700' },
   avatarWrapper: {
     position: 'relative',
     width: 80,
@@ -747,6 +919,8 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
+  bioEditRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 },
+  profileBio: { flex: 1, color: colors.textSecondary, fontSize: 13, lineHeight: 18 },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -774,6 +948,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
   },
+  publicProfileLink: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', marginTop: 8 },
+  rowRtl: { flexDirection: 'row-reverse' },
+  publicProfileLinkText: { color: colors.primary, fontSize: 12, fontWeight: '800' },
   menuItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -823,6 +1000,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
     marginBottom: 20,
   },
+  bioInput: { minHeight: 120, paddingTop: 12, textAlignVertical: 'top' },
   modalButtons: {
     flexDirection: 'row',
     gap: 12,

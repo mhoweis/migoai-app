@@ -342,6 +342,35 @@ export class EventService {
         });
         isWishlisted = !!wishlist;
       }
+      let canReview = false;
+      let myReview = null;
+      if (userId) {
+        const [booking, review] = await Promise.all([
+          prisma.booking.findFirst({
+            where: {
+              eventId: eventWithId.id,
+              userId,
+              status: { in: ['CONFIRMED', 'CHECKED_IN'] },
+            },
+            select: { id: true },
+          }),
+          prisma.review.findUnique({
+            where: { userId_eventId: { userId, eventId: eventWithId.id } },
+            select: { id: true, overallRating: true, title: true, comment: true, createdAt: true, updatedAt: true },
+          }),
+        ]);
+        canReview = eventWithId.startDate <= new Date() && Boolean(booking);
+        myReview = review
+          ? {
+            id: review.id,
+            rating: review.overallRating,
+            title: review.title,
+            comment: review.comment,
+            createdAt: review.createdAt,
+            updatedAt: review.updatedAt,
+          }
+          : null;
+      }
       
       return {
         ...this.formatEventResponse(event, userId),
@@ -357,6 +386,8 @@ export class EventService {
           user: (review as any).user, // Use type assertion
         })),
         isWishlisted,
+        canReview,
+        myReview,
         metadata: {
           views: Number(eventWithId.views) + 1,
           wishlistCount: eventWithId.wishlistCount,

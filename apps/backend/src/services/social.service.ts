@@ -10,12 +10,14 @@ export type PublicUser = {
   id: string;
   name: string | null;
   avatar: string | null;
+  isPrivate?: boolean;
 };
 
-const publicUser = (user: { id: string; name: string | null; avatar: string | null; avatarUrl?: string | null }): PublicUser => ({
+const publicUser = (user: { id: string; name: string | null; avatar: string | null; avatarUrl?: string | null; isPrivate?: boolean }): PublicUser => ({
   id: user.id,
   name: user.name,
   avatar: user.avatar || user.avatarUrl || null,
+  ...(user.isPrivate === undefined ? {} : { isPrivate: user.isPrivate }),
 });
 
 const cleanBase = (value: string): string => value.replace(/\/+$/, '');
@@ -230,7 +232,7 @@ export const searchUsers = async (userId: string, query: string) => {
         { email: { equals: q, mode: 'insensitive' } },
       ],
     },
-    select: { id: true, name: true, avatar: true, avatarUrl: true },
+    select: { id: true, name: true, avatar: true, avatarUrl: true, isPrivate: true },
     take: 20,
     orderBy: { name: 'asc' },
   });
@@ -239,7 +241,16 @@ export const searchUsers = async (userId: string, query: string) => {
     select: { followingId: true },
   });
   const following = new Set(follows.map(follow => follow.followingId));
-  return users.map(user => ({ ...publicUser(user), isFollowing: following.has(user.id) }));
+  const requests = await prisma.followRequest.findMany({
+    where: { requesterId: userId, targetId: { in: users.map(user => user.id) } },
+    select: { targetId: true },
+  });
+  const requested = new Set(requests.map(request => request.targetId));
+  return users.map(user => ({
+    ...publicUser(user),
+    isFollowing: following.has(user.id),
+    followRequested: requested.has(user.id),
+  }));
 };
 
 export const suggestedUsers = async (userId: string) => {
@@ -255,6 +266,7 @@ export const suggestedUsers = async (userId: string) => {
       name: true,
       avatar: true,
       avatarUrl: true,
+      isPrivate: true,
       _count: {
         select: {
           bookings: { where: { status: 'CONFIRMED' } },
@@ -275,9 +287,15 @@ export const suggestedUsers = async (userId: string) => {
     take: 20,
   });
 
+  const requests = await prisma.followRequest.findMany({
+    where: { requesterId: userId, targetId: { in: users.map(user => user.id) } },
+    select: { targetId: true },
+  });
+  const requested = new Set(requests.map(request => request.targetId));
   return users.map(user => ({
     ...publicUser(user),
     isFollowing: false,
+    followRequested: requested.has(user.id),
     goingCount: user.bookings.length,
   }));
 };
@@ -305,7 +323,7 @@ export const unfollowUser = async (followerId: string, followingId: string) => {
 const listFollowedUsers = async (where: Prisma.FollowWhereInput) => {
   const follows = await prisma.follow.findMany({
     where,
-    select: { following: { select: { id: true, name: true, avatar: true, avatarUrl: true } } },
+    select: { following: { select: { id: true, name: true, avatar: true, avatarUrl: true, isPrivate: true } } },
     orderBy: { createdAt: 'desc' },
   });
   return follows.map(follow => publicUser(follow.following));
@@ -316,7 +334,7 @@ export const listFollowing = (userId: string) => listFollowedUsers({ followerId:
 export const listFollowers = async (userId: string) => {
   const follows = await prisma.follow.findMany({
     where: { followingId: userId },
-    select: { follower: { select: { id: true, name: true, avatar: true, avatarUrl: true } } },
+    select: { follower: { select: { id: true, name: true, avatar: true, avatarUrl: true, isPrivate: true } } },
     orderBy: { createdAt: 'desc' },
   });
   return follows.map(follow => publicUser(follow.follower));

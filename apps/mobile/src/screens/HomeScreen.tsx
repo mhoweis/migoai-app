@@ -791,25 +791,28 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           <View style={[styles.friendsRow, isWebDesktop && styles.friendsRowCard]}>
             <View style={styles.friendsAvatars}>
               {friends.map((friend, index) => (
-                friend.avatar ? (
-                  <Image
-                    key={friend.id}
-                    source={{ uri: friend.avatar }}
-                    style={[styles.friendAvatar, index > 0 && styles.friendAvatarOverlap]}
-                  />
-                ) : (
-                  <View key={friend.id} style={[styles.friendAvatar, styles.friendAvatarFallback, index > 0 && styles.friendAvatarOverlap]}>
-                    <Text style={styles.friendAvatarInitial}>{(friend.name || '?').charAt(0).toUpperCase()}</Text>
-                  </View>
-                )
+                <TouchableOpacity key={friend.id} accessibilityRole="button" accessibilityLabel={friend.name || t('profile_user')} onPress={() => navigateToTab('Profile', 'UserProfile', { userId: friend.id })}>
+                  {friend.avatar ? (
+                    <Image
+                      source={{ uri: friend.avatar }}
+                      style={[styles.friendAvatar, index > 0 && styles.friendAvatarOverlap]}
+                    />
+                  ) : (
+                    <View style={[styles.friendAvatar, styles.friendAvatarFallback, index > 0 && styles.friendAvatarOverlap]}>
+                      <Text style={styles.friendAvatarInitial}>{(friend.name || '?').charAt(0).toUpperCase()}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
               ))}
             </View>
             {firstFriend ? (
+              <TouchableOpacity accessibilityRole="button" onPress={() => navigateToTab('Profile', 'UserProfile', { userId: firstFriend.id })}>
               <Text style={styles.friendsGoingText}>
                 {remainingCount > 0
                   ? t('friends_going_names', { name: firstFriend.name || '', count: remainingCount })
                   : t('friend_going_single', { name: firstFriend.name || '' })}
               </Text>
+              </TouchableOpacity>
             ) : null}
           </View>
         );

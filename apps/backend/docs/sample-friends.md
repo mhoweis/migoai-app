@@ -31,6 +31,22 @@ bookings selected from upcoming Dubai or Abu Dhabi events matching its
 interests. Sara, Omar, and Layla follow the standard test account, and the
 sample accounts form a follow ring.
 
+## Profile demo data
+
+After seeding the sample friends and the standard test account, run:
+
+```bash
+cd apps/backend
+npx ts-node scripts/seed-profile-demo.ts
+```
+
+This adds bios and event-cover profile images only where those fields are
+empty, along with checked-in bookings on ended events, reviews, and
+follow-authorized likes and comments. The test account's existing bio and
+cover image are left unchanged. Run
+`npx ts-node scripts/seed-profile-demo.ts --remove` to remove the profile-demo
+bookings, reviews, comments, and profile fields created by the seed.
+
 ## What to test
 
 1. Log in as `migo.test.20260921@example.com`.

@@ -37,6 +37,9 @@ import { trackSignal } from '../services/signals.service';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import DateBadge from '../components/DateBadge';
 import Container from '../components/Container';
+import ReviewCards from '../components/ReviewCards';
+import ReviewComposerModal, { ReviewDraft } from '../components/ReviewComposerModal';
+import { profileService, ReviewSummary } from '../services/profile.service';
 
 interface Props {
   route: any;
@@ -52,6 +55,12 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [ticketCount, setTicketCount] = useState(1);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [social, setSocial] = useState<EventSocial | null>(null);
+  const [eventReviews, setEventReviews] = useState<ReviewSummary[]>([]);
+  const [reviewCount, setReviewCount] = useState(0);
+  const [reviewsExpanded, setReviewsExpanded] = useState(false);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewComposerOpen, setReviewComposerOpen] = useState(false);
+  const [reviewSaving, setReviewSaving] = useState(false);
   const [inviteLinks, setInviteLinks] = useState<InviteLinks | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const { user } = useUserStore();
@@ -63,8 +72,40 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   useEffect(() => {
     fetchEvent();
     void socialService.social(eventId).then(setSocial).catch(() => setSocial(null));
+    void loadReviews();
     loadSavedEvents();
   }, [eventId]);
+
+  const loadReviews = async (pageSize = 5) => {
+    setReviewLoading(true);
+    try {
+      const response = await profileService.eventReviews(eventId, pageSize);
+      setEventReviews(response.items);
+      setReviewCount(response.total);
+    } catch {
+      setEventReviews([]);
+      setReviewCount(0);
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+
+  const submitReview = async (draft: ReviewDraft) => {
+    setReviewSaving(true);
+    try {
+      await profileService.submitReview(eventId, draft);
+      setReviewComposerOpen(false);
+      await Promise.all([fetchEvent(), loadReviews(reviewsExpanded ? 50 : 5)]);
+    } catch (submitError: any) {
+      const response = submitError?.response?.data;
+      Alert.alert(
+        response?.code === 'REVIEW_NOT_ALLOWED' ? t('review_not_allowed_title') : t('error'),
+        response?.error || t('please_try_again'),
+      );
+    } finally {
+      setReviewSaving(false);
+    }
+  };
 
   const fetchEvent = async () => {
     try {
@@ -451,16 +492,51 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <View style={styles.socialRow}>
                 <View style={styles.socialAvatars}>
                   {social.attendeesPreview.slice(0, 4).map((person, index) => (
-                    person.avatar
-                      ? <Image key={person.id} source={{ uri: person.avatar }} style={[styles.socialAvatar, { marginLeft: index ? -8 : 0 }]} />
-                      : <View key={person.id} style={[styles.socialAvatar, styles.socialAvatarFallback, { marginLeft: index ? -8 : 0 }]}><Text style={styles.socialInitial}>{(person.name || '?')[0]}</Text></View>
+                    <TouchableOpacity key={person.id} accessibilityRole="button" accessibilityLabel={person.name || t('profile_user')} onPress={() => navigateToTab('Profile', 'UserProfile', { userId: person.id })}>
+                      {person.avatar
+                        ? <Image source={{ uri: person.avatar }} style={[styles.socialAvatar, { marginLeft: index ? -8 : 0 }]} />
+                        : <View style={[styles.socialAvatar, styles.socialAvatarFallback, { marginLeft: index ? -8 : 0 }]}><Text style={styles.socialInitial}>{(person.name || '?')[0]}</Text></View>}
+                    </TouchableOpacity>
                   ))}
                 </View>
-                <Text style={styles.socialText}>
-                  {t('going_count', { count: social.goingCount })}{social.friendsGoing.length ? ` · ${t('friends_going', { name: social.friendsGoing[0].name || t('event'), count: Math.max(1, social.friendsGoing.length - 1) })}` : ''}
-                </Text>
+                {social.friendsGoing[0] ? (
+                  <TouchableOpacity accessibilityRole="button" onPress={() => navigateToTab('Profile', 'UserProfile', { userId: social.friendsGoing[0].id })}>
+                    <Text style={styles.socialText}>
+                      {t('going_count', { count: social.goingCount })}{social.friendsGoing.length ? ` · ${t('friends_going', { name: social.friendsGoing[0].name || t('event'), count: Math.max(1, social.friendsGoing.length - 1) })}` : ''}
+                    </Text>
+                  </TouchableOpacity>
+                ) : <Text style={styles.socialText}>{t('going_count', { count: social.goingCount })}</Text>}
               </View>
             )}
+            <View style={styles.reviewsSection}>
+              <View style={styles.reviewSectionHeading}>
+                <Text style={styles.sectionTitle}>{t('event_reviews')} · {reviewCount}</Text>
+                <View style={styles.reviewActions}>
+                  {reviewCount > eventReviews.length && !reviewsExpanded ? (
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      onPress={() => {
+                        setReviewsExpanded(true);
+                        void loadReviews(50);
+                      }}
+                    >
+                      <Text style={styles.seeAllReviews}>{t('see_all')}</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  {(event as any).canReview ? (
+                    <TouchableOpacity accessibilityRole="button" onPress={() => setReviewComposerOpen(true)} style={styles.writeReviewButton}>
+                      <Ionicons name="star-outline" size={16} color={colors.textInverse} />
+                      <Text style={styles.writeReviewText}>{(event as any).myReview ? t('edit_review') : t('write_review')}</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              </View>
+              {reviewLoading ? <ActivityIndicator color={colors.primary} style={styles.reviewLoader} /> : (
+                eventReviews.length ? (
+                  <ReviewCards items={eventReviews} onAuthorPress={id => navigateToTab('Profile', 'UserProfile', { userId: id })} />
+                ) : <Text style={styles.noReviews}>{t('event_no_reviews')}</Text>
+              )}
+            </View>
           </View>
 
           {/* Map */}
@@ -633,6 +709,17 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
         </View>
       </Modal>
+      <ReviewComposerModal
+        visible={reviewComposerOpen}
+        initial={(event as any)?.myReview ? {
+          rating: (event as any).myReview.rating ?? (event as any).myReview.overallRating,
+          title: (event as any).myReview.title || '',
+          comment: (event as any).myReview.comment || '',
+        } : null}
+        saving={reviewSaving}
+        onClose={() => setReviewComposerOpen(false)}
+        onSubmit={draft => void submitReview(draft)}
+      />
     </SafeAreaView>
   );
 };
@@ -837,6 +924,14 @@ const styles = StyleSheet.create({
   socialAvatarFallback: { backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
   socialInitial: { color: colors.primaryDark, fontSize: 12, fontWeight: '700' },
   socialText: { marginLeft: 10, color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
+  reviewsSection: { marginTop: 28, gap: 12 },
+  reviewSectionHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  reviewActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  seeAllReviews: { color: colors.primary, fontSize: 13, fontWeight: '800' },
+  writeReviewButton: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 9, borderRadius: radius.pill, backgroundColor: colors.primary },
+  writeReviewText: { color: colors.textInverse, fontSize: 12, fontWeight: '800' },
+  reviewLoader: { marginVertical: 16 },
+  noReviews: { color: colors.textMuted, paddingVertical: 10 },
   detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
