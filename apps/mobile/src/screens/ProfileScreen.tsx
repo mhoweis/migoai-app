@@ -272,6 +272,21 @@ const ProfileScreen = () => {
     }
   };
 
+  const accountRole = user?.role || 'USER';
+  const accountPlan = (() => {
+    switch (accountRole) {
+      case 'USER':
+        return { help: 'account_plan_help_user', button: 'account_plan_upgrade', plan: 'HOST' } as const;
+      case 'ORGANIZER':
+        return { help: 'account_plan_help_organizer', button: 'account_plan_upgrade_supplier', plan: 'SUPPLIER' } as const;
+      case 'SUPPLIER':
+        return { help: 'account_plan_help_supplier', button: 'account_plan_manage', plan: 'SUPPLIER' } as const;
+      default:
+        return { help: 'account_plan_help_admin', button: 'account_plan_view', plan: 'HOST' } as const;
+    }
+  })();
+  const accountPlanButtonText = t(accountPlan.button);
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView>
@@ -352,6 +367,29 @@ const ProfileScreen = () => {
             ) : null}
             </View>
             <View style={isWebDesktop ? styles.desktopSettings : undefined}>
+
+        <View style={[styles.section, isWebDesktop && styles.desktopSection]}>
+          <Text style={styles.sectionTitle}>{t('account_plan_title')}</Text>
+          <View style={[styles.accountPlanRow, isRTL && styles.rowRtl]}>
+            <View style={styles.accountPlanIcon}>
+              <Ionicons name="diamond-outline" size={20} color={colors.primary} />
+            </View>
+            <View style={[styles.accountPlanCopy, isRTL && styles.reminderLabelRtl]}>
+              <Text style={styles.accountPlanName}>
+                {t(`account_role_${accountRole.toLowerCase()}` as any)}
+              </Text>
+              <Text style={styles.accountPlanHelp}>{t(accountPlan.help)}</Text>
+            </View>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={accountPlanButtonText}
+              style={styles.accountPlanButton}
+              onPress={() => handleNavigateToPlans(accountPlan.plan)}
+            >
+              <Text style={styles.accountPlanButtonText}>{accountPlanButtonText}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
         <View style={[styles.section, isWebDesktop && styles.desktopSection]}>
           <View style={styles.remindersContent}>
@@ -713,6 +751,34 @@ const styles = StyleSheet.create({
   desktopSettings: { flex: 1, minWidth: 0 },
   desktopSection: { marginHorizontal: 0 },
   desktopProfileStats: { marginHorizontal: 0 },
+  accountPlanRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  accountPlanIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primarySoft,
+  },
+  accountPlanCopy: { flex: 1, minWidth: 0 },
+  accountPlanName: { color: colors.text, fontSize: 16, fontWeight: '700' },
+  accountPlanHelp: { ...type.caption, color: colors.textMuted, marginTop: 4, flexShrink: 1, flexWrap: 'wrap' },
+  accountPlanButton: {
+    minHeight: 36,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    flexShrink: 0,
+  },
+  accountPlanButtonText: { color: colors.textInverse, fontSize: 13, fontWeight: '700' },
   profileStats: { flexDirection: 'row', gap: 12, marginHorizontal: 20, marginTop: 16 },
   profileStat: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.md, padding: 16, ...shadow.card },
   profileStatValue: { ...type.h2, color: colors.primary },
