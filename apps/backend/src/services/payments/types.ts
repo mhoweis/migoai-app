@@ -1,7 +1,5 @@
-export interface CheckoutRequest {
-  bookingId: string;
+interface CheckoutRequestBase {
   userId: string;
-  eventId: string;
   title: string;
   amountMinor: number;
   currency: string;
@@ -10,6 +8,21 @@ export interface CheckoutRequest {
   successUrl: string;
   cancelUrl: string;
 }
+
+export type CheckoutRequest = CheckoutRequestBase & (
+  | {
+      kind?: 'booking';
+      bookingId: string;
+      eventId: string;
+      subscriptionId?: never;
+    }
+  | {
+      kind: 'subscription';
+      subscriptionId: string;
+      bookingId?: never;
+      eventId?: never;
+    }
+);
 
 export interface CheckoutSession {
   provider: string;

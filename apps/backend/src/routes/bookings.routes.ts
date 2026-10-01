@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { AuthRequest } from '../middlewares/auth.middleware';
+import { AuthRequest, requireHost } from '../middlewares/auth.middleware';
 import { asyncHandler } from '../middlewares/error.middleware';
 import ticketsService from '../services/tickets.service';
 import transfersService from '../services/transfers.service';
@@ -113,13 +113,13 @@ router.get('/:id/pass/google', asyncHandler(async (req: AuthRequest, res: Respon
   res.json({ success: true, data: { saveUrl: buildGoogleSaveUrl(ticket) } });
 }));
 
-router.post('/check-in', asyncHandler(async (req: AuthRequest, res: Response) => {
+router.post('/check-in', requireHost, asyncHandler(async (req: AuthRequest, res: Response) => {
   const input = z.object({ code: z.string().min(1), eventId: z.string().min(1).optional() }).parse(req.body);
   const result = await ticketsService.checkIn(input.code, req.userId!, input.eventId);
   res.json({ success: true, data: result });
 }));
 
-router.get('/events/:eventId/attendance', asyncHandler(async (
+router.get('/events/:eventId/attendance', requireHost, asyncHandler(async (
   req: AuthRequest,
   res: Response,
 ) => {

@@ -17,6 +17,12 @@ enum UserRole {
   USER
   ADMIN
   ORGANIZER
+  SUPPLIER
+}
+
+enum UserStatus {
+  ACTIVE
+  PAUSED
 }
 
 enum SupplierStatus {
@@ -36,9 +42,22 @@ enum EventStatus {
   DRAFT
   PENDING
   ACTIVE
+  BANNED
   CANCELLED
   ARCHIVED
   DELETED
+}
+
+enum PlanKey {
+  HOST
+  SUPPLIER
+}
+
+enum SubscriptionStatus {
+  PENDING
+  ACTIVE
+  CANCELLED
+  EXPIRED
 }
 
 enum EventVisibility {
@@ -87,6 +106,11 @@ model User {
   avatarUrl                 String?             @map("avatar_url") @db.Text
   bio                       String?             @db.Text
   role                      UserRole            @default(USER)
+  status                    UserStatus          @default(ACTIVE)
+  pausedAt                  DateTime?           @map("paused_at")
+  pausedReason              String?             @map("paused_reason") @db.Text
+  supplierId                String?             @map("supplier_id")
+  supplier                  Supplier?           @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   emailVerified             Boolean             @default(false) @map("email_verified")
   phoneVerified             Boolean             @default(false) @map("phone_verified")
   isVerified                Boolean             @default(false) @map("is_verified")
@@ -142,6 +166,7 @@ model User {
   createdInvites            EventInvite[]       @relation("Inviter")
   transfersSent             TicketTransfer[]   @relation("TransfersSent")
   transfersReceived         TicketTransfer[]   @relation("TransfersReceived")
+  subscriptions             Subscription[]
   
   // Timestamps
   createdAt                 DateTime            @default(now()) @map("created_at")
@@ -156,6 +181,7 @@ model User {
   @@index([createdAt])
   @@index([isOrganizer])
   @@index([isVerified])
+  @@index([supplierId])
 }
 
 model Event {
@@ -221,6 +247,10 @@ model Event {
   
   // Status
   status                    EventStatus         @default(PENDING)
+  bannedAt                  DateTime?           @map("banned_at")
+  bannedReason              String?             @map("banned_reason") @db.Text
+  bannedById                String?             @map("banned_by_id")
+  supplierRank              Int?                @map("supplier_rank")
   visibility                EventVisibility     @default(PUBLIC)
   isFeatured                Boolean             @default(false) @map("is_featured")
   isSponsored               Boolean             @default(false) @map("is_sponsored")
@@ -287,6 +317,7 @@ model Event {
   @@index([createdAt])
   @@index([slug])
   @@index([categoryId])
+  @@index([supplierRank])
 }
 
 model Booking {
@@ -791,18 +822,63 @@ model AffiliateClick {
 model Supplier {
   id           String            @id @default(cuid())
   sourceKey    String            @unique @map("source_key") @db.VarChar(50)
+  slug         String?           @unique @db.VarChar(255)
   name         String            @db.VarChar(255)
+  description  String?           @db.Text
+  logo         String?           @db.Text
+  banner       String?           @db.Text
   contactName  String?           @map("contact_name") @db.VarChar(255)
   contactEmail String?           @map("contact_email") @db.VarChar(255)
   contactPhone String?           @map("contact_phone") @db.VarChar(30)
   website      String?           @db.Text
+  feedUrl      String?           @map("feed_url") @db.Text
+  feedLastSyncAt DateTime?       @map("feed_last_sync_at")
+  feedLastStatus String?         @map("feed_last_status") @db.Text
   status       SupplierStatus    @default(PROSPECT)
   notes        String?           @db.Text
   createdAt    DateTime          @default(now()) @map("created_at")
   updatedAt    DateTime          @updatedAt @map("updated_at")
   campaigns    SupplierCampaign[]
+  members      User[]
 
   @@map("suppliers")
+}
+
+model Subscription {
+  id              String             @id @default(cuid())
+  userId          String             @map("user_id")
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan            PlanKey
+  status          SubscriptionStatus @default(PENDING)
+  amountAed       Decimal            @map("amount_aed") @db.Decimal(10, 2)
+  provider        String?            @db.VarChar(50)
+  reference       String?            @unique @db.VarChar(255)
+  returnUrl       String?            @map("return_url") @db.Text
+  businessName    String?            @map("business_name") @db.VarChar(120)
+  website         String?            @db.Text
+  currentPeriodEnd DateTime?         @map("current_period_end")
+  cancelledAt     DateTime?          @map("cancelled_at")
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+
+  @@index([userId, status])
+  @@index([status, currentPeriodEnd])
+  @@map("subscriptions")
+}
+
+model AdminAction {
+  id         String   @id @default(cuid())
+  adminId    String   @map("admin_id") @db.VarChar(255)
+  action     String   @db.VarChar(50)
+  targetType String   @map("target_type") @db.VarChar(20)
+  targetId   String   @map("target_id") @db.VarChar(255)
+  reason     String?  @db.Text
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([targetType, targetId])
+  @@index([createdAt])
+  @@map("admin_actions")
 }
 
 model SupplierCampaign {

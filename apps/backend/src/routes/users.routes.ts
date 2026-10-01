@@ -3,7 +3,7 @@ import { Router, Response } from "express";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import prisma from "../database/prisma";
-import { authenticate, AuthRequest } from "../middlewares/auth.middleware";
+import { authenticate, AuthRequest, requireHost } from "../middlewares/auth.middleware";
 import { asyncHandler } from "../middlewares/error.middleware";
 import {
   followUser,
@@ -56,7 +56,7 @@ router.get("/me/followers", asyncHandler(async (req: AuthRequest, res: Response)
   res.json({ success: true, data: await listFollowers(req.userId!) });
 }));
 
-router.get("/me/dashboard", asyncHandler(async (req: AuthRequest, res: Response) => {
+router.get("/me/dashboard", requireHost, asyncHandler(async (req: AuthRequest, res: Response) => {
   res.json({ success: true, data: await getHostDashboard(req.userId!) });
 }));
 

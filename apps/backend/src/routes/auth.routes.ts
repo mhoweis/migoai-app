@@ -152,6 +152,10 @@ router.post('/login', credentialLimiter, async (req: Request, res: Response) => 
       },
     });
   } catch (error: any) {
+    if (error?.code === 'ACCOUNT_PAUSED') {
+      res.status(403).json({ success: false, error: 'Account paused', code: 'ACCOUNT_PAUSED' });
+      return;
+    }
     res.status(401).json({ error: 'Invalid credentials' });
   }
 });
@@ -173,6 +177,10 @@ router.post('/refresh-token', refreshLimiter, async (req: Request, res: Response
       data: result,
     });
   } catch (error: any) {
+    if (error?.code === 'ACCOUNT_PAUSED') {
+      res.status(403).json({ success: false, error: 'Account paused', code: 'ACCOUNT_PAUSED' });
+      return;
+    }
     res.status(401).json({ error: 'Invalid refresh token' });
   }
 });

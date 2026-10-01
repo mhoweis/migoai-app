@@ -31,7 +31,9 @@ export class MockPaymentProvider implements PaymentProvider {
   }
 
   async createCheckout(req: CheckoutRequest): Promise<CheckoutSession> {
-    const reference = `mock_${req.bookingId}`;
+    const reference = req.kind === 'subscription'
+      ? `mock_sub_${req.subscriptionId}`
+      : `mock_${req.bookingId}`;
     const token = createMockPaymentToken(reference);
     const returnOrigin = /^https?:/.test(req.successUrl) ? new URL(req.successUrl).origin : '';
     const baseUrl = config.APP_PUBLIC_URL || returnOrigin || config.APP_URL;
@@ -43,6 +45,15 @@ export class MockPaymentProvider implements PaymentProvider {
   }
 
   async getState(reference: string): Promise<PaymentState> {
+    if (reference.startsWith('mock_sub_')) {
+      const subscription = await prisma.subscription.findFirst({
+        where: { reference },
+        select: { status: true },
+      });
+      if (subscription?.status === 'ACTIVE') return 'paid';
+      if (subscription?.status === 'CANCELLED' || subscription?.status === 'EXPIRED') return 'failed';
+      return 'pending';
+    }
     const booking = await prisma.booking.findFirst({
       where: { transactionId: reference },
       select: { status: true },

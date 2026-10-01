@@ -66,6 +66,9 @@ const envSchema = z.object({
   WHATSAPP_REMINDER_TEMPLATE: z.string().optional(),
   REMINDERS_INTERVAL_MINUTES: z.coerce.number().int().min(0).default(15),
   WEEKEND_DIGEST_CRON: z.string().default('0 6 * * 4'),
+  HOST_PLAN_PRICE_AED: z.coerce.number().positive().default(99),
+  SUPPLIER_PLAN_PRICE_AED: z.coerce.number().positive().default(499),
+  SUPPLIER_FEED_ALLOW_PRIVATE_HOSTS: z.enum(['true', 'false']).default('false'),
 
   // Event Data APIs
   TICKETMASTER_API_KEY: z.string().optional(),
@@ -155,6 +158,9 @@ if (env.NODE_ENV === 'production') {
   if (env.ALLOW_DEV_AUTH === 'true') {
     throw new Error('ALLOW_DEV_AUTH must not be enabled in production');
   }
+  if (env.SUPPLIER_FEED_ALLOW_PRIVATE_HOSTS === 'true') {
+    throw new Error('SUPPLIER_FEED_ALLOW_PRIVATE_HOSTS must not be enabled in production');
+  }
 }
 
 // Helper function to get app URL
@@ -212,6 +218,9 @@ export default {
   WHATSAPP_REMINDER_TEMPLATE: env.WHATSAPP_REMINDER_TEMPLATE || '',
   REMINDERS_INTERVAL_MINUTES: env.REMINDERS_INTERVAL_MINUTES,
   WEEKEND_DIGEST_CRON: env.WEEKEND_DIGEST_CRON,
+  HOST_PLAN_PRICE_AED: env.HOST_PLAN_PRICE_AED,
+  SUPPLIER_PLAN_PRICE_AED: env.SUPPLIER_PLAN_PRICE_AED,
+  SUPPLIER_FEED_ALLOW_PRIVATE_HOSTS: env.SUPPLIER_FEED_ALLOW_PRIVATE_HOSTS === 'true',
 
   // Event Data APIs
   TICKETMASTER_API_KEY: env.TICKETMASTER_API_KEY || '',

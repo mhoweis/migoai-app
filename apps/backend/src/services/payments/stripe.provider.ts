@@ -36,8 +36,10 @@ export class StripePaymentProvider implements PaymentProvider {
       success_url: req.successUrl,
       cancel_url: req.cancelUrl,
       customer_email: req.customerEmail,
-      client_reference_id: req.bookingId,
-      metadata: { bookingId: req.bookingId },
+      client_reference_id: req.kind === 'subscription' ? req.subscriptionId : req.bookingId,
+      metadata: req.kind === 'subscription'
+        ? { kind: 'subscription', subscriptionId: req.subscriptionId }
+        : { kind: 'booking', bookingId: req.bookingId },
     });
 
     if (!session.url) {

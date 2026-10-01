@@ -201,6 +201,9 @@ export class AuthService {
     if (!isValidPassword) {
       throw new Error('Invalid credentials');
     }
+    if (user.status === 'PAUSED') {
+      throw Object.assign(new Error('Account paused'), { code: 'ACCOUNT_PAUSED' });
+    }
     
     // Update last login
     const updatedUser = await prisma.user.update({
@@ -341,6 +344,9 @@ export class AuthService {
       if (!user) {
         throw new Error('User not found');
       }
+      if (user.status === 'PAUSED') {
+        throw Object.assign(new Error('Account paused'), { code: 'ACCOUNT_PAUSED' });
+      }
       
       // Generate new access token
       const payload: JwtPayload = {
@@ -358,6 +364,9 @@ export class AuthService {
         expiresIn: 15 * 60,
       };
     } catch (error: any) {
+      if (error?.code === 'ACCOUNT_PAUSED') {
+        throw error;
+      }
       throw new Error('Invalid refresh token');
     }
   }

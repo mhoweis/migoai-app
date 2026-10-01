@@ -2,6 +2,7 @@
 import { Request, Response, NextFunction } from "express";
 import { authService, JwtPayload } from "../services/auth.service";
 import config from "../config/env";
+import prisma from "../config/database";
 
 // Extend Express Request type
 export interface AuthRequest extends Request {
@@ -40,10 +41,26 @@ export const authenticate = async (
 
     // Use authService to validate token (centralized validation)
     const decoded = await authService.validateToken(token);
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: { id: true, role: true, status: true },
+    });
+    if (!user) {
+      res.status(401).json({ success: false, error: "Authentication failed" });
+      return;
+    }
+    if (user.status === "PAUSED") {
+      res.status(403).json({
+        success: false,
+        error: "Account paused",
+        code: "ACCOUNT_PAUSED",
+      });
+      return;
+    }
 
     // Attach user to request
-    req.user = decoded;
-    req.userId = decoded.userId;
+    req.user = { ...decoded, role: user.role };
+    req.userId = user.id;
 
     next();
   } catch (error: any) {
@@ -96,8 +113,20 @@ export const requireRoles = (roles: string | string[]) => {
 
 // Convenience middleware for common roles
 export const requirePremium = requireRoles(["PREMIUM", "ADMIN"]);
-export const requireOrganizer = requireRoles(["ORGANIZER", "ADMIN"]);
+export const requireOrganizer = requireRoles(["ORGANIZER", "SUPPLIER", "ADMIN"]);
 export const requireAdmin = requireRoles(["ADMIN"]);
+export const requireHost = (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (req.user?.role === "USER") {
+    res.status(403).json({
+      success: false,
+      error: "Upgrade to a Host plan to use this feature",
+      code: "UPGRADE_REQUIRED",
+    });
+    return;
+  }
+  return requireRoles(["ORGANIZER", "SUPPLIER", "ADMIN"])(req, res, next);
+};
+export const requireSupplier = requireRoles(["SUPPLIER", "ADMIN"]);
 
 // Optional authentication middleware (doesn't fail if no token)
 export const optionalAuthenticate = async (
@@ -113,8 +142,14 @@ export const optionalAuthenticate = async (
 
       if (config.JWT_SECRET) {
         const decoded = await authService.validateToken(token);
-        req.user = decoded;
-        req.userId = decoded.userId;
+        const user = await prisma.user.findUnique({
+          where: { id: decoded.userId },
+          select: { id: true, role: true, status: true },
+        });
+        if (user?.status === "ACTIVE") {
+          req.user = { ...decoded, role: user.role };
+          req.userId = user.id;
+        }
       }
     }
 
