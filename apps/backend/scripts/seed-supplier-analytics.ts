@@ -81,8 +81,20 @@ async function seedData() {
   const registry = Object.values(sources).filter(source => source.kind !== 'demo');
   const suppliers = await Promise.all(registry.map(source => prisma.supplier.upsert({
     where: { sourceKey: source.id },
-    update: {},
-    create: { sourceKey: source.id, name: source.label, website: source.url || null },
+    update: source.id === 'difc'
+      ? {
+        name: source.label,
+        website: source.url || null,
+        slug: 'difc',
+        status: 'ACTIVE',
+      }
+      : {},
+    create: {
+      sourceKey: source.id,
+      name: source.label,
+      website: source.url || null,
+      ...(source.id === 'difc' ? { slug: 'difc', status: 'ACTIVE' as const } : {}),
+    },
   })));
   const events = await prisma.event.findMany({
     where: {

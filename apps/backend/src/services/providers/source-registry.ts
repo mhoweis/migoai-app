@@ -109,6 +109,14 @@ const sources: Record<string, SourceInfo> = {
     url: 'https://mydubaicommunities.com',
     refundPolicy: 'external',
   },
+  difc: {
+    id: 'difc',
+    label: 'DIFC',
+    labelAr: 'مركز دبي المالي العالمي',
+    kind: 'venue',
+    url: 'https://www.difc.com',
+    refundPolicy: 'external',
+  },
   ticketmaster: {
     id: 'ticketmaster',
     label: 'Ticketmaster',

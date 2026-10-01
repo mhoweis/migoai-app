@@ -134,7 +134,7 @@ const en = {
   home_desktop_headline: 'What’s on in {{city}}',
   home_sections: 'Home sections',
   all_events: 'All events',
-  footer_sources_list: 'Visit Dubai · DWTC · Visit Abu Dhabi · Expo City Dubai · Visit Sharjah · Dubai Exhibition Centre · MyDubai Communities',
+  footer_sources_list: 'Visit Dubai · DWTC · Visit Abu Dhabi · Expo City Dubai · Visit Sharjah · Dubai Exhibition Centre · MyDubai Communities · DIFC',
   login_value_1: 'Discover events from official UAE sources',
   login_value_2: 'Book and keep tickets in your Wallet',
   login_value_3: 'See where your friends are going',
