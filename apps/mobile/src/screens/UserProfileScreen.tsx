@@ -154,11 +154,11 @@ export default function UserProfileScreen() {
     setEditOpen(true);
   };
 
-  const chooseProfileImage = async (target: 'avatar' | 'cover') => {
+  const pickAndUploadImage = async (target: 'avatar' | 'cover'): Promise<string | null> => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permission.status !== 'granted') {
       Alert.alert(t('profile_photo_permission'), t('profile_photo_permission_help'));
-      return;
+      return null;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
@@ -166,18 +166,39 @@ export default function UserProfileScreen() {
       aspect: target === 'cover' ? [16, 9] : [1, 1],
       quality: 0.82,
     });
-    if (result.canceled || !result.assets[0]) return;
+    if (result.canceled || !result.assets[0]) return null;
     const asset = result.assets[0];
     setUploadingImage(true);
     try {
-      const url = await uploadService.uploadImage(asset.uri, {
+      return await uploadService.uploadImage(asset.uri, {
         name: asset.fileName || (target === 'cover' ? 'profile-cover.jpg' : 'avatar.jpg'),
         type: asset.mimeType || 'image/jpeg',
       });
-      if (target === 'cover') setEditCover(url);
-      else setEditAvatar(url);
     } catch {
       Alert.alert(t('error'), t('profile_image_upload_failed'));
+      return null;
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const chooseProfileImage = async (target: 'avatar' | 'cover') => {
+    const url = await pickAndUploadImage(target);
+    if (!url) return;
+    if (target === 'cover') setEditCover(url);
+    else setEditAvatar(url);
+  };
+
+  const changeProfileImage = async (target: 'avatar' | 'cover') => {
+    const url = await pickAndUploadImage(target);
+    if (!url) return;
+    setUploadingImage(true);
+    try {
+      const updated = await authService.updateProfile(target === 'cover' ? { coverImage: url } : { avatar: url });
+      await setUser(updated);
+      setProfile(await profileService.profile(userId));
+    } catch {
+      Alert.alert(t('error'), t('profile_save_failed'));
     } finally {
       setUploadingImage(false);
     }
@@ -237,17 +258,44 @@ export default function UserProfileScreen() {
                 <Ionicons name="sparkles-outline" size={32} color={colors.primary} />
               </View>
             )}
+            {profile.isMe ? (
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={t('profile_change_cover')}
+                disabled={uploadingImage}
+                onPress={() => void changeProfileImage('cover')}
+                style={[styles.coverEditButton, isRTL ? styles.coverEditButtonRtl : null]}
+              >
+                {uploadingImage ? <ActivityIndicator size="small" color={colors.textInverse} /> : (
+                  <Ionicons name="camera-outline" size={16} color={colors.textInverse} />
+                )}
+                <Text style={styles.coverEditText}>{t('profile_change_cover')}</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
           <View style={[styles.profileLayout, isWebDesktop && styles.profileLayoutDesktop]}>
             <View style={[styles.profileSidebar, isWebDesktop && styles.profileSidebarDesktop]}>
               <View style={[styles.identity, isRTL && styles.rowRtl]}>
-                <LinearGradient colors={gradients.primary} style={styles.avatarRing}>
-                  {profile.user.avatar ? (
-                    <Image source={{ uri: profile.user.avatar }} style={styles.avatar} />
-                  ) : (
-                    <View style={styles.avatarFallback}><Ionicons name="person" size={36} color={colors.primary} /></View>
-                  )}
-                </LinearGradient>
+                <View style={styles.avatarWrap}>
+                  <LinearGradient colors={gradients.primary} style={styles.avatarRing}>
+                    {profile.user.avatar ? (
+                      <Image source={{ uri: profile.user.avatar }} style={styles.avatar} />
+                    ) : (
+                      <View style={styles.avatarFallback}><Ionicons name="person" size={36} color={colors.primary} /></View>
+                    )}
+                  </LinearGradient>
+                  {profile.isMe ? (
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel={t('profile_change_photo')}
+                      disabled={uploadingImage}
+                      onPress={() => void changeProfileImage('avatar')}
+                      style={[styles.avatarEditButton, isRTL ? styles.avatarEditButtonRtl : null]}
+                    >
+                      <Ionicons name="camera" size={15} color={colors.textInverse} />
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
                 <View style={styles.identityCopy}>
                   <View style={[styles.nameRow, isRTL && styles.rowRtl]}>
                     <Text style={[styles.name, isRTL && styles.textRtl]}>{profile.user.name || t('profile_user')}</Text>
@@ -455,6 +503,12 @@ const styles = StyleSheet.create({
   profileMain: { flex: 1, minWidth: 0 },
   identity: { flexDirection: 'row', alignItems: 'flex-start', gap: 14, marginTop: -40 },
   rowRtl: { flexDirection: 'row-reverse' },
+  coverEditButton: { position: 'absolute', bottom: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: 'rgba(17, 12, 34, 0.68)' },
+  coverEditButtonRtl: { right: undefined, left: 12, flexDirection: 'row-reverse' },
+  coverEditText: { color: colors.textInverse, fontSize: 12, fontWeight: '700' },
+  avatarWrap: { width: 88, height: 88, flexShrink: 0 },
+  avatarEditButton: { position: 'absolute', bottom: 0, right: 0, width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary, borderWidth: 2, borderColor: colors.surface },
+  avatarEditButtonRtl: { right: undefined, left: 0 },
   avatarRing: { width: 88, height: 88, borderRadius: 44, padding: 4, flexShrink: 0 },
   avatar: { width: 80, height: 80, borderRadius: 40, backgroundColor: colors.surfaceAlt },
   avatarFallback: { width: 80, height: 80, borderRadius: 40, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
