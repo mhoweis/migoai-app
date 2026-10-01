@@ -4,6 +4,7 @@ import eventSyncService, { SyncSummary } from './event-sync.service';
 import { whatsappService } from './messaging/whatsapp.service';
 import { buildWeekendDigest } from './digest.service';
 import { runReminders } from './reminders.service';
+import { expireSupplierCampaigns } from './supplier-campaigns.service';
 
 let intervalHandle: NodeJS.Timeout | undefined;
 let bootHandle: NodeJS.Timeout | undefined;
@@ -14,6 +15,17 @@ let reminderTimeout: NodeJS.Timeout | undefined;
 let reminderInterval: NodeJS.Timeout | undefined;
 let digestTimeout: NodeJS.Timeout | undefined;
 let digestInterval: NodeJS.Timeout | undefined;
+let supplierCampaignTimeout: NodeJS.Timeout | undefined;
+let supplierCampaignInterval: NodeJS.Timeout | undefined;
+
+const runSupplierCampaignExpiry = async (): Promise<void> => {
+  try {
+    const summary = await expireSupplierCampaigns();
+    if (summary.expired) logger.info('[supplier campaigns] expired campaigns', summary);
+  } catch (error: any) {
+    logger.error('[supplier campaigns] expiry failed', { error: error.message });
+  }
+};
 
 const runSync = async (): Promise<SyncSummary> => {
   lastRunAt = new Date();
@@ -80,6 +92,12 @@ export const start = (): void => {
       void runReminders().catch(error => logger.error('[reminders] run failed', { error }));
     }, config.REMINDERS_INTERVAL_MINUTES * 60 * 1000);
   }
+  supplierCampaignTimeout = setTimeout(() => {
+    void runSupplierCampaignExpiry();
+  }, 60_000);
+  supplierCampaignInterval = setInterval(() => {
+    void runSupplierCampaignExpiry();
+  }, 60 * 60 * 1000);
   scheduleDigest();
 };
 
@@ -107,6 +125,14 @@ export const stop = (): void => {
   if (digestInterval) {
     clearInterval(digestInterval);
     digestInterval = undefined;
+  }
+  if (supplierCampaignTimeout) {
+    clearTimeout(supplierCampaignTimeout);
+    supplierCampaignTimeout = undefined;
+  }
+  if (supplierCampaignInterval) {
+    clearInterval(supplierCampaignInterval);
+    supplierCampaignInterval = undefined;
   }
   nextRunAt = undefined;
 };

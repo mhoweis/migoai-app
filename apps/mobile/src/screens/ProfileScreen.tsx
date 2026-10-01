@@ -158,6 +158,10 @@ const ProfileScreen = () => {
     (navigation as any).navigate('VerifyOrganizers');
   };
 
+  const handleNavigateToAdminConsole = () => {
+    navigationRef.current?.navigate('AdminConsole' as never);
+  };
+
   const handleLocaleChange = async (next: 'en' | 'ar') => {
     await setLocale(next);
     if (user) {
@@ -390,13 +394,22 @@ const ProfileScreen = () => {
             <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
           {(user as any)?.role === 'ADMIN' || (user as any)?.isAdmin ? (
-            <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToVerifyOrganizers}>
-              <View style={styles.menuItemLeft}>
-                <Ionicons name="shield-checkmark-outline" size={24} color={colors.primary} />
-                <Text style={styles.menuItemText}>{t('verify_organizers')}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToVerifyOrganizers}>
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="shield-checkmark-outline" size={24} color={colors.primary} />
+                  <Text style={styles.menuItemText}>{t('verify_organizers')}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToAdminConsole}>
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="briefcase-outline" size={24} color={colors.primary} />
+                  <Text style={styles.menuItemText}>{t('admin_console')}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+            </>
           ) : null}
         </View>
 

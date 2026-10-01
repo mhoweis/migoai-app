@@ -33,6 +33,9 @@ import WeekendDigestScreen from "./src/screens/WeekendDigestScreen";
 import VerifyOrganizersScreen from "./src/screens/VerifyOrganizersScreen";
 import HostDashboardScreen from "./src/screens/HostDashboardScreen";
 import CustomizeHomeScreen from "./src/screens/CustomizeHomeScreen";
+import AdminConsoleScreen from "./src/screens/AdminConsoleScreen";
+import AdminSupplierScreen from "./src/screens/AdminSupplierScreen";
+import AdminSearchInsightsScreen from "./src/screens/AdminSearchInsightsScreen";
 import { inviteRef } from "./src/utils/inviteRef";
 import { ticketsService } from "./src/services/tickets.service";
 import { navigateToTab } from "./src/navigation/navigationRef";
@@ -560,6 +563,21 @@ export default function App() {
                 <Stack.Screen
                   name="HostDashboard"
                   component={HostDashboardScreen}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="AdminConsole"
+                  component={AdminConsoleScreen}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="AdminSupplier"
+                  component={AdminSupplierScreen}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="AdminSearchInsights"
+                  component={AdminSearchInsightsScreen}
                   options={{ headerShown: false }}
                 />
               </>

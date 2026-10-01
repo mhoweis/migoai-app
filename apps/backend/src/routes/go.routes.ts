@@ -23,6 +23,10 @@ const router = Router();
 router.get('/:eventId', optionalAuthenticate, async (req: AuthRequest, res: Response) => {
   const { eventId } = req.params;
   const placement = typeof req.query.from === 'string' ? req.query.from.slice(0, 60) : null;
+  const requestedPlatform = typeof req.query.platform === 'string' ? req.query.platform : null;
+  const platform = ['app', 'website', 'mobile_web'].includes(requestedPlatform || '')
+    ? requestedPlatform
+    : null;
 
   try {
     const event = await prisma.event.findUnique({
@@ -63,6 +67,7 @@ router.get('/:eventId', optionalAuthenticate, async (req: AuthRequest, res: Resp
           userId,
           eventId: event.id,
           supplier: resolved.supplier,
+          platform,
           targetUrl: resolved.targetUrl,
           placement,
           ipHash: hashIp(req.ip),

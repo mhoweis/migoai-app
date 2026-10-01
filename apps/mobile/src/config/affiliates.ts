@@ -31,8 +31,16 @@ export function getBookingUrl(eventId: string, placement?: string): string {
       ? window.location.origin
       : API_BASE_URL
   ).replace(/\/$/, '');
-  const query = placement ? `?from=${encodeURIComponent(placement)}` : '';
-  return `${base}/go/${encodeURIComponent(eventId)}${query}`;
+  const platform = Platform.OS !== 'web'
+    ? 'app'
+    : typeof window !== 'undefined' && window.innerWidth >= 1024
+      ? 'website'
+      : 'mobile_web';
+  const query = [
+    ...(placement ? [`from=${encodeURIComponent(placement)}`] : []),
+    `platform=${platform}`,
+  ].join('&');
+  return `${base}/go/${encodeURIComponent(eventId)}?${query}`;
 }
 
 /**
