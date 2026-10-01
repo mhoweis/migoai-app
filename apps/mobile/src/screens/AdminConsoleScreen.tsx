@@ -12,8 +12,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useLocale } from '../i18n';
+import { navigateToTab } from '../navigation/navigationRef';
 import {
   AdminHeader,
+  AdminBackButton,
   AdminShell,
   ActionButton,
   ClicksChart,
@@ -41,7 +43,7 @@ type StatusFilter = 'ALL' | SupplierStatus;
 
 export default function AdminConsoleScreen() {
   const navigation = useNavigation<any>();
-  const { t, locale } = useLocale();
+  const { t, locale, isRTL } = useLocale();
   const { width } = useWindowDimensions();
   const desktop = width >= 960;
   const [rangeDays, setRangeDays] = useState<AdminRangeDays>(30);
@@ -170,6 +172,11 @@ export default function AdminConsoleScreen() {
 
   return (
     <AdminShell>
+      <AdminBackButton
+        label={t('back')}
+        rtl={isRTL}
+        onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigateToTab('Profile', 'ProfileMain'))}
+      />
       <AdminHeader
         title={t('admin_console')}
         subtitle={t('admin_console_subtitle')}

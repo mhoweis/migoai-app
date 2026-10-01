@@ -1,6 +1,7 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import Svg, { Rect, Text as SvgText } from 'react-native-svg';
+import { Ionicons } from '@expo/vector-icons';
 import Container from './Container';
 import { AnalyticsRange, DailyClicks } from '../services/admin.service';
 import { colors, radius, shadow, spacing, type } from '../theme';
@@ -27,6 +28,15 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
       <Container style={styles.container}>{children}</Container>
     </ScrollView>
+  );
+}
+
+export function AdminBackButton({ label, rtl, onPress }: { label: string; rtl?: boolean; onPress(): void }) {
+  return (
+    <TouchableOpacity accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={styles.backButton}>
+      <Ionicons name={rtl ? 'arrow-forward' : 'arrow-back'} size={18} color={colors.primary} />
+      <Text style={styles.backText}>{label}</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -228,6 +238,8 @@ export function makeAdminRange(days: AdminRangeDays): AnalyticsRange {
 }
 
 const styles = StyleSheet.create({
+  backButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 14, marginBottom: 14, borderRadius: radius.pill, backgroundColor: colors.surface, ...shadow.card },
+  backText: { color: colors.primary, fontSize: 14, fontWeight: '700' },
   scroll: { flex: 1, backgroundColor: colors.bg },
   scrollContent: { flexGrow: 1, paddingBottom: 48 },
   container: { paddingTop: 30, paddingBottom: 24, gap: 22 },
