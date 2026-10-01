@@ -324,12 +324,17 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </View>
             ) : null}
             {sourceBadge(event.trust, locale) && (
-              <View style={[styles.sourceChip, { backgroundColor: sourceBadge(event.trust, locale)?.backgroundColor }]}>
+              <TouchableOpacity
+                disabled={!(event as any).supplierSlug}
+                accessibilityRole={(event as any).supplierSlug ? 'button' : undefined}
+                onPress={() => (event as any).supplierSlug && navigation.navigate('SupplierPage', { slug: (event as any).supplierSlug })}
+                style={[styles.sourceChip, { backgroundColor: sourceBadge(event.trust, locale)?.backgroundColor }]}
+              >
                 <Ionicons name="shield-checkmark" size={15} color={sourceBadge(event.trust, locale)?.color} />
                 <Text style={[styles.sourceChipText, { color: sourceBadge(event.trust, locale)?.color }]}>
                   {sourceBadge(event.trust, locale)?.text}
                 </Text>
-              </View>
+              </TouchableOpacity>
             )}
             {(event as any).trust?.organizer && ((event as any).trust.organizer.name || (event as any).trust.organizer.displayName) && (
               <View style={styles.trustOrganizer}>
@@ -518,9 +523,14 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </TouchableOpacity>
               </View>
               {sourceBadge(event.trust, locale)?.text ? (
-                <View style={styles.bookingSourceChip}>
+                <TouchableOpacity
+                  style={styles.bookingSourceChip}
+                  disabled={!(event as any).supplierSlug}
+                  accessibilityRole={(event as any).supplierSlug ? 'button' : undefined}
+                  onPress={() => (event as any).supplierSlug && navigation.navigate('SupplierPage', { slug: (event as any).supplierSlug })}
+                >
                   <Text style={styles.bookingSource}>{sourceBadge(event.trust, locale)?.text}</Text>
-                </View>
+                </TouchableOpacity>
               ) : null}
             </View>
           ) : null}

@@ -26,6 +26,8 @@ import { colors, type } from '../theme';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import Container from '../components/Container';
 import { addLocalDays, formatLocalDate, toLocalDateString } from '../utils/dateTime';
+import { isHost } from '../services/auth.service';
+import { useUserStore } from '../store/userStore';
 
 const categories = ['Music', 'Sports', 'Art', 'Food', 'Tech', 'Business', 'Health', 'Theater', 'Comedy', 'Other'];
 const cities = ['Dubai', 'Abu Dhabi', 'Sharjah', 'Ajman', 'Ras Al Khaimah', 'Fujairah', 'Umm Al Quwain'];
@@ -39,6 +41,7 @@ type Navigation = NativeStackNavigationProp<ProfileStackParamList, 'CreateEvent'
 export default function CreateEventScreen({ navigation }: { navigation: Navigation }) {
   const { t, locale } = useLocale();
   const { isWebDesktop } = useBreakpoint();
+  const { user } = useUserStore();
   const today = toLocalDateString(new Date());
   const [form, setForm] = useState({ title: '', description: '', category: 'Other', venueName: '', address: '', city: 'Dubai', isFree: true, price: '', ticketUrl: '', capacity: '0', notes: '', coverImage: '' });
   const [fromDate, setFromDate] = useState('');
@@ -116,6 +119,23 @@ export default function CreateEventScreen({ navigation }: { navigation: Navigati
     }
   };
 
+  if (!isHost(user)) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Container style={[styles.desktopContainer, styles.upgradePrompt]}>
+          <Text style={styles.heading}>{t('upgrade_host_title')}</Text>
+          <Text style={styles.upgradeText}>{t('upgrade_host_help')}</Text>
+          <TouchableOpacity
+            style={styles.upgradeButton}
+            onPress={() => navigation.navigate('Plans', { selectedPlan: 'HOST' })}
+          >
+            <Text style={styles.upgradeButtonText}>{t('upgrade_to_host')}</Text>
+          </TouchableOpacity>
+        </Container>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={[styles.content, isWebDesktop && styles.desktopContent]} keyboardShouldPersistTaps="handled">
@@ -180,6 +200,10 @@ const styles = StyleSheet.create({
   desktopContent: { padding: 0 },
   desktopContainer: { maxWidth: 840, paddingVertical: 32 },
   mobileContainer: { paddingHorizontal: 0 },
+  upgradePrompt: { flex: 1, minHeight: 320, alignItems: 'center', justifyContent: 'center', gap: 14 },
+  upgradeText: { maxWidth: 560, textAlign: 'center', fontSize: 16, lineHeight: 24, color: colors.textSecondary },
+  upgradeButton: { backgroundColor: colors.primary, paddingHorizontal: 22, paddingVertical: 13, borderRadius: 999 },
+  upgradeButtonText: { color: colors.textInverse, fontWeight: '800' },
   heading: { ...type.h1, color: colors.ink, marginBottom: 6 },
   label: { color: colors.textSecondary, fontSize: 14, fontWeight: '700', marginTop: 4 },
   input: { borderWidth: 1, borderColor: colors.border, borderRadius: 10, backgroundColor: colors.textInverse, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15 },

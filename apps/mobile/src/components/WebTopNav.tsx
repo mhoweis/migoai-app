@@ -7,6 +7,7 @@ import { colors, radius, spacing, type } from '../theme';
 import Container from './Container';
 import { useUserStore } from '../store/userStore';
 import GradientButton from './GradientButton';
+import { isHost } from '../services/auth.service';
 
 const FlexSpacer = View as unknown as React.ComponentType<any>;
 
@@ -47,7 +48,19 @@ export default function WebTopNav({ activeTab }: { activeTab?: string }) {
           <Ionicons name="globe-outline" size={17} color={colors.ink} />
           <Text style={styles.localeText}>{locale === 'ar' ? 'EN' : 'ع'}</Text>
         </TouchableOpacity>
-        <GradientButton accessibilityLabel={t('create_event')} style={styles.createButton} label={t('create_event')} icon={<Ionicons name="add" size={18} color={colors.textInverse} />} onPress={() => navigationRef.current?.navigate('Main', { screen: 'ProfileTab', params: { screen: 'CreateEvent' } })} />
+        <GradientButton
+          accessibilityLabel={t(isHost(user) ? 'create_event' : 'upgrade_to_host')}
+          style={styles.createButton}
+          label={t(isHost(user) ? 'create_event' : 'upgrade_to_host')}
+          icon={<Ionicons name="add" size={18} color={colors.textInverse} />}
+          onPress={() => navigationRef.current?.navigate('Main', {
+            screen: 'ProfileTab',
+            params: {
+              screen: isHost(user) ? 'CreateEvent' : 'Plans',
+              ...(!isHost(user) ? { params: { selectedPlan: 'HOST' } } : {}),
+            },
+          })}
+        />
         <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('profile')} onPress={() => navigateToTab('Profile')} style={styles.avatarButton}>
           {user?.avatar
             ? <Image source={{ uri: user.avatar }} style={styles.avatarImage} />

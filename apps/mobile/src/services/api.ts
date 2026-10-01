@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform, Alert } from "react-native";
 import Constants from "expo-constants"; // Optional: if using Expo
 import { tokenStorage } from "./tokenStorage";
+import { handleAccountPaused } from "./accountPause";
 
 // Get the machine's IP address for physical device testing
 let MACHINE_IP = "192.168.12.33";
@@ -140,6 +141,16 @@ api.interceptors.response.use(
 
     const originalRequest = error.config;
 
+    if (
+      error.response?.status === 403
+      && error.response?.data?.code === "ACCOUNT_PAUSED"
+    ) {
+      api.defaults.headers.common.Authorization = "";
+      await tokenStorage.clear();
+      await handleAccountPaused();
+      return Promise.reject(error);
+    }
+
     if (error.code === "ECONNABORTED") {
       throw new Error("Request timeout. Please check your connection.");
     }
@@ -178,6 +189,10 @@ api.interceptors.response.use(
       } catch (refreshError) {
         // If refresh fails, logout the user
         await tokenStorage.clear();
+        if ((refreshError as any)?.response?.data?.code === "ACCOUNT_PAUSED") {
+          api.defaults.headers.common.Authorization = "";
+          await handleAccountPaused();
+        }
 
         // You might want to redirect to login screen here
         console.log("Session expired, please login again");

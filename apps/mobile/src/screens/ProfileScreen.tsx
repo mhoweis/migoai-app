@@ -22,7 +22,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUserStore } from '../store/userStore';
 import { ProfileStackParamList } from '../navigation/MainTabNavigator';
 import { navigationRef } from '../navigation/navigationRef';
-import { authService } from '../services/auth.service';
+import { authService, isAdmin, isHost, isSupplier } from '../services/auth.service';
 import { setLocale, useLocale } from '../i18n';
 import { LinearGradient } from 'expo-linear-gradient';
 import { gradients, radius, shadow, type } from '../theme';
@@ -138,6 +138,14 @@ const ProfileScreen = () => {
     navigation.navigate('CreateEvent');
   };
 
+  const handleNavigateToPlans = (selectedPlan: 'HOST' | 'SUPPLIER') => {
+    navigation.navigate('Plans', { selectedPlan });
+  };
+
+  const handleNavigateToSupplierPortal = () => {
+    navigation.navigate('SupplierPortal');
+  };
+
   const handleNavigateToMyEvents = () => {
     navigation.navigate('MyEvents');
   };
@@ -160,6 +168,10 @@ const ProfileScreen = () => {
 
   const handleNavigateToAdminConsole = () => {
     navigationRef.current?.navigate('AdminConsole' as never);
+  };
+
+  const handleNavigateToAdminModeration = () => {
+    navigationRef.current?.navigate('AdminModeration' as never);
   };
 
   const handleLocaleChange = async (next: 'en' | 'ar') => {
@@ -221,6 +233,9 @@ const ProfileScreen = () => {
                 <Ionicons name="pencil" size={14} color={colors.textMuted} style={{ marginLeft: 6 }} />
               </TouchableOpacity>
               <Text style={styles.userEmail} numberOfLines={1} ellipsizeMode="middle">{user?.email || 'user@example.com'}</Text>
+              <View style={styles.accountBadge}>
+                <Text style={styles.accountBadgeText}>{t(`account_role_${(user?.role || 'USER').toLowerCase()}` as any)}</Text>
+              </View>
             </View>
           </View>
         </View>
@@ -365,27 +380,57 @@ const ProfileScreen = () => {
 
         <View style={[styles.section, isWebDesktop && styles.desktopSection]}>
           <Text style={styles.sectionTitle}>{t('host')}</Text>
-          <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToCreateEvent}>
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
-              <Text style={styles.menuItemText}>{t('create_event')}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToHostDashboard}>
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="stats-chart-outline" size={24} color={colors.primary} />
-              <Text style={styles.menuItemText}>{t('host_dashboard')}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToMyEvents}>
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="calendar-outline" size={24} color={colors.primary} />
-              <Text style={styles.menuItemText}>{t('my_events')}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-          </TouchableOpacity>
+          {!isHost(user) ? (
+            <>
+              <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigateToPlans('HOST')}>
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="rocket-outline" size={24} color={colors.primary} />
+                  <Text style={styles.menuItemText}>{t('upgrade_to_host')}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigateToPlans('SUPPLIER')}>
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="storefront-outline" size={24} color={colors.primary} />
+                  <Text style={styles.menuItemText}>{t('become_supplier')}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToCreateEvent}>
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
+                  <Text style={styles.menuItemText}>{t('create_event')}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToHostDashboard}>
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="stats-chart-outline" size={24} color={colors.primary} />
+                  <Text style={styles.menuItemText}>{t('host_dashboard')}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToMyEvents}>
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="calendar-outline" size={24} color={colors.primary} />
+                  <Text style={styles.menuItemText}>{t('my_events')}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+              {user?.role === 'ORGANIZER' ? (
+                <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigateToPlans('SUPPLIER')}>
+                  <View style={styles.menuItemLeft}>
+                    <Ionicons name="storefront-outline" size={24} color={colors.primary} />
+                    <Text style={styles.menuItemText}>{t('become_supplier')}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+                </TouchableOpacity>
+              ) : null}
+            </>
+          )}
           <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToFindFriends}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="people-outline" size={24} color={colors.primary} />
@@ -393,7 +438,16 @@ const ProfileScreen = () => {
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
-          {(user as any)?.role === 'ADMIN' || (user as any)?.isAdmin ? (
+          {isSupplier(user) || isAdmin(user) ? (
+            <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToSupplierPortal}>
+              <View style={styles.menuItemLeft}>
+                <Ionicons name="storefront-outline" size={24} color={colors.primary} />
+                <Text style={styles.menuItemText}>{t('supplier_portal')}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
+          ) : null}
+          {isAdmin(user) ? (
             <>
               <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToVerifyOrganizers}>
                 <View style={styles.menuItemLeft}>
@@ -406,6 +460,13 @@ const ProfileScreen = () => {
                 <View style={styles.menuItemLeft}>
                   <Ionicons name="briefcase-outline" size={24} color={colors.primary} />
                   <Text style={styles.menuItemText}>{t('admin_console')}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.menuItem} onPress={handleNavigateToAdminModeration}>
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="people-circle-outline" size={24} color={colors.primary} />
+                  <Text style={styles.menuItemText}>{t('moderation_title')}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
               </TouchableOpacity>
@@ -699,6 +760,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textMuted,
     marginTop: 4,
+  },
+  accountBadge: {
+    alignSelf: 'flex-start',
+    marginTop: 7,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primarySoft,
+  },
+  accountBadgeText: {
+    color: colors.primaryDark,
+    fontSize: 12,
+    fontWeight: '800',
   },
   menuItem: {
     flexDirection: 'row',

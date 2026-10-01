@@ -4,12 +4,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { tokenStorage } from '../services/tokenStorage';
 import { authService, User } from '../services/auth.service';
 import { HomeLayout } from '../config/homeSections';
+import { registerAccountPausedHandler } from '../services/accountPause';
 
 interface UserStore {
   user: User | null;
   isLoading: boolean;
   error: string | null;
   firstLogin: boolean;
+  accountPaused: boolean;
   userLocation: string | null; // User's preferred city for filtering events
 
   // Actions
@@ -22,6 +24,7 @@ interface UserStore {
   logout: () => Promise<void>;
   loadUserFromStorage: () => Promise<void>;
   clearError: () => void;
+  clearAccountPaused: () => void;
   updateProfile: (data: Partial<User>) => Promise<void>;
 }
 
@@ -30,6 +33,7 @@ export const useUserStore = create<UserStore>((set, get) => ({
   isLoading: false,
   error: null,
   firstLogin: false,
+  accountPaused: false,
   userLocation: null, // Will be set from storage or default to 'New York'
   
   setUser: async (user) => {
@@ -42,7 +46,7 @@ export const useUserStore = create<UserStore>((set, get) => ({
           preferences: { ...currentUser.preferences, ...user.preferences },
         }
       : user;
-    set({ user: nextUser, error: null });
+    set({ user: nextUser, error: null, ...(nextUser ? { accountPaused: false } : {}) });
     if (nextUser) {
       await AsyncStorage.setItem('user', JSON.stringify(nextUser));
     } else {
@@ -198,6 +202,12 @@ export const useUserStore = create<UserStore>((set, get) => ({
           updates.user = user;
           await AsyncStorage.setItem('user', JSON.stringify(user));
         } catch (error) {
+          if ((error as any)?.response?.data?.code === 'ACCOUNT_PAUSED') {
+            await tokenStorage.clear();
+            await AsyncStorage.multiRemove(['user', 'firstLogin']);
+            set({ user: null, firstLogin: false, isLoading: false, accountPaused: true });
+            return;
+          }
           console.warn('Failed to fetch user with token:', error);
           // Clear invalid token
           await tokenStorage.clear();
@@ -221,6 +231,7 @@ export const useUserStore = create<UserStore>((set, get) => ({
   },
   
   clearError: () => set({ error: null }),
+  clearAccountPaused: () => set({ accountPaused: false }),
   
   updateProfile: async (data) => {
     try {
@@ -241,3 +252,17 @@ export const useUserStore = create<UserStore>((set, get) => ({
     }
   },
 }));
+
+registerAccountPausedHandler(async () => {
+  await Promise.all([
+    tokenStorage.clear(),
+    AsyncStorage.multiRemove(['user', 'firstLogin']),
+  ]);
+  useUserStore.setState({
+    user: null,
+    firstLogin: false,
+    isLoading: false,
+    error: null,
+    accountPaused: true,
+  });
+});

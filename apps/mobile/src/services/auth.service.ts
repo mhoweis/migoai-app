@@ -9,7 +9,9 @@ export interface User {
   name: string;
   phone?: string | null;
   avatar?: string;
-  role: string;
+  role: 'USER' | 'ORGANIZER' | 'SUPPLIER' | 'ADMIN';
+  status?: 'ACTIVE' | 'PAUSED';
+  supplierId?: string | null;
   interests: string[];
   preferences?: {
     notifications?: boolean;
@@ -28,6 +30,15 @@ export interface User {
   emailVerified?: boolean;
   phoneVerified?: boolean;
 }
+
+export const isHost = (user?: Pick<User, 'role'> | null): boolean =>
+  user?.role === 'ORGANIZER' || user?.role === 'SUPPLIER' || user?.role === 'ADMIN';
+
+export const isSupplier = (user?: Pick<User, 'role'> | null): boolean =>
+  user?.role === 'SUPPLIER';
+
+export const isAdmin = (user?: Pick<User, 'role'> | null): boolean =>
+  user?.role === 'ADMIN';
 
 export interface AuthResponse {
   user: User;
@@ -113,12 +124,14 @@ export const authService = {
       return response.data.data;
     } catch (error: any) {
       console.error('Login error:', error.response?.data || error.message);
-      throw new Error(
+      const loginError = new Error(
         error.response?.data?.error || 
         error.response?.data?.message || 
         error.message || 
         'Login failed'
       );
+      (loginError as Error & { code?: string }).code = error.response?.data?.code;
+      throw loginError;
     }
   },
 

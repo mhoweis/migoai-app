@@ -36,6 +36,10 @@ import CustomizeHomeScreen from "./src/screens/CustomizeHomeScreen";
 import AdminConsoleScreen from "./src/screens/AdminConsoleScreen";
 import AdminSupplierScreen from "./src/screens/AdminSupplierScreen";
 import AdminSearchInsightsScreen from "./src/screens/AdminSearchInsightsScreen";
+import PlansScreen from "./src/screens/PlansScreen";
+import SupplierPortalScreen from "./src/screens/SupplierPortalScreen";
+import SupplierPageScreen from "./src/screens/SupplierPageScreen";
+import AdminModerationScreen from "./src/screens/AdminModerationScreen";
 import { inviteRef } from "./src/utils/inviteRef";
 import { ticketsService } from "./src/services/tickets.service";
 import { navigateToTab } from "./src/navigation/navigationRef";
@@ -183,6 +187,26 @@ export function ProfileStack() {
         component={VerifyOrganizersScreen}
         options={{ title: t('verify_organizers'), headerBackTitle: t('back') }}
       />
+      <Stack.Screen
+        name="Plans"
+        component={PlansScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="SupplierPortal"
+        component={SupplierPortalScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="SupplierPage"
+        component={SupplierPageScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="AdminModeration"
+        component={AdminModerationScreen}
+        options={{ headerShown: false }}
+      />
     </Stack.Navigator>
   );
 }
@@ -297,7 +321,7 @@ function AppFrame({ children, showChatFab, currentRoute, activeTab }: {
 }
 
 export default function App() {
-  const { user, firstLogin, loadUserFromStorage, setUser, setFirstLogin } = useUserStore();
+  const { user, firstLogin, accountPaused, loadUserFromStorage, setUser, setFirstLogin } = useUserStore();
   const [appLoading, setAppLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
   const [currentRoute, setCurrentRoute] = useState<string | undefined>();
@@ -307,6 +331,11 @@ export default function App() {
   useEffect(() => {
     initializeApp();
   }, []);
+
+  useEffect(() => {
+    if (!accountPaused || user || !authChecked || !navigationRef.isReady()) return;
+    navigationRef.navigate('Login');
+  }, [accountPaused, authChecked, user]);
 
   useEffect(() => {
     if (appLoading) return undefined;
@@ -358,7 +387,17 @@ export default function App() {
           Alert.alert(t('payment_cancelled'));
           return;
         }
-        if (checkout !== CHECKOUT_SUCCESS_QUERY.split('=')[1] || !bookingId) return;
+        if (checkout !== CHECKOUT_SUCCESS_QUERY.split('=')[1]) return;
+        if (!bookingId) {
+          const currentUser = await authService.getCurrentUser();
+          await setUser(currentUser);
+          navigationRef.current?.navigate('Main', {
+            screen: 'ProfileTab',
+            params: { screen: 'Plans' },
+          });
+          Alert.alert(t('plans_checkout_success'));
+          return;
+        }
 
         for (let attempt = 0; attempt < 5 && active; attempt += 1) {
           const result = await ticketsService.confirm(bookingId);
@@ -439,8 +478,12 @@ export default function App() {
           // Check if user has interests for first login logic
           const parsedUser = JSON.parse(storedUser);
           const hasInterests = parsedUser.interests && parsedUser.interests.length > 0;
-          
-          setUser(parsedUser);
+          setUser({
+            ...parsedUser,
+            ...currentUser,
+            interests: currentUser.interests ?? parsedUser.interests,
+            preferences: { ...parsedUser.preferences, ...currentUser.preferences },
+          });
           setFirstLogin(!hasInterests);
           
         } catch (error) {
@@ -578,6 +621,26 @@ export default function App() {
                 <Stack.Screen
                   name="AdminSearchInsights"
                   component={AdminSearchInsightsScreen}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="Plans"
+                  component={PlansScreen}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="SupplierPortal"
+                  component={SupplierPortalScreen}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="SupplierPage"
+                  component={SupplierPageScreen}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="AdminModeration"
+                  component={AdminModerationScreen}
                   options={{ headerShown: false }}
                 />
               </>

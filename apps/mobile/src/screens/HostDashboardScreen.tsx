@@ -15,6 +15,8 @@ import { useBreakpoint } from '../hooks/useBreakpoint';
 import { formatEventDate, useLocale } from '../i18n';
 import { navigateToTab } from '../navigation/navigationRef';
 import { dashboardService, HostDashboardData, HostDashboardEvent } from '../services/dashboard.service';
+import { isHost } from '../services/auth.service';
+import { useUserStore } from '../store/userStore';
 import { colors, radius, shadow, type } from '../theme';
 
 type Kpi = { label: string; value: string; detail?: string; icon: keyof typeof Ionicons.glyphMap };
@@ -89,6 +91,7 @@ function EventRow({ event, onOpen, onCheckIn, t }: {
 export default function HostDashboardScreen() {
   const { t, locale, isRTL } = useLocale();
   const navigation = useNavigation<any>();
+  const { user } = useUserStore();
   const { width, isWebDesktop } = useBreakpoint();
   const [dashboard, setDashboard] = useState<HostDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -97,6 +100,10 @@ export default function HostDashboardScreen() {
   const [refreshVersion, setRefreshVersion] = useState(0);
 
   useFocusEffect(useCallback(() => {
+    if (!isHost(user)) {
+      setLoading(false);
+      return () => undefined;
+    }
     let mounted = true;
     setLoading(true);
     setError(false);
@@ -105,7 +112,7 @@ export default function HostDashboardScreen() {
       .catch(() => { if (mounted) setError(true); })
       .finally(() => { if (mounted) setLoading(false); });
     return () => { mounted = false; };
-  }, [refreshVersion]));
+  }, [refreshVersion, user?.role]));
 
   const openEvent = (eventId: string) => navigateToTab('Events', 'EventDetail', { eventId });
   const openCheckIn = (eventId: string) => navigateToTab('Profile', 'CheckIn', { eventId });
@@ -140,6 +147,24 @@ export default function HostDashboardScreen() {
   const visibleEvents = dashboard?.events.filter(event => event.isPast === (selectedEvents === 'past')) || [];
   const maxNewFollowers = Math.max(1, ...(dashboard?.community.followerGrowth.map(week => week.newFollowers) || []));
   const chartLocale = locale === 'ar' ? 'ar-AE' : 'en-AE';
+
+  if (!isHost(user)) {
+    return (
+      <View style={styles.screen}>
+        <Container style={styles.upgradeContainer}>
+          <Ionicons name="lock-closed-outline" size={40} color={colors.primary} />
+          <Text style={styles.upgradeTitle}>{t('upgrade_host_title')}</Text>
+          <Text style={styles.upgradeText}>{t('upgrade_host_help')}</Text>
+          <TouchableOpacity
+            style={styles.upgradeButton}
+            onPress={() => navigation.navigate('Main', { screen: 'ProfileTab', params: { screen: 'Plans', params: { selectedPlan: 'HOST' } } })}
+          >
+            <Text style={styles.upgradeButtonText}>{t('upgrade_to_host')}</Text>
+          </TouchableOpacity>
+        </Container>
+      </View>
+    );
+  }
 
   if (loading) {
     return <View style={styles.loading}><ActivityIndicator size="large" color={colors.primary} /></View>;
@@ -291,6 +316,11 @@ const styles = StyleSheet.create({
   scrollContent: { flexGrow: 1, paddingBottom: 28 },
   content: { paddingTop: 28 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg },
+  upgradeContainer: { flex: 1, minHeight: 360, alignItems: 'center', justifyContent: 'center', gap: 14, paddingVertical: 40 },
+  upgradeTitle: { ...type.h2, textAlign: 'center' },
+  upgradeText: { ...type.body, textAlign: 'center', maxWidth: 520 },
+  upgradeButton: { paddingHorizontal: 22, paddingVertical: 13, borderRadius: radius.pill, backgroundColor: colors.primary, marginTop: 6 },
+  upgradeButtonText: { color: colors.textInverse, fontWeight: '800' },
   backButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 14, marginBottom: 14, borderRadius: radius.pill, backgroundColor: colors.surface, ...shadow.card },
   backText: { color: colors.primary, fontSize: 14, fontWeight: '700' },
   heading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 },

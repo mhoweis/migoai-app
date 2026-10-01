@@ -65,7 +65,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const { setUser, setFirstLogin } = useUserStore();
+  const { setUser, setFirstLogin, accountPaused, clearAccountPaused } = useUserStore();
   const { isRTL, t } = useLocale();
   const { isWebDesktop } = useBreakpoint();
   const { width } = useWindowDimensions();
@@ -77,6 +77,12 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
     const timer = setTimeout(() => setSocialNotice(null), 5000);
     return () => clearTimeout(timer);
   }, [socialNotice]);
+
+  useEffect(() => {
+    if (!accountPaused) return;
+    setErrorMessage(t('account_paused'));
+    clearAccountPaused();
+  }, [accountPaused, clearAccountPaused, t]);
 
   const handleLogin = async () => {
     if (!identifier.trim() || !password) {
@@ -113,7 +119,9 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
       
       let errorMessage = t('please_try_again');
       
-      if (error.message.includes('Invalid credentials')) {
+      if (error.code === 'ACCOUNT_PAUSED') {
+        errorMessage = t('account_paused');
+      } else if (error.message.includes('Invalid credentials')) {
         errorMessage = t('login_invalid_credentials');
       } else if (error.message.includes('User not found')) {
         errorMessage = t('login_user_not_found');

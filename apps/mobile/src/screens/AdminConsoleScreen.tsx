@@ -298,6 +298,7 @@ export default function AdminConsoleScreen() {
               </View>
             </View>
             <ActionButton label={t('admin_open_insights')} onPress={() => navigation.navigate('AdminSearchInsights')} />
+            <ActionButton label={t('moderation_title')} secondary onPress={() => navigation.navigate('AdminModeration')} />
           </Panel>
         </>
       )}

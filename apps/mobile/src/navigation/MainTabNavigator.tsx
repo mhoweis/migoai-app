@@ -23,6 +23,10 @@ import PlaceDetailScreen, { PlaceDetailParams } from '../screens/PlaceDetailScre
 import CreateEventScreen from '../screens/CreateEventScreen';
 import MyEventsScreen from '../screens/MyEventsScreen';
 import CheckInScreen from '../screens/CheckInScreen';
+import PlansScreen from '../screens/PlansScreen';
+import SupplierPortalScreen from '../screens/SupplierPortalScreen';
+import SupplierPageScreen from '../screens/SupplierPageScreen';
+import AdminModerationScreen from '../screens/AdminModerationScreen';
 
 // Param list types — exported so screens can type their navigation props
 export type HomeStackParamList = {
@@ -52,6 +56,10 @@ export type ProfileStackParamList = {
   MyEvents: undefined;
   CheckIn: { eventId?: string };
   FindFriends: undefined;
+  Plans: { selectedPlan?: 'HOST' | 'SUPPLIER' } | undefined;
+  SupplierPortal: { supplierId?: string } | undefined;
+  SupplierPage: { slug: string };
+  AdminModeration: undefined;
 };
 
 export type WalletStackParamList = {
@@ -190,6 +198,10 @@ function ProfileStackNavigator() {
         component={CheckInScreen}
         options={{ title: 'Check in', headerBackTitle: 'Back' }}
       />
+      <ProfileStack.Screen name="Plans" component={PlansScreen} options={{ headerShown: false }} />
+      <ProfileStack.Screen name="SupplierPortal" component={SupplierPortalScreen} options={{ headerShown: false }} />
+      <ProfileStack.Screen name="SupplierPage" component={SupplierPageScreen} options={{ headerShown: false }} />
+      <ProfileStack.Screen name="AdminModeration" component={AdminModerationScreen} options={{ headerShown: false }} />
     </ProfileStack.Navigator>
   );
 }
