@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import Container from '../components/Container';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { formatEventDate, useLocale } from '../i18n';
@@ -87,7 +87,8 @@ function EventRow({ event, onOpen, onCheckIn, t }: {
 }
 
 export default function HostDashboardScreen() {
-  const { t, locale } = useLocale();
+  const { t, locale, isRTL } = useLocale();
+  const navigation = useNavigation<any>();
   const { width, isWebDesktop } = useBreakpoint();
   const [dashboard, setDashboard] = useState<HostDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -109,6 +110,7 @@ export default function HostDashboardScreen() {
   const openEvent = (eventId: string) => navigateToTab('Events', 'EventDetail', { eventId });
   const openCheckIn = (eventId: string) => navigateToTab('Profile', 'CheckIn', { eventId });
   const createEvent = () => navigateToTab('Profile', 'CreateEvent');
+  const goBack = () => (navigation.canGoBack() ? navigation.goBack() : navigateToTab('Profile', 'ProfileMain'));
 
   const kpis: Kpi[] = dashboard ? [
     {
@@ -147,6 +149,15 @@ export default function HostDashboardScreen() {
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <Container style={styles.content}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={t('back')}
+            onPress={goBack}
+            style={styles.backButton}
+          >
+            <Ionicons name={isRTL ? 'arrow-forward' : 'arrow-back'} size={18} color={colors.primary} />
+            <Text style={styles.backText}>{t('back')}</Text>
+          </TouchableOpacity>
           <View style={styles.heading}>
             <View>
               <Text style={styles.eyebrow}>{t('host')}</Text>
@@ -280,6 +291,8 @@ const styles = StyleSheet.create({
   scrollContent: { flexGrow: 1, paddingBottom: 28 },
   content: { paddingTop: 28 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg },
+  backButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 14, marginBottom: 14, borderRadius: radius.pill, backgroundColor: colors.surface, ...shadow.card },
+  backText: { color: colors.primary, fontSize: 14, fontWeight: '700' },
   heading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 },
   eyebrow: { ...type.label, color: colors.primary, textTransform: 'uppercase', letterSpacing: 1 },
   title: { ...type.h1, marginTop: 4 },
