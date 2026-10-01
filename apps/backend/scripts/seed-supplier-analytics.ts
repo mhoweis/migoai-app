@@ -1,10 +1,11 @@
-import { createHash, randomUUID } from 'crypto';
+import { randomUUID } from 'crypto';
 import { CampaignStatus, Prisma } from '@prisma/client';
 import prisma from '../src/database/prisma';
 import sources from '../src/services/providers/source-registry';
 import { setSupplierCampaignStatus } from '../src/services/supplier-campaigns.service';
 
 const CLICK_PREFIX = 'seed-supplier-analytics-';
+const IMPRESSION_SOURCE = 'supplier_analytics_seed';
 const SIGNAL_MARKER = 'supplier-analytics';
 const CAMPAIGN_MARKER = '[seed:supplier-analytics]';
 const SEARCH_TERMS = [
@@ -38,6 +39,9 @@ async function removeSeedData() {
   const clicks = await prisma.affiliateClick.deleteMany({
     where: { token: { startsWith: CLICK_PREFIX } },
   });
+  const impressions = await prisma.eventView.deleteMany({
+    where: { source: IMPRESSION_SOURCE },
+  });
   const signals = await prisma.userSignal.findMany({
     where: { type: { in: ['view', 'search'] } },
     select: { id: true, context: true },
@@ -64,7 +68,12 @@ async function removeSeedData() {
     ? await prisma.supplierCampaign.deleteMany({ where: { id: { in: campaigns.map(campaign => campaign.id) } } })
     : { count: 0 };
 
-  return { clicks: clicks.count, signals: removedSignals.count, campaigns: removedCampaigns.count };
+  return {
+    clicks: clicks.count,
+    impressions: impressions.count,
+    signals: removedSignals.count,
+    campaigns: removedCampaigns.count,
+  };
 }
 
 async function seedData() {
@@ -107,32 +116,66 @@ async function seedData() {
   if (!friends.length) throw new Error('No sample-friend users are available');
   const friendIds = friends.map(friend => friend.id);
 
-  const clicks = Array.from({ length: 400 }, () => {
+  const clicks = Array.from({ length: 400 }, (_, index) => {
     const event = randomItem(eligibleEvents);
     const platform = randomItem(PLATFORMS);
+    const isAnonymous = index < 240;
     return {
       token: `${CLICK_PREFIX}${randomUUID()}`,
-      userId: randomItem(friendIds),
+      userId: isAnonymous ? null : randomItem(friendIds),
       eventId: event.id,
       supplier: event.externalSource || 'unknown',
       platform: platform.platform,
       targetUrl: event.externalUrl || event.ticketUrl || 'https://example.com',
       placement: randomItem(PLACEMENTS),
-      ipHash: createHash('sha256').update(randomUUID()).digest('hex'),
+      ipHash: isAnonymous ? `seed-${(index % 150) + 1}` : null,
       userAgent: platform.userAgent,
       createdAt: randomDate(now),
     };
   });
   await prisma.affiliateClick.createMany({ data: clicks });
 
-  const views = Array.from({ length: 300 }, () => ({
-    userId: randomItem(friendIds),
-    eventId: randomItem(eligibleEvents).id,
-    type: 'view',
-    weight: 0.5,
-    context: seededContext() as Prisma.InputJsonObject,
-    createdAt: randomDate(now),
-  }));
+  const clicksByEvent = new Map<string, number>();
+  clicks.forEach(click => clicksByEvent.set(click.eventId, (clicksByEvent.get(click.eventId) || 0) + 1));
+  const signalViews: Array<{
+    userId: string;
+    eventId: string;
+    type: string;
+    weight: number;
+    context: Prisma.InputJsonObject;
+    createdAt: Date;
+  }> = [];
+  const impressions: Array<{
+    eventId: string;
+    userId: string;
+    source: string;
+    viewedAt: Date;
+  }> = [];
+  for (const event of eligibleEvents) {
+    const eventClicks = clicksByEvent.get(event.id) || 0;
+    if (!eventClicks) continue;
+    const viewCount = eventClicks * (6 + Math.floor(Math.random() * 5));
+    const impressionCount = viewCount * (3 + Math.floor(Math.random() * 3));
+    for (let index = 0; index < viewCount; index += 1) {
+      signalViews.push({
+        userId: randomItem(friendIds),
+        eventId: event.id,
+        type: 'view',
+        weight: 0.5,
+        context: seededContext() as Prisma.InputJsonObject,
+        createdAt: randomDate(now),
+      });
+    }
+    for (let index = 0; index < impressionCount; index += 1) {
+      impressions.push({
+        eventId: event.id,
+        userId: randomItem(friendIds),
+        source: IMPRESSION_SOURCE,
+        viewedAt: randomDate(now),
+      });
+    }
+  }
+  await prisma.eventView.createMany({ data: impressions });
   const searchSignals = Array.from({ length: 60 }, () => ({
     userId: randomItem(friendIds),
     type: 'search',
@@ -140,7 +183,7 @@ async function seedData() {
     context: seededContext({ query: randomItem(SEARCH_TERMS) }),
     createdAt: randomDate(now),
   }));
-  await prisma.userSignal.createMany({ data: [...views, ...searchSignals] });
+  await prisma.userSignal.createMany({ data: [...signalViews, ...searchSignals] });
 
   const visitDubai = suppliers.find(supplier => supplier.sourceKey === 'visit-dubai');
   const visitDubaiEvent = events.find(event => event.externalSource === 'visit-dubai');
@@ -174,7 +217,8 @@ async function seedData() {
     topSourceKeys,
     upcomingEvents: eligibleEvents.length,
     clicks: clicks.length,
-    views: views.length,
+    views: signalViews.length,
+    impressions: impressions.length,
     searches: searchSignals.length,
     campaigns: 2,
   };

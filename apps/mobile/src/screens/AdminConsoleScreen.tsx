@@ -21,6 +21,7 @@ import {
   KpiCard,
   KpiGrid,
   Panel,
+  formatRevenueByCurrency,
   RangeSelector,
   SectionTitle,
   StatusPill,
@@ -132,8 +133,8 @@ export default function AdminConsoleScreen() {
           <Text style={styles.tableNumber}>{supplier.eventsListed}</Text>
           <Text style={styles.tableNumber}>{supplier.upcomingEvents}</Text>
           <Text style={styles.tableNumber}>{supplier.clicks.toLocaleString()}</Text>
-          <Text style={styles.tableNumber}>{supplier.ctr.toFixed(1)}%</Text>
-          <Text style={[styles.tableNumber, { flex: 1.2 }]}>{money(supplier.revenue)}</Text>
+          <Text style={styles.tableNumber}>{(supplier.ctr * 100).toFixed(1)}%</Text>
+          <Text style={[styles.tableNumber, { flex: 1.2 }]}>{formatRevenueByCurrency(supplier.revenueByCurrency)}</Text>
           <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
         </TouchableOpacity>
       );
@@ -155,10 +156,10 @@ export default function AdminConsoleScreen() {
         <View style={styles.supplierStats}>
           <Text style={styles.supplierStat}>{supplier.clicks.toLocaleString()} <Text style={styles.statLabel}>{t('admin_clicks')}</Text></Text>
           <Text style={styles.supplierStat}>{supplier.upcomingEvents} <Text style={styles.statLabel}>{t('admin_upcoming')}</Text></Text>
-          <Text style={styles.supplierStat}>{supplier.ctr.toFixed(1)}% <Text style={styles.statLabel}>CTR</Text></Text>
+          <Text style={styles.supplierStat}>{(supplier.ctr * 100).toFixed(1)}% <Text style={styles.statLabel}>CTR</Text></Text>
         </View>
         <View style={styles.supplierCardBottom}>
-          <Text style={styles.supplierRevenue}>{money(supplier.revenue)}</Text>
+          <Text style={styles.supplierRevenue}>{formatRevenueByCurrency(supplier.revenueByCurrency)}</Text>
           <Ionicons name="arrow-forward" size={18} color={colors.primary} />
         </View>
       </TouchableOpacity>
@@ -188,7 +189,7 @@ export default function AdminConsoleScreen() {
             <KpiCard label={t('admin_views')} value={overviewTotals?.views.toLocaleString() || '0'} icon="◎" />
             <KpiCard label={t('admin_bookings')} value={overviewTotals?.bookings.toLocaleString() || '0'} icon="✓" />
             <KpiCard label={t('admin_tickets')} value={overviewTotals?.tickets.toLocaleString() || '0'} icon="▣" />
-            <KpiCard label={t('admin_revenue')} value={money(overviewTotals?.revenue || 0)} icon="د.إ" />
+            <KpiCard label={t('admin_revenue')} value={formatRevenueByCurrency(overviewTotals?.revenueByCurrency)} icon="د.إ" />
             <KpiCard label={t('admin_active_campaigns')} value={overviewTotals?.activeCampaigns || 0} icon="✦" />
             <KpiCard label={t('admin_campaign_revenue')} value={money(overviewTotals?.activeCampaignRevenue || 0)} icon="AED" />
           </KpiGrid>

@@ -125,7 +125,14 @@ export default function HostDashboardScreen() {
     },
     { label: t('dashboard_registered'), value: String(dashboard.totals.registered), icon: 'ticket-outline' },
     { label: t('dashboard_checked_in'), value: String(dashboard.totals.checkedIn), icon: 'checkmark-circle-outline' },
-    { label: t('dashboard_check_in_rate'), value: `${Math.round(dashboard.totals.checkInRate * 100)}%`, icon: 'stats-chart-outline' },
+    {
+      label: t('dashboard_check_in_rate'),
+      value: dashboard.totals.checkInRate === null
+        ? '—'
+        : `${Math.round(dashboard.totals.checkInRate * 100)}%`,
+      detail: dashboard.totals.checkInRate === null ? t('dashboard_check_in_after_start') : undefined,
+      icon: 'stats-chart-outline',
+    },
   ] : [];
 
   const visibleEvents = dashboard?.events.filter(event => event.isPast === (selectedEvents === 'past')) || [];

@@ -198,8 +198,9 @@ export async function getHostDashboard(userId: string) {
   const pastEvents = dashboardEvents.filter(event => event.isPast);
   const registered = dashboardEvents.reduce((sum, event) => sum + event.registered, 0);
   const checkedIn = dashboardEvents.reduce((sum, event) => sum + event.checkedIn, 0);
-  const pastRegistered = pastEvents.reduce((sum, event) => sum + event.registered, 0);
-  const pastCheckedIn = pastEvents.reduce((sum, event) => sum + event.checkedIn, 0);
+  const rateEvents = dashboardEvents.filter(event => event.startDate <= now || event.checkedIn > 0);
+  const rateRegistered = rateEvents.reduce((sum, event) => sum + event.registered, 0);
+  const rateCheckedIn = rateEvents.reduce((sum, event) => sum + event.checkedIn, 0);
 
   return {
     community: {
@@ -231,7 +232,7 @@ export async function getHostDashboard(userId: string) {
       past: pastEvents.length,
       registered,
       checkedIn,
-      checkInRate: pastRegistered ? pastCheckedIn / pastRegistered : 0,
+      checkInRate: rateRegistered ? rateCheckedIn / rateRegistered : null,
       capacity: events.reduce((sum, event) => sum + (event.capacity && event.capacity > 0 ? event.capacity : 0), 0),
       saves: dashboardEvents.reduce((sum, event) => sum + event.saves, 0),
       views: dashboardEvents.reduce((sum, event) => sum + event.views, 0),

@@ -46,7 +46,7 @@ export type HostDashboardData = {
     past: number;
     registered: number;
     checkedIn: number;
-    checkInRate: number;
+    checkInRate: number | null;
     capacity: number;
     saves: number;
     views: number;

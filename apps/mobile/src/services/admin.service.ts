@@ -19,7 +19,7 @@ export interface SupplierMetrics {
   saves: number;
   bookings: number;
   tickets: number;
-  revenue: number;
+  revenueByCurrency: Record<string, number>;
   ctr: number;
   activeCampaigns: number;
 }
@@ -114,7 +114,7 @@ export interface SupplierOverview {
     clicks: number;
     bookings: number;
     tickets: number;
-    revenue: number;
+    revenueByCurrency: Record<string, number>;
     impressions: number;
     views: number;
     uniqueClickers: number;

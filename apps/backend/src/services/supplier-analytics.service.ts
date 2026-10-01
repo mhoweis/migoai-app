@@ -58,6 +58,14 @@ function getUniqueClickerKey(click: { userId: string | null; ipHash: string | nu
   return null;
 }
 
+function sumRevenueByCurrency(bookings: Array<{ currency: string; totalAmount: Prisma.Decimal | null }>): Record<string, number> {
+  return bookings.reduce<Record<string, number>>((totals, booking) => {
+    const currency = booking.currency.trim().toUpperCase() || 'AED';
+    totals[currency] = (totals[currency] || 0) + Number(booking.totalAmount || 0);
+    return totals;
+  }, {});
+}
+
 function normalizeQuery(value: unknown): string {
   return typeof value === 'string' ? value.trim().toLowerCase() : '';
 }
@@ -128,7 +136,7 @@ async function loadSupplierAnalytics(range: SupplierDateRange) {
         bookingDate: createdAt,
         status: { in: bookingStatuses },
       },
-      select: { eventId: true, ticketCount: true, totalAmount: true, bookingDate: true },
+      select: { eventId: true, ticketCount: true, totalAmount: true, currency: true, bookingDate: true },
     }),
     prisma.supplierCampaign.findMany({
       where: {
@@ -157,7 +165,7 @@ async function loadSupplierAnalytics(range: SupplierDateRange) {
     saves: number;
     bookings: number;
     tickets: number;
-    revenue: number;
+    revenueByCurrency: Record<string, number>;
     ctr: number;
     activeCampaigns: number;
   }>();
@@ -185,8 +193,8 @@ async function loadSupplierAnalytics(range: SupplierDateRange) {
       saves: sourceSaves.length,
       bookings: sourceBookings.length,
       tickets: sourceBookings.reduce((total, booking) => total + booking.ticketCount, 0),
-      revenue: sourceBookings.reduce((total, booking) => total + Number(booking.totalAmount || 0), 0),
-      ctr: sourceImpressions.length ? clickCount / sourceImpressions.length : 0,
+      revenueByCurrency: sumRevenueByCurrency(sourceBookings),
+      ctr: viewCount ? clickCount / viewCount : 0,
       activeCampaigns: activeCampaignCount,
     });
   }
@@ -218,7 +226,7 @@ async function loadSupplierAnalytics(range: SupplierDateRange) {
       saves: 0,
       bookings: 0,
       tickets: 0,
-      revenue: 0,
+      revenueByCurrency: {},
       ctr: 0,
       activeCampaigns: 0,
       }),
@@ -587,10 +595,20 @@ export async function getSupplierOverview(range: SupplierDateRange) {
     clicks: result.clicks + supplier.clicks,
     bookings: result.bookings + supplier.bookings,
     tickets: result.tickets + supplier.tickets,
-    revenue: result.revenue + supplier.revenue,
+    revenueByCurrency: Object.entries(supplier.revenueByCurrency).reduce((currencies, [currency, amount]) => {
+      currencies[currency] = (currencies[currency] || 0) + amount;
+      return currencies;
+    }, result.revenueByCurrency),
     impressions: result.impressions + supplier.impressions,
     views: result.views + supplier.views,
-  }), { clicks: 0, bookings: 0, tickets: 0, revenue: 0, impressions: 0, views: 0 });
+  }), {
+    clicks: 0,
+    bookings: 0,
+    tickets: 0,
+    revenueByCurrency: {} as Record<string, number>,
+    impressions: 0,
+    views: 0,
+  });
   const clicksByDay = buildDailyClicks(range, data.clicks, data.bookings);
   const searchInsights = await getSearchInsights(range);
   return {
@@ -668,24 +686,27 @@ function csvRows(rows: unknown[][]): string {
 }
 
 export function supplierReportCsv(detail: NonNullable<Awaited<ReturnType<typeof getSupplierDetail>>>): string {
+  const revenueRows = Object.entries(detail.revenueByCurrency).length
+    ? Object.entries(detail.revenueByCurrency).map(([currency, amount]) => ['revenue', amount, currency])
+    : [['revenue', 0, 'AED']];
   const rows: unknown[][] = [
-    ['metric', 'value'],
-    ['supplier', detail.name],
-    ['sourceKey', detail.sourceKey],
-    ['from', detail.range.from],
-    ['to', detail.range.to],
-    ['eventsListed', detail.eventsListed],
-    ['upcomingEvents', detail.upcomingEvents],
-    ['impressions', detail.impressions],
-    ['views', detail.views],
-    ['clicks', detail.clicks],
-    ['uniqueClickers', detail.uniqueClickers],
-    ['saves', detail.saves],
-    ['bookings', detail.bookings],
-    ['tickets', detail.tickets],
-    ['revenue', detail.revenue],
-    ['ctr', detail.ctr],
-    ['activeCampaigns', detail.activeCampaigns],
+    ['metric', 'value', 'currency'],
+    ['supplier', detail.name, ''],
+    ['sourceKey', detail.sourceKey, ''],
+    ['from', detail.range.from, ''],
+    ['to', detail.range.to, ''],
+    ['eventsListed', detail.eventsListed, ''],
+    ['upcomingEvents', detail.upcomingEvents, ''],
+    ['impressions', detail.impressions, ''],
+    ['views', detail.views, ''],
+    ['clicks', detail.clicks, ''],
+    ['uniqueClickers', detail.uniqueClickers, ''],
+    ['saves', detail.saves, ''],
+    ['bookings', detail.bookings, ''],
+    ['tickets', detail.tickets, ''],
+    ...revenueRows,
+    ['ctr', `${(detail.ctr * 100).toFixed(1)}%`, ''],
+    ['activeCampaigns', detail.activeCampaigns, ''],
     [],
     ['date', 'clicks', 'app', 'website', 'mobile_web', 'bookings'],
     ...detail.clicksByDay.map(day => [day.date, day.clicks, day.app, day.website, day.mobile_web, day.bookings]),

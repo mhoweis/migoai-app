@@ -366,6 +366,7 @@ const en = {
   dashboard_registered: 'Registered',
   dashboard_checked_in: 'Checked in',
   dashboard_check_in_rate: 'Check-in rate',
+  dashboard_check_in_after_start: 'After your events start',
   dashboard_community: 'Community',
   dashboard_followers_attending_events: 'followers attending your events',
   dashboard_follower_growth: 'Follower growth · 8 weeks',

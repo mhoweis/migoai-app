@@ -21,6 +21,7 @@ import {
   KpiCard,
   KpiGrid,
   Panel,
+  formatRevenueByCurrency,
   RangeSelector,
   SectionTitle,
   StatusPill,
@@ -229,8 +230,8 @@ export default function AdminSupplierScreen() {
         <KpiCard label={t('admin_unique_clickers')} value={supplier.uniqueClickers.toLocaleString()} icon="◌" />
         <KpiCard label={t('admin_bookings')} value={supplier.bookings.toLocaleString()} icon="✓" />
         <KpiCard label={t('admin_tickets')} value={supplier.tickets.toLocaleString()} icon="▣" />
-        <KpiCard label={t('admin_revenue')} value={money(supplier.revenue)} icon="د.إ" />
-        <KpiCard label="CTR" value={`${supplier.ctr.toFixed(1)}%`} icon="%" />
+        <KpiCard label={t('admin_revenue')} value={formatRevenueByCurrency(supplier.revenueByCurrency)} icon="د.إ" />
+        <KpiCard label="CTR" value={`${(supplier.ctr * 100).toFixed(1)}%`} icon="%" />
         <KpiCard label={t('admin_active_campaigns')} value={supplier.activeCampaigns} icon="✦" />
         <KpiCard label={t('admin_saves')} value={supplier.saves.toLocaleString()} icon="♡" />
       </KpiGrid>

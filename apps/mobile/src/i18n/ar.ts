@@ -368,6 +368,7 @@ const ar: Record<keyof typeof en, string> = {
   dashboard_registered: 'التسجيلات',
   dashboard_checked_in: 'تم تسجيل الحضور',
   dashboard_check_in_rate: 'نسبة تسجيل الحضور',
+  dashboard_check_in_after_start: 'بعد بدء فعالياتك',
   dashboard_community: 'المجتمع',
   dashboard_followers_attending_events: 'من المتابعين سيحضرون فعالياتك',
   dashboard_follower_growth: 'نمو المتابعين · ٨ أسابيع',

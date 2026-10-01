@@ -8,6 +8,20 @@ import { colors, radius, shadow, spacing, type } from '../theme';
 export const ADMIN_RANGES = [7, 30, 90] as const;
 export type AdminRangeDays = typeof ADMIN_RANGES[number];
 
+export function formatRevenueByCurrency(revenue: Record<string, number> | null | undefined): string {
+  const amounts = Object.entries(revenue || {})
+    .map(([currency, amount]) => ({ currency: currency.toUpperCase(), amount: Number(amount) }))
+    .filter(entry => Number.isFinite(entry.amount) && entry.amount !== 0)
+    .sort((left, right) => {
+      if (left.currency === 'AED') return -1;
+      if (right.currency === 'AED') return 1;
+      return left.currency.localeCompare(right.currency);
+    });
+  return amounts.length
+    ? amounts.map(({ currency, amount }) => `${currency} ${amount.toLocaleString()}`).join(' · ')
+    : 'AED 0';
+}
+
 export function AdminShell({ children }: { children: React.ReactNode }) {
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
