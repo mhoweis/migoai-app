@@ -8,12 +8,14 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import DateField from '../components/DateField';
 import {
   ActionButton,
+  AdminBackButton,
   AdminHeader,
   AdminShell,
   ClicksChart,
@@ -54,7 +56,8 @@ function campaignBoundary(date: string, end = false): string {
 export default function AdminSupplierScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { t, locale } = useLocale();
+  const { t, locale, isRTL } = useLocale();
+  const wide = useWindowDimensions().width >= 900;
   const supplierId = route.params?.supplierId as string;
   const [rangeDays, setRangeDays] = useState<AdminRangeDays>(30);
   const [supplier, setSupplier] = useState<SupplierDetail | null>(null);
@@ -210,6 +213,11 @@ export default function AdminSupplierScreen() {
 
   return (
     <AdminShell>
+      <AdminBackButton
+        label={t('back')}
+        rtl={isRTL}
+        onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('AdminConsole'))}
+      />
       <AdminHeader
         title={locale === 'ar' ? supplier.labelAr || supplier.name : supplier.label || supplier.name}
         subtitle={`${locale === 'ar' ? supplier.labelAr || supplier.label : supplier.label} · ${supplier.sourceKey}`}
@@ -283,8 +291,31 @@ export default function AdminSupplierScreen() {
 
       <Panel>
         <SectionTitle title={t('admin_top_events')} subtitle={t('admin_top_events_subtitle')} />
-        {supplier.topEvents.length ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        {supplier.topEvents.length && !wide ? (
+          <View>
+            {supplier.topEvents.map(event => (
+              <View key={event.id} style={styles.eventCardRow}>
+                <Text numberOfLines={2} style={styles.eventTitle}>{event.title}</Text>
+                <Text style={styles.eventDate}>{campaignDate(event.startDate)}</Text>
+                <View style={styles.eventCardMetrics}>
+                  {([
+                    [t('admin_views'), event.views],
+                    [t('admin_clicks'), event.clicks],
+                    [t('admin_saves'), event.saves],
+                    [t('admin_bookings'), event.bookings],
+                    [t('admin_tickets'), event.tickets],
+                  ] as const).map(([label, value]) => (
+                    <View key={label} style={styles.eventCardMetric}>
+                      <Text style={styles.eventCardMetricValue}>{value}</Text>
+                      <Text numberOfLines={1} style={styles.eventCardMetricLabel}>{label}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : supplier.topEvents.length ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={styles.eventsTableScroll}>
             <View style={styles.eventsTable}>
               <View style={styles.eventTableHeader}>
                 <Text style={[styles.eventTitleCell, styles.tableLabel]}>{t('admin_event')}</Text>
@@ -385,7 +416,7 @@ export default function AdminSupplierScreen() {
               <TouchableOpacity
                 key={item.key}
                 onPress={() => { setPackageKey(item.key); setEventId(''); }}
-                style={[styles.packageChoice, packageKey === item.key && styles.packageChoiceSelected]}
+                style={[styles.packageChoice, wide && styles.packageChoiceWide, packageKey === item.key && styles.packageChoiceSelected]}
               >
                 <Text style={[styles.packageChoiceName, packageKey === item.key && styles.packageChoiceTextSelected]}>
                   {locale === 'ar' ? item.nameAr : item.name}
@@ -396,10 +427,10 @@ export default function AdminSupplierScreen() {
             ))}
           </View>
           {requiresEvent ? (
-            <View style={styles.fieldColumn}>
+            <View style={styles.fieldStack}>
               <Text style={styles.fieldLabel}>{t('admin_campaign_event')}</Text>
               {supplier.upcomingEventOptions.length ? (
-                <View style={styles.eventChoices}>
+                <ScrollView style={styles.eventChoices} contentContainerStyle={styles.eventChoicesContent} nestedScrollEnabled>
                   {supplier.upcomingEventOptions.map(event => (
                     <TouchableOpacity
                       key={event.id}
@@ -413,7 +444,7 @@ export default function AdminSupplierScreen() {
                       </View>
                     </TouchableOpacity>
                   ))}
-                </View>
+                </ScrollView>
               ) : <EmptyState label={t('admin_no_upcoming_events')} />}
             </View>
           ) : null}
@@ -430,7 +461,7 @@ export default function AdminSupplierScreen() {
           {selectedPackage ? (
             <Text style={styles.priceHint}>{t('admin_catalogue_default_price', { price: money(selectedPackage.priceAed), unit: packageUnitLabel(selectedPackage.unit) })}</Text>
           ) : null}
-          <View style={styles.fieldColumn}>
+          <View style={styles.fieldStack}>
             <Text style={styles.fieldLabel}>{t('admin_notes_optional')}</Text>
             <TextInput value={campaignNotes} onChangeText={setCampaignNotes} multiline numberOfLines={3} style={[styles.input, styles.notesInput]} />
           </View>
@@ -445,10 +476,6 @@ export default function AdminSupplierScreen() {
         </View>
       </Panel>
 
-      <TouchableOpacity accessibilityRole="button" onPress={() => navigation.goBack()} style={styles.backLink}>
-        <Ionicons name="arrow-back" size={17} color={colors.primary} />
-        <Text style={styles.backLinkText}>{t('back')}</Text>
-      </TouchableOpacity>
     </AdminShell>
   );
 }
@@ -500,17 +527,24 @@ const styles = StyleSheet.create({
   queryRankText: { color: colors.primary, fontSize: 11, fontWeight: '800' },
   queryText: { flex: 1, color: colors.textSecondary, fontSize: 13 },
   queryCount: { color: colors.ink, fontSize: 12, fontWeight: '800' },
-  eventsTable: { minWidth: 760 },
+  eventsTableScroll: { flexGrow: 1 },
+  eventsTable: { minWidth: 760, flexGrow: 1 },
   eventTableHeader: { minHeight: 38, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: colors.border },
   eventTableRow: { minHeight: 60, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: colors.border },
-  eventTitleCell: { width: 280, paddingRight: 16 },
+  eventTitleCell: { flex: 1, minWidth: 280, paddingEnd: 16 },
   tableLabel: { color: colors.textMuted, fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
   eventMetricHead: { width: 92, color: colors.textMuted, fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
   eventMetric: { width: 92, color: colors.textSecondary, fontSize: 12, fontWeight: '700' },
+  eventCardRow: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
+  eventCardMetrics: { flexDirection: 'row', marginTop: 10, gap: 6 },
+  eventCardMetric: { flex: 1, minWidth: 0, alignItems: 'center', backgroundColor: colors.surfaceAlt, borderRadius: 8, paddingVertical: 6 },
+  eventCardMetricValue: { color: colors.ink, fontSize: 13, fontWeight: '800' },
+  eventCardMetricLabel: { color: colors.textMuted, fontSize: 10, fontWeight: '700', marginTop: 2 },
   eventTitle: { color: colors.ink, fontSize: 13, fontWeight: '700' },
   eventDate: { color: colors.textMuted, fontSize: 11, marginTop: 4 },
   profileForm: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
   fieldColumn: { flex: 1, minWidth: 220, gap: 7 },
+  fieldStack: { gap: 7 },
   fieldLabel: { color: colors.textSecondary, fontSize: 12, fontWeight: '700' },
   input: { minHeight: 46, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, color: colors.text, fontSize: 14 },
   notesInput: { minHeight: 100, textAlignVertical: 'top' },
@@ -529,17 +563,17 @@ const styles = StyleSheet.create({
   campaignForm: { gap: 18 },
   packageChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
   packageChoice: { flexBasis: '31%', flexGrow: 1, minWidth: 205, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.bg, padding: 13 },
+  packageChoiceWide: { maxWidth: '32.5%' },
   packageChoiceSelected: { backgroundColor: colors.primarySoft, borderColor: colors.primary },
   packageChoiceName: { color: colors.ink, fontSize: 13, fontWeight: '800' },
   packageChoicePrice: { color: colors.textMuted, fontSize: 11, marginTop: 5 },
   packageChoiceTextSelected: { color: colors.primary },
   packageEffect: { color: colors.info, fontSize: 10, fontWeight: '700', marginTop: 8 },
-  eventChoices: { gap: 7, maxHeight: 260 },
+  eventChoices: { maxHeight: 320 },
+  eventChoicesContent: { gap: 7 },
   eventChoice: { minHeight: 55, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.bg, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
   eventChoiceSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
   eventChoiceTitle: { color: colors.text, fontSize: 13, fontWeight: '700' },
   dateFields: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
   priceHint: { color: colors.info, fontSize: 12, fontWeight: '700' },
-  backLink: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10 },
-  backLinkText: { color: colors.primary, fontSize: 13, fontWeight: '700' },
 });
