@@ -9,6 +9,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import {
   ActionButton,
+  AdminBackButton,
   AdminHeader,
   AdminShell,
   AdminRangeDays,
@@ -24,7 +25,7 @@ import { colors, radius, type } from '../theme';
 
 export default function AdminSearchInsightsScreen() {
   const navigation = useNavigation<any>();
-  const { t } = useLocale();
+  const { t, isRTL } = useLocale();
   const [rangeDays, setRangeDays] = useState<AdminRangeDays>(30);
   const [insights, setInsights] = useState<SearchInsights | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,6 +63,11 @@ export default function AdminSearchInsightsScreen() {
 
   return (
     <AdminShell>
+      <AdminBackButton
+        label={t('back')}
+        rtl={isRTL}
+        onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('AdminConsole'))}
+      />
       <AdminHeader
         title={t('admin_search_insights')}
         subtitle={t('admin_search_insights_subtitle')}
