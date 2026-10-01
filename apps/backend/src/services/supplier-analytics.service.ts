@@ -90,14 +90,7 @@ function signalQuery(context: Prisma.JsonValue | null): string {
 async function ensureSuppliers() {
   await Promise.all(sourceInfos.map(source => prisma.supplier.upsert({
     where: { sourceKey: source.id },
-    update: source.id === 'difc'
-      ? {
-        name: source.label,
-        website: source.url || null,
-        slug: 'difc',
-        status: 'ACTIVE',
-      }
-      : {},
+    update: {},
     create: {
       sourceKey: source.id,
       name: source.label,

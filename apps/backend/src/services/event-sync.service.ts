@@ -94,12 +94,7 @@ export class EventSyncService {
           try {
             const supplier = await prisma.supplier.upsert({
               where: { sourceKey: 'difc' },
-              update: {
-                name: 'DIFC',
-                website: 'https://www.difc.com',
-                slug: 'difc',
-                status: 'ACTIVE',
-              },
+              update: {},
               create: {
                 sourceKey: 'difc',
                 name: 'DIFC',
