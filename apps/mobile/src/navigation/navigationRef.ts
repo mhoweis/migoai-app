@@ -113,6 +113,10 @@ export function navigateToTab(
   // no CustomTabBar). Navigate from the root container instead, using the
   // mounted route names and passing nested params directly to the tab screen.
   const route = TAB_ROUTE_MAP[tabName] || tabName;
+  if (nestedScreen === 'EventDetail' && navigationRef.current?.navigate) {
+    navigationRef.current.navigate('EventDetail', nestedParams);
+    return;
+  }
   if (navigationRef.current?.navigate) {
     const rootState = navigationRef.current.getRootState();
     const focusedRoute = rootState?.routes?.[rootState.index ?? 0];
