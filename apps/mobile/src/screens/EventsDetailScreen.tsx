@@ -791,14 +791,14 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 380,
   },
-  desktopCoverFill: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
+  desktopCoverFill: { ...StyleSheet.absoluteFill, width: '100%', height: '100%' },
   placeholderImage: {
     backgroundColor: colors.surfaceAlt,
     justifyContent: 'center',
     alignItems: 'center',
   },
   imageOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: 'flex-end',
     padding: spacing.lg,
     paddingBottom: spacing.lg + 24,

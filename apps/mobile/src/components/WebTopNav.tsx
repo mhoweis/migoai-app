@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocale } from '../i18n';
 import { navigateToTab, navigationRef } from '../navigation/navigationRef';
@@ -33,9 +33,9 @@ export default function WebTopNav({ activeTab }: { activeTab?: string }) {
           {links.map(link => {
             const active = activeTab === link.route;
             return (
-              <TouchableOpacity key={link.route} accessibilityRole="link" accessibilityState={{ selected: active }} onHoverIn={() => setHoveredLink(link.route)} onHoverOut={() => setHoveredLink(null)} onPress={() => navigateToTab(link.route.replace('Tab', ''))} style={[styles.link, active && styles.activeLink, hoveredLink === link.route && styles.hoverLink]}>
+              <Pressable key={link.route} accessibilityRole="link" accessibilityState={{ selected: active }} onHoverIn={() => setHoveredLink(link.route)} onHoverOut={() => setHoveredLink(null)} onPress={() => navigateToTab(link.route.replace('Tab', ''))} style={[styles.link, active && styles.activeLink, hoveredLink === link.route && styles.hoverLink]}>
                 <Text style={[styles.linkText, active && styles.activeLinkText]}>{t(link.label as any)}</Text>
-              </TouchableOpacity>
+              </Pressable>
             );
           })}
         </View>

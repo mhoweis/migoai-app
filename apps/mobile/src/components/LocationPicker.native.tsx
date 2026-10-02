@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import MapView, { Marker, MapPressEvent } from 'react-native-maps';
+import MapView, { Marker, type MarkerDragStartEndEvent, type MapPressEvent } from 'react-native-maps';
 import { colors, radius } from '../theme';
 import { CITY_COORDINATES } from '../utils/cityCoordinates';
 
@@ -12,7 +12,7 @@ export default function LocationPicker({ latitude, longitude, city, onChange, he
   return <View style={[styles.container, { height }]}>
     <MapView style={StyleSheet.absoluteFill} initialRegion={{ ...center, latitudeDelta: pinned ? 0.02 : 0.15, longitudeDelta: pinned ? 0.02 : 0.15 }}
       onPress={(event: MapPressEvent) => onChange((event as any).nativeEvent?.coordinate || (event as any).coordinate)}>
-      {pinned ? <Marker coordinate={center} draggable onDragEnd={event => onChange((event as any).nativeEvent?.coordinate || (event as any).coordinate)} /> : null}
+      {pinned ? <Marker coordinate={center} draggable onDragEnd={(event: MarkerDragStartEndEvent) => onChange(event.nativeEvent.coordinate)} /> : null}
     </MapView>
     {!pinned ? <Text style={styles.hint}>Tap the map to pin this location</Text> : null}
   </View>;

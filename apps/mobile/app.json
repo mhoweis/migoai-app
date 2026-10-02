@@ -7,12 +7,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#F7F5FB"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.migo.eventapp",
@@ -32,7 +26,6 @@
         "backgroundImage": "./assets/adaptive-icon-background.png",
         "backgroundColor": "#7A1E6C"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "ACCESS_COARSE_LOCATION",
@@ -45,6 +38,16 @@
     },
     "plugins": [
       "./with-camera-permission",
+      "@react-native-community/datetimepicker",
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#F7F5FB"
+        }
+      ],
       [
         "expo-location",
         {

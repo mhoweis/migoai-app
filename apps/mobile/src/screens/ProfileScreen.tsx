@@ -412,11 +412,11 @@ const ProfileScreen = () => {
             <View style={styles.accountPlanIcon}>
               <Ionicons name="diamond-outline" size={20} color={colors.primary} />
             </View>
-            <View style={[styles.accountPlanCopy, isRTL && styles.reminderLabelRtl]}>
-              <Text style={styles.accountPlanName}>
+            <View style={styles.accountPlanCopy}>
+              <Text style={[styles.accountPlanName, isRTL && styles.reminderLabelRtl]}>
                 {t(`account_role_${accountRole.toLowerCase()}` as any)}
               </Text>
-              <Text style={styles.accountPlanHelp}>{t(accountPlan.help)}</Text>
+              <Text style={[styles.accountPlanHelp, isRTL && styles.reminderLabelRtl]}>{t(accountPlan.help)}</Text>
             </View>
             {canPurchasePlansInApp ? (
               <TouchableOpacity

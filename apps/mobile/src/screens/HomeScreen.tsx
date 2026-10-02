@@ -1295,7 +1295,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   topEventOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     padding: 12,
     justifyContent: 'space-between',
   },
@@ -1666,7 +1666,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   venueOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.45)',
     padding: 12,
     justifyContent: 'flex-end',

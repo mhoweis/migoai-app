@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocale } from '../i18n';
 import { colors, spacing, type } from '../theme';
@@ -17,10 +17,10 @@ export default function SectionHeader({ title, subtitle, onSeeAll, actionLabel, 
       </View>
       <TrailingActions style={styles.trailing}>
         {onSeeAll ? (
-          <TouchableOpacity accessibilityRole={actionRole || (Platform.OS === 'web' ? 'link' : 'button')} accessibilityLabel={`${actionLabel || t('see_all')} ${title}`} onHoverIn={() => setHovered(true)} onHoverOut={() => setHovered(false)} onPress={onSeeAll} style={styles.action}>
+          <Pressable accessibilityRole={actionRole || (Platform.OS === 'web' ? 'link' : 'button')} accessibilityLabel={`${actionLabel || t('see_all')} ${title}`} onHoverIn={() => setHovered(true)} onHoverOut={() => setHovered(false)} onPress={onSeeAll} style={styles.action}>
             <Text style={[styles.actionText, hovered && Platform.OS === 'web' && styles.actionTextHovered]}>{actionLabel || t('see_all')}</Text>
             <Ionicons name="arrow-forward" size={16} color={colors.primary} />
-          </TouchableOpacity>
+          </Pressable>
         ) : null}
         {trailingContent}
       </TrailingActions>
