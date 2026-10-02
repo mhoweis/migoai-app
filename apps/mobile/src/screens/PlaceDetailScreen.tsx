@@ -1,3 +1,4 @@
+import { colors } from '../theme';
 // src/screens/PlaceDetailScreen.tsx
 //
 // One venue, plus any Migo events happening there — the bridge between the
@@ -81,7 +82,7 @@ export default function PlaceDetailScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#3b82f6" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -91,7 +92,7 @@ export default function PlaceDetailScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.center}>
-          <Ionicons name="alert-circle-outline" size={44} color="#cbd5e1" />
+          <Ionicons name="alert-circle-outline" size={44} color={colors.border} />
           <Text style={styles.errorText}>{error ?? 'Place not found'}</Text>
           <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.goBack()}>
             <Text style={styles.primaryButtonText}>Go back</Text>
@@ -108,7 +109,7 @@ export default function PlaceDetailScreen() {
           <Image source={{ uri: place.thumbnail }} style={styles.hero} />
         ) : (
           <View style={[styles.hero, styles.heroPlaceholder]}>
-            <Ionicons name="business" size={48} color="#cbd5e1" />
+            <Ionicons name="business" size={48} color={colors.border} />
           </View>
         )}
 
@@ -120,7 +121,7 @@ export default function PlaceDetailScreen() {
           <View style={styles.metaRow}>
             {place.rating ? (
               <View style={styles.metaItem}>
-                <Ionicons name="star" size={15} color="#f59e0b" />
+                <Ionicons name="star" size={15} color={colors.warning} />
                 <Text style={styles.metaText}>
                   {place.rating.toFixed(1)}
                   {place.reviewCount ? ` · ${place.reviewCount} reviews` : ''}
@@ -130,7 +131,7 @@ export default function PlaceDetailScreen() {
 
             {place.distanceKm != null ? (
               <View style={styles.metaItem}>
-                <Ionicons name="navigate" size={15} color="#64748b" />
+                <Ionicons name="navigate" size={15} color={colors.textMuted} />
                 <Text style={styles.metaText}>{place.distanceKm} km away</Text>
               </View>
             ) : null}
@@ -144,14 +145,14 @@ export default function PlaceDetailScreen() {
 
           {place.address ? (
             <View style={styles.infoRow}>
-              <Ionicons name="location-outline" size={18} color="#64748b" />
+              <Ionicons name="location-outline" size={18} color={colors.textMuted} />
               <Text style={styles.infoText}>{place.address}</Text>
             </View>
           ) : null}
 
           <View style={styles.actions}>
             <TouchableOpacity style={styles.actionButton} onPress={openDirections}>
-              <Ionicons name="navigate" size={18} color="#fff" />
+              <Ionicons name="navigate" size={18} color={colors.textInverse} />
               <Text style={styles.actionButtonText}>Directions</Text>
             </TouchableOpacity>
 
@@ -160,7 +161,7 @@ export default function PlaceDetailScreen() {
                 style={[styles.actionButton, styles.actionSecondary]}
                 onPress={() => Linking.openURL(`tel:${place.phone}`)}
               >
-                <Ionicons name="call" size={18} color="#3b82f6" />
+                <Ionicons name="call" size={18} color={colors.primary} />
                 <Text style={[styles.actionButtonText, styles.actionSecondaryText]}>Call</Text>
               </TouchableOpacity>
             ) : null}
@@ -170,7 +171,7 @@ export default function PlaceDetailScreen() {
                 style={[styles.actionButton, styles.actionSecondary]}
                 onPress={() => Linking.openURL(place.website!)}
               >
-                <Ionicons name="globe-outline" size={18} color="#3b82f6" />
+                <Ionicons name="globe-outline" size={18} color={colors.primary} />
                 <Text style={[styles.actionButtonText, styles.actionSecondaryText]}>Website</Text>
               </TouchableOpacity>
             ) : null}
@@ -181,9 +182,9 @@ export default function PlaceDetailScreen() {
               style={styles.socialRow}
               onPress={() => Linking.openURL(place.instagram!)}
             >
-              <Ionicons name="logo-instagram" size={18} color="#db2777" />
+              <Ionicons name="logo-instagram" size={18} color={colors.accent} />
               <Text style={styles.socialText}>Instagram</Text>
-              <Ionicons name="chevron-forward" size={16} color="#cbd5e1" />
+              <Ionicons name="chevron-forward" size={16} color={colors.border} />
             </TouchableOpacity>
           ) : null}
 
@@ -201,7 +202,7 @@ export default function PlaceDetailScreen() {
                     <Image source={{ uri: event.coverImage }} style={styles.eventThumb} />
                   ) : (
                     <View style={[styles.eventThumb, styles.heroPlaceholder]}>
-                      <Ionicons name="calendar" size={18} color="#cbd5e1" />
+                      <Ionicons name="calendar" size={18} color={colors.border} />
                     </View>
                   )}
 
@@ -222,7 +223,7 @@ export default function PlaceDetailScreen() {
                     </Text>
                   </View>
 
-                  <Ionicons name="chevron-forward" size={18} color="#cbd5e1" />
+                  <Ionicons name="chevron-forward" size={18} color={colors.border} />
                 </TouchableOpacity>
               ))}
             </View>
@@ -239,37 +240,37 @@ export default function PlaceDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: colors.textInverse },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 },
-  errorText: { fontSize: 15, color: '#64748b', textAlign: 'center' },
+  errorText: { fontSize: 15, color: colors.textMuted, textAlign: 'center' },
 
-  hero: { width: '100%', height: 200, backgroundColor: '#f1f5f9' },
+  hero: { width: '100%', height: 200, backgroundColor: colors.surfaceAlt },
   heroPlaceholder: { alignItems: 'center', justifyContent: 'center' },
 
   body: { padding: 20, gap: 10 },
-  title: { fontSize: 24, fontWeight: '700', color: '#0f172a' },
-  category: { fontSize: 15, color: '#64748b' },
+  title: { fontSize: 24, fontWeight: '700', color: colors.text },
+  category: { fontSize: 15, color: colors.textMuted },
 
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginTop: 2 },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  metaText: { fontSize: 14, color: '#475569' },
+  metaText: { fontSize: 14, color: colors.textSecondary },
 
   infoRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', marginTop: 4 },
-  infoText: { flex: 1, fontSize: 14, color: '#475569', lineHeight: 20 },
+  infoText: { flex: 1, fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
 
   actions: { flexDirection: 'row', gap: 10, marginTop: 14, flexWrap: 'wrap' },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 11,
     borderRadius: 10,
   },
-  actionSecondary: { backgroundColor: '#eff6ff' },
-  actionButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-  actionSecondaryText: { color: '#3b82f6' },
+  actionSecondary: { backgroundColor: colors.primarySoft },
+  actionButtonText: { color: colors.textInverse, fontSize: 14, fontWeight: '600' },
+  actionSecondaryText: { color: colors.primary },
 
   socialRow: {
     flexDirection: 'row',
@@ -278,40 +279,40 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginTop: 6,
     borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
+    borderTopColor: colors.surfaceAlt,
   },
-  socialText: { flex: 1, fontSize: 14, color: '#334155', fontWeight: '500' },
+  socialText: { flex: 1, fontSize: 14, color: colors.textSecondary, fontWeight: '500' },
 
   eventsSection: { marginTop: 18, gap: 10 },
-  sectionTitle: { fontSize: 17, fontWeight: '700', color: '#0f172a', marginBottom: 2 },
+  sectionTitle: { fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: 2 },
   eventCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.bg,
     borderRadius: 12,
     padding: 10,
   },
-  eventThumb: { width: 52, height: 52, borderRadius: 8, backgroundColor: '#f1f5f9' },
+  eventThumb: { width: 52, height: 52, borderRadius: 8, backgroundColor: colors.surfaceAlt },
   eventBody: { flex: 1, gap: 3 },
-  eventTitle: { fontSize: 14, fontWeight: '600', color: '#0f172a' },
-  eventMeta: { fontSize: 12, color: '#64748b' },
+  eventTitle: { fontSize: 14, fontWeight: '600', color: colors.text },
+  eventMeta: { fontSize: 12, color: colors.textMuted },
 
   attribution: {
     fontSize: 12,
-    color: '#94a3b8',
+    color: colors.textMuted,
     lineHeight: 18,
     marginTop: 22,
     paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
+    borderTopColor: colors.surfaceAlt,
   },
 
   primaryButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 10,
   },
-  primaryButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  primaryButtonText: { color: colors.textInverse, fontSize: 15, fontWeight: '600' },
 });

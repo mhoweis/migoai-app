@@ -1,24 +1,48 @@
 import { api } from './api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { tokenStorage } from './tokenStorage';
+import { HomeLayout } from '../config/homeSections';
 
 export interface User {
   id: string;
   email: string | null;
   name: string;
   phone?: string | null;
-  avatar?: string;
-  role: string;
+  avatar?: string | null;
+  coverImage?: string | null;
+  bio?: string | null;
+  role: 'USER' | 'ORGANIZER' | 'SUPPLIER' | 'ADMIN';
+  status?: 'ACTIVE' | 'PAUSED' | 'DELETED';
+  authMethod?: string | null;
+  supplierId?: string | null;
+  isPrivate?: boolean;
   interests: string[];
   preferences?: {
-    notifications: boolean;
-    location: string;
-    theme: 'light' | 'dark';
+    notifications?: boolean;
+    location?: string;
+    theme?: 'light' | 'dark';
+    locale?: 'en' | 'ar';
+    homeLayout?: HomeLayout;
+    reminders?: {
+      email?: boolean;
+      whatsapp?: boolean;
+      saved?: boolean;
+    };
   };
   createdAt: string;
   updatedAt: string;
   emailVerified?: boolean;
   phoneVerified?: boolean;
 }
+
+export const isHost = (user?: Pick<User, 'role'> | null): boolean =>
+  user?.role === 'ORGANIZER' || user?.role === 'SUPPLIER' || user?.role === 'ADMIN';
+
+export const isSupplier = (user?: Pick<User, 'role'> | null): boolean =>
+  user?.role === 'SUPPLIER';
+
+export const isAdmin = (user?: Pick<User, 'role'> | null): boolean =>
+  user?.role === 'ADMIN';
 
 export interface AuthResponse {
   user: User;
@@ -70,8 +94,7 @@ export const authService = {
       );
       const { user, tokens, isFirstLogin } = response.data.data;
 
-      await AsyncStorage.setItem('accessToken', tokens.accessToken);
-      await AsyncStorage.setItem('refreshToken', tokens.refreshToken);
+      await tokenStorage.setTokens(tokens);
       await AsyncStorage.setItem('user', JSON.stringify(user));
       await AsyncStorage.setItem('firstLogin', JSON.stringify(isFirstLogin));
       api.defaults.headers.common.Authorization = `Bearer ${tokens.accessToken}`;
@@ -95,8 +118,7 @@ export const authService = {
       const { user, tokens, isFirstLogin } = response.data.data;
       
       // Store tokens and user data
-      await AsyncStorage.setItem('accessToken', tokens.accessToken);
-      await AsyncStorage.setItem('refreshToken', tokens.refreshToken);
+      await tokenStorage.setTokens(tokens);
       await AsyncStorage.setItem('user', JSON.stringify(user));
       await AsyncStorage.setItem('firstLogin', JSON.stringify(isFirstLogin));
       
@@ -106,12 +128,14 @@ export const authService = {
       return response.data.data;
     } catch (error: any) {
       console.error('Login error:', error.response?.data || error.message);
-      throw new Error(
+      const loginError = new Error(
         error.response?.data?.error || 
         error.response?.data?.message || 
         error.message || 
         'Login failed'
       );
+      (loginError as Error & { code?: string }).code = error.response?.data?.code;
+      throw loginError;
     }
   },
 
@@ -125,8 +149,7 @@ export const authService = {
       
       const { user, tokens, isFirstLogin } = response.data.data;
       
-      await AsyncStorage.setItem('accessToken', tokens.accessToken);
-      await AsyncStorage.setItem('refreshToken', tokens.refreshToken);
+      await tokenStorage.setTokens(tokens);
       await AsyncStorage.setItem('user', JSON.stringify(user));
       await AsyncStorage.setItem('firstLogin', JSON.stringify(isFirstLogin));
       
@@ -145,9 +168,21 @@ export const authService = {
     }
   },
 
+  async deleteAccount(password?: string): Promise<void> {
+    try {
+      await api.delete('/users/me', { data: { password } });
+    } catch (error: any) {
+      const deletionError = new Error(
+        error.response?.data?.error || error.message || 'Failed to delete account'
+      ) as Error & { code?: string };
+      deletionError.code = error.response?.data?.code;
+      throw deletionError;
+    }
+  },
+
   async logout(): Promise<void> {
     try {
-      const refreshToken = await AsyncStorage.getItem('refreshToken');
+      const refreshToken = await tokenStorage.get('refreshToken');
       
       if (refreshToken) {
         await api.post<ApiResponse<{ message: string }>>('/auth/logout', { 
@@ -156,11 +191,9 @@ export const authService = {
       }
       
       // Clear all stored data
-      await AsyncStorage.multiRemove([
-        'accessToken',
-        'refreshToken',
-        'user',
-        'firstLogin',
+      await Promise.all([
+        tokenStorage.clear(),
+        AsyncStorage.multiRemove(['user', 'firstLogin']),
       ]);
       
       // Remove authorization header
@@ -169,11 +202,9 @@ export const authService = {
     } catch (error: any) {
       console.error('Logout error:', error);
       // Even if API call fails, clear local storage
-      await AsyncStorage.multiRemove([
-        'accessToken',
-        'refreshToken',
-        'user',
-        'firstLogin',
+      await Promise.all([
+        tokenStorage.clear(),
+        AsyncStorage.multiRemove(['user', 'firstLogin']),
       ]);
       delete api.defaults.headers.common['Authorization'];
     }
@@ -222,7 +253,7 @@ export const authService = {
 
   async updateProfile(data: Partial<User>): Promise<User> {
     try {
-      const response = await api.put<ApiResponse<User>>('/auth/profile', data);
+      const response = await api.put<ApiResponse<User>>('/users/me', data);
       
       if (!response.data.success) {
         throw new Error(response.data.error || 'Failed to update profile');
@@ -243,15 +274,52 @@ export const authService = {
     }
   },
 
-  async refreshAccessToken(): Promise<{ accessToken: string; expiresIn: number }> {
+  async updateLocale(locale: 'en' | 'ar'): Promise<User> {
+    const response = await api.put<ApiResponse<User>>('/users/me', {
+      preferences: { locale },
+    });
+    if (!response.data.success) {
+      throw new Error(response.data.error || 'Failed to update language');
+    }
+    await AsyncStorage.setItem('user', JSON.stringify(response.data.data));
+    return response.data.data;
+  },
+
+  async updateHomeLayout(homeLayout: HomeLayout): Promise<User> {
+    const response = await api.put<ApiResponse<User>>('/users/me', {
+      preferences: { homeLayout },
+    });
+    if (!response.data.success) {
+      throw new Error(response.data.error || 'Failed to update Home layout');
+    }
+    await AsyncStorage.setItem('user', JSON.stringify(response.data.data));
+    return response.data.data;
+  },
+
+  async updateReminders(
+    phone: string | null,
+    reminders: { email: boolean; whatsapp: boolean; saved: boolean },
+  ): Promise<User> {
+    const response = await api.put<ApiResponse<User>>('/users/me', {
+      phone,
+      preferences: { reminders },
+    });
+    if (!response.data.success) {
+      throw new Error(response.data.error || 'Failed to update reminders');
+    }
+    await AsyncStorage.setItem('user', JSON.stringify(response.data.data));
+    return response.data.data;
+  },
+
+  async refreshAccessToken(): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
     try {
-      const refreshToken = await AsyncStorage.getItem('refreshToken');
+      const refreshToken = await tokenStorage.get('refreshToken');
       
       if (!refreshToken) {
         throw new Error('No refresh token available');
       }
       
-      const response = await api.post<ApiResponse<{ accessToken: string; expiresIn: number }>>(
+      const response = await api.post<ApiResponse<{ accessToken: string; refreshToken: string; expiresIn: number }>>(
         '/auth/refresh-token',
         { refreshToken }
       );
@@ -260,15 +328,14 @@ export const authService = {
         throw new Error(response.data.error || 'Token refresh failed');
       }
       
-      const { accessToken, expiresIn } = response.data.data;
+      const { accessToken, refreshToken: newRefreshToken, expiresIn } = response.data.data;
       
-      // Store new access token
-      await AsyncStorage.setItem('accessToken', accessToken);
+      await tokenStorage.setTokens({ accessToken, refreshToken: newRefreshToken });
       
       // Update API default headers
       api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
       
-      return { accessToken, expiresIn };
+      return { accessToken, refreshToken: newRefreshToken, expiresIn };
     } catch (error: any) {
       console.error('Token refresh error:', error);
       throw error;
@@ -288,8 +355,7 @@ export const authService = {
       
       const { user, tokens, isFirstLogin } = response.data.data;
       
-      await AsyncStorage.setItem('accessToken', tokens.accessToken);
-      await AsyncStorage.setItem('refreshToken', tokens.refreshToken);
+      await tokenStorage.setTokens(tokens);
       await AsyncStorage.setItem('user', JSON.stringify(user));
       await AsyncStorage.setItem('firstLogin', JSON.stringify(isFirstLogin));
       
@@ -311,7 +377,7 @@ export const authService = {
   // Initialize API with stored token
   async initializeApiToken(): Promise<void> {
     try {
-      const accessToken = await AsyncStorage.getItem('accessToken');
+      const accessToken = await tokenStorage.get('accessToken');
       
       if (accessToken) {
         api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
@@ -324,8 +390,8 @@ export const authService = {
   // Check if user is authenticated
   async isAuthenticated(): Promise<boolean> {
     try {
-      const accessToken = await AsyncStorage.getItem('accessToken');
-      const refreshToken = await AsyncStorage.getItem('refreshToken');
+      const accessToken = await tokenStorage.get('accessToken');
+      const refreshToken = await tokenStorage.get('refreshToken');
       
       return !!(accessToken && refreshToken);
     } catch (error) {
@@ -338,8 +404,8 @@ export const authService = {
   async getStoredTokens(): Promise<{ accessToken: string | null; refreshToken: string | null }> {
     try {
       const [accessToken, refreshToken] = await Promise.all([
-        AsyncStorage.getItem('accessToken'),
-        AsyncStorage.getItem('refreshToken'),
+        tokenStorage.get('accessToken'),
+        tokenStorage.get('refreshToken'),
       ]);
       
       return { accessToken, refreshToken };

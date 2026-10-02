@@ -1,3 +1,4 @@
+import { colors } from '../theme';
 // src/screens/PlacesScreen.tsx
 //
 // "Places" — venue discovery powered by the Google Maps scraper running on
@@ -181,7 +182,7 @@ export default function PlacesScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.explainer}>
           <View style={styles.explainerIcon}>
-            <Ionicons name="location" size={44} color="#3b82f6" />
+            <Ionicons name="location" size={44} color={colors.primary} />
           </View>
           <Text style={styles.explainerTitle}>Find what's around you</Text>
           <Text style={styles.explainerBody}>
@@ -249,7 +250,7 @@ export default function PlacesScreen() {
         <Image source={{ uri: item.thumbnail }} style={styles.thumb} />
       ) : (
         <View style={[styles.thumb, styles.thumbPlaceholder]}>
-          <Ionicons name={categoryIcon(item.category)} size={24} color="#94a3b8" />
+          <Ionicons name={categoryIcon(item.category)} size={24} color={colors.textMuted} />
         </View>
       )}
 
@@ -267,7 +268,7 @@ export default function PlacesScreen() {
         <View style={styles.cardMeta}>
           {item.rating ? (
             <View style={styles.metaItem}>
-              <Ionicons name="star" size={13} color="#f59e0b" />
+              <Ionicons name="star" size={13} color={colors.warning} />
               <Text style={styles.metaText}>
                 {item.rating.toFixed(1)}
                 {item.reviewCount ? ` (${item.reviewCount})` : ''}
@@ -277,7 +278,7 @@ export default function PlacesScreen() {
 
           {item.distanceKm != null ? (
             <View style={styles.metaItem}>
-              <Ionicons name="navigate" size={13} color="#64748b" />
+              <Ionicons name="navigate" size={13} color={colors.textMuted} />
               <Text style={styles.metaText}>{item.distanceKm} km</Text>
             </View>
           ) : null}
@@ -290,7 +291,7 @@ export default function PlacesScreen() {
           onPress={() => Linking.openURL(`tel:${item.phone}`)}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Ionicons name="call" size={18} color="#3b82f6" />
+          <Ionicons name="call" size={18} color={colors.primary} />
         </TouchableOpacity>
       ) : null}
     </TouchableOpacity>
@@ -304,7 +305,7 @@ export default function PlacesScreen() {
           style={styles.locationPill}
           onPress={() => setShowCityPicker(true)}
         >
-          <Ionicons name="location" size={14} color="#3b82f6" />
+          <Ionicons name="location" size={14} color={colors.primary} />
           <Text style={styles.locationPillText}>
             {location.cityLabel ?? (location.hasLocation ? 'Nearby' : 'Set location')}
           </Text>
@@ -312,11 +313,11 @@ export default function PlacesScreen() {
       </View>
 
       <View style={styles.searchBar}>
-        <Ionicons name="search" size={18} color="#94a3b8" />
+        <Ionicons name="search" size={18} color={colors.textMuted} />
         <TextInput
           style={styles.searchInput}
           placeholder="Coffee, padel, galleries…"
-          placeholderTextColor="#94a3b8"
+          placeholderTextColor={colors.textMuted}
           value={query}
           onChangeText={setQuery}
           onSubmitEditing={() => runSearch(query)}
@@ -324,7 +325,7 @@ export default function PlacesScreen() {
         />
         {query.length > 0 && (
           <TouchableOpacity onPress={() => setQuery('')}>
-            <Ionicons name="close-circle" size={18} color="#cbd5e1" />
+            <Ionicons name="close-circle" size={18} color={colors.border} />
           </TouchableOpacity>
         )}
       </View>
@@ -347,7 +348,7 @@ export default function PlacesScreen() {
             <Ionicons
               name={item.icon as any}
               size={14}
-              color={lastKeyword === item.keyword ? '#fff' : '#475569'}
+              color={lastKeyword === item.keyword ? colors.textInverse : colors.textSecondary}
             />
             <Text
               style={[styles.chipText, lastKeyword === item.keyword && styles.chipTextActive]}
@@ -360,21 +361,21 @@ export default function PlacesScreen() {
 
       {error ? (
         <View style={styles.banner}>
-          <Ionicons name="alert-circle" size={16} color="#dc2626" />
+          <Ionicons name="alert-circle" size={16} color={colors.danger} />
           <Text style={styles.bannerText}>{error}</Text>
         </View>
       ) : null}
 
       {status === 'pending' && message ? (
         <View style={[styles.banner, styles.bannerInfo]}>
-          <ActivityIndicator size="small" color="#3b82f6" />
+          <ActivityIndicator size="small" color={colors.primary} />
           <Text style={[styles.bannerText, styles.bannerTextInfo]}>{message}</Text>
         </View>
       ) : null}
 
       {loading && places.length === 0 ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#3b82f6" />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.centerText}>Looking around you…</Text>
         </View>
       ) : (
@@ -388,7 +389,7 @@ export default function PlacesScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           ListEmptyComponent={
             <View style={styles.center}>
-              <Ionicons name="compass-outline" size={44} color="#cbd5e1" />
+              <Ionicons name="compass-outline" size={44} color={colors.border} />
               <Text style={styles.emptyTitle}>
                 {location.hasLocation ? 'Nothing here yet' : 'Set your location'}
               </Text>
@@ -414,7 +415,7 @@ export default function PlacesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
+  container: { flex: 1, backgroundColor: colors.bg },
 
   header: {
     flexDirection: 'row',
@@ -424,17 +425,17 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 12,
   },
-  title: { fontSize: 28, fontWeight: '700', color: '#0f172a' },
+  title: { fontSize: 28, fontWeight: '700', color: colors.text },
   locationPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primarySoft,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
   },
-  locationPillText: { fontSize: 13, color: '#3b82f6', fontWeight: '600' },
+  locationPillText: { fontSize: 13, color: colors.primary, fontWeight: '600' },
 
   searchBar: {
     flexDirection: 'row',
@@ -443,12 +444,12 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: colors.border,
   },
-  searchInput: { flex: 1, fontSize: 15, color: '#0f172a', padding: 0 },
+  searchInput: { flex: 1, fontSize: 15, color: colors.text, padding: 0 },
 
   chipRow: { maxHeight: 44, marginTop: 12 },
   chipRowContent: { paddingHorizontal: 16, gap: 8 },
@@ -458,15 +459,15 @@ const styles = StyleSheet.create({
     gap: 5,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: colors.border,
     height: 34,
   },
-  chipActive: { backgroundColor: '#3b82f6', borderColor: '#3b82f6' },
-  chipText: { fontSize: 13, color: '#475569', fontWeight: '500' },
-  chipTextActive: { color: '#fff' },
+  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipText: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
+  chipTextActive: { color: colors.textInverse },
 
   banner: {
     flexDirection: 'row',
@@ -475,12 +476,12 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 12,
     padding: 10,
-    backgroundColor: '#fef2f2',
+    backgroundColor: colors.dangerSoft,
     borderRadius: 10,
   },
-  bannerInfo: { backgroundColor: '#eff6ff' },
-  bannerText: { flex: 1, fontSize: 13, color: '#dc2626' },
-  bannerTextInfo: { color: '#1d4ed8' },
+  bannerInfo: { backgroundColor: colors.primarySoft },
+  bannerText: { flex: 1, fontSize: 13, color: colors.danger },
+  bannerTextInfo: { color: colors.primaryDark },
 
   listContent: { padding: 16, gap: 10 },
   emptyContainer: { flexGrow: 1, justifyContent: 'center' },
@@ -488,41 +489,41 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     borderRadius: 14,
     padding: 10,
     gap: 12,
     borderWidth: 1,
-    borderColor: '#f1f5f9',
+    borderColor: colors.surfaceAlt,
   },
-  thumb: { width: 60, height: 60, borderRadius: 10, backgroundColor: '#f1f5f9' },
+  thumb: { width: 60, height: 60, borderRadius: 10, backgroundColor: colors.surfaceAlt },
   thumbPlaceholder: { alignItems: 'center', justifyContent: 'center' },
   cardBody: { flex: 1, gap: 2 },
-  cardTitle: { fontSize: 15, fontWeight: '600', color: '#0f172a' },
-  cardCategory: { fontSize: 13, color: '#64748b' },
+  cardTitle: { fontSize: 15, fontWeight: '600', color: colors.text },
+  cardCategory: { fontSize: 13, color: colors.textMuted },
   cardMeta: { flexDirection: 'row', gap: 12, marginTop: 2 },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  metaText: { fontSize: 12, color: '#64748b' },
+  metaText: { fontSize: 12, color: colors.textMuted },
   callButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   center: { alignItems: 'center', justifyContent: 'center', padding: 32, gap: 8 },
-  centerText: { fontSize: 14, color: '#64748b', marginTop: 8 },
-  emptyTitle: { fontSize: 17, fontWeight: '600', color: '#334155', marginTop: 8 },
-  emptyBody: { fontSize: 14, color: '#64748b', textAlign: 'center', lineHeight: 20 },
+  centerText: { fontSize: 14, color: colors.textMuted, marginTop: 8 },
+  emptyTitle: { fontSize: 17, fontWeight: '600', color: colors.textSecondary, marginTop: 8 },
+  emptyBody: { fontSize: 14, color: colors.textMuted, textAlign: 'center', lineHeight: 20 },
 
   explainer: { flex: 1, justifyContent: 'center', paddingHorizontal: 28, gap: 12 },
   explainerIcon: {
     width: 84,
     height: 84,
     borderRadius: 42,
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
@@ -531,34 +532,34 @@ const styles = StyleSheet.create({
   explainerTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#0f172a',
+    color: colors.text,
     textAlign: 'center',
   },
   explainerBody: {
     fontSize: 15,
-    color: '#475569',
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
   },
   explainerNote: {
     fontSize: 13,
-    color: '#94a3b8',
+    color: colors.textMuted,
     textAlign: 'center',
     lineHeight: 19,
     marginBottom: 8,
   },
 
   primaryButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 12,
     alignSelf: 'stretch',
   },
-  primaryButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  primaryButtonText: { color: colors.textInverse, fontSize: 16, fontWeight: '600' },
   secondaryButton: { paddingVertical: 12, alignItems: 'center' },
-  secondaryButtonText: { color: '#64748b', fontSize: 15 },
+  secondaryButtonText: { color: colors.textMuted, fontSize: 15 },
 
   cityGrid: {
     flexDirection: 'row',
@@ -570,10 +571,10 @@ const styles = StyleSheet.create({
   cityChip: {
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: colors.border,
   },
-  cityChipText: { fontSize: 14, color: '#334155', fontWeight: '500' },
+  cityChipText: { fontSize: 14, color: colors.textSecondary, fontWeight: '500' },
 });

@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import prisma from '../config/database';
 import logger from '../utils/logger';
+import config from '../config/env';
 
 interface TokenPayload {
   userId: string;
@@ -13,8 +14,8 @@ export class JWTService {
   private readonly refreshSecret: string;
 
   constructor() {
-    this.secret = process.env.JWT_SECRET || 'your-secret-key';
-    this.refreshSecret = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret';
+    this.secret = config.JWT_SECRET;
+    this.refreshSecret = config.JWT_REFRESH_SECRET;
   }
 
   generateAccessToken(payload: TokenPayload): string {
@@ -51,7 +52,7 @@ export class JWTService {
 
   verifyAccessToken(token: string): TokenPayload | null {
     try {
-      return jwt.verify(token, this.secret) as TokenPayload;
+      return jwt.verify(token, this.secret, { algorithms: ['HS256'] }) as TokenPayload;
     } catch (error) {
       return null;
     }
@@ -72,7 +73,7 @@ export class JWTService {
         return null;
       }
 
-      const payload = jwt.verify(token, this.refreshSecret) as TokenPayload;
+      const payload = jwt.verify(token, this.refreshSecret, { algorithms: ['HS256'] }) as TokenPayload;
       return payload;
     } catch (error) {
       return null;

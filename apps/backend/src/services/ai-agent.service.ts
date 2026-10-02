@@ -630,7 +630,11 @@ UAE content policy:
       : undefined;
 
     // Get relevant events based on user's location (and optional date filter)
-    const events = await this.getRelevantEvents(context, weekendFilter);
+    const events = await this.getRelevantEvents(
+      context,
+      weekendFilter,
+      this.extractSearchTerms(userMessage),
+    );
 
     // Prepare conversation history (empty if session is missing/new)
     const history: ChatMessage[] = (session?.messages || []).map((msg: any) => ({
@@ -651,6 +655,9 @@ UAE content policy:
     });
 
     // Build the prompt — returns prompt string and short-ID → UUID map
+    // Booking intent: "book …", "reserve …", "get tickets for …"
+    const bookingIntent = /\b(book|booking|reserve|reservation|buy|purchase|get\s+(me\s+)?tickets?|register|sign\s*up)\b/i.test(userMessage);
+
     const { prompt, eventIdMap } = this.buildPrompt(
       userMessage,
       context,
@@ -680,12 +687,24 @@ UAE content policy:
         model: servingModel,
       });
 
-      // Translate short refs (E1, E2…) back to real UUIDs
+      // Translate short refs (E1, E2…) back to real UUIDs. Then drop anything
+      // that didn't resolve to a listed event — hallucinated IDs would render
+      // as empty cards in the app — dedupe, and cap at 12.
       if (aiResponse.recommendations) {
-        aiResponse.recommendations = aiResponse.recommendations.map((rec: any) => ({
-          ...rec,
-          eventId: eventIdMap[rec.eventId] || rec.eventId,
-        }));
+        const seen = new Set<string>();
+        const realIds = new Set(Object.values(eventIdMap));
+        aiResponse.recommendations = aiResponse.recommendations
+          .map((rec: any) => ({
+            ...rec,
+            eventId: eventIdMap[rec.eventId] || rec.eventId,
+          }))
+          .filter((rec: any) => {
+            if (!rec.eventId || !realIds.has(rec.eventId)) return false;
+            if (seen.has(rec.eventId)) return false;
+            seen.add(rec.eventId);
+            return true;
+          })
+          .slice(0, 12);
       }
 
       // Enrich recommendations with real event data (title, coverImage, etc.)
@@ -778,6 +797,13 @@ UAE content policy:
         aiResponse.placesPending = placeResult.queued;
       }
 
+      if (bookingIntent && aiResponse.recommendations?.length) {
+        aiResponse.bookingIntent = true;
+        if (!/book|ticket/i.test(aiResponse.response)) {
+          aiResponse.response += "\n\nTap an event below, then press Book Now on its page to grab your spot.";
+        }
+      }
+
       return aiResponse;
       
     } catch (error) {
@@ -788,10 +814,18 @@ UAE content policy:
         (error as any)?.message || error
       );
       
-      // Fallback response
+      // Deterministic fallback: the AI provider is down, but the events query
+      // already ran — surface the top events with honest copy rather than a
+      // dead apology, so the user still gets value.
       return {
-        response: "I apologize, but I'm having trouble processing your request right now. Please try again in a moment or try rephrasing your question.",
-        recommendations: [],
+        response: events.length > 0
+          ? `My smart assistant is briefly offline, but I found ${events.length} events for you — tap any to see details. Try your question again in a moment for full details.`
+          : "My smart assistant is briefly offline and I couldn't find matching events — please try again in a moment.",
+        recommendations: events.slice(0, 6).map((e: any) => ({
+          eventId: e.id,
+          reason: 'Matches your request',
+          confidence: 0.5,
+        })),
         suggestions: ["Try searching for events using the search bar", "Check out today's featured events", "Browse events by category"],
         nextQuestions: ["What type of events are you interested in?", "When are you looking for events?", "What's your budget range?"],
       };
@@ -801,18 +835,35 @@ UAE content policy:
 private async getRelevantEvents(
   context: EventContext,
   dateFilter?: { start: Date; end: Date },
+  searchTerms: string[] = [],
 ): Promise<any[]> {
   const city = context?.user?.location?.city || 'Dubai';
   const now = new Date();
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
 
   const buildWhere = (df?: { start: Date; end: Date }): any => ({
+    // Without these, the agent could recommend draft, pending or archived events.
+    status: 'ACTIVE',
+    visibility: { in: ['PUBLIC', 'UNLISTED'] },
     AND: [
       // City match (broad — includes null/empty city too)
       { OR: [{ city: { contains: city } }, { city: null }, { city: '' }] },
-      // Date filter
+      // Date filter. Default: anything from today onwards plus events that are
+      // still in progress ("happening now").
       df
-        ? { startDate: { gte: df.start, lte: df.end } }
-        : { startDate: { gte: now } },
+        ? {
+            OR: [
+              { startDate: { gte: df.start, lte: df.end } },
+              { startDate: { lte: now }, endDate: { gte: df.start, lte: df.end } },
+            ],
+          }
+        : {
+            OR: [
+              { startDate: { gte: todayStart } },
+              { startDate: { lte: now }, endDate: { gte: now } },
+            ],
+          },
     ],
   });
 
@@ -841,7 +892,7 @@ private async getRelevantEvents(
   let events = await prisma.event.findMany({
     where: buildWhere(dateFilter),
     orderBy: [{ isFeatured: 'desc' }, { startDate: 'asc' }],
-    take: 50,
+    take: 80,
     select: eventSelect,
   });
 
@@ -852,12 +903,45 @@ private async getRelevantEvents(
     events = await prisma.event.findMany({
       where: buildWhere(),
       orderBy: [{ isFeatured: 'desc' }, { startDate: 'asc' }],
-      take: 50,
+      take: 80,
       select: eventSelect,
     });
   }
 
+  // Rank by how well each event matches the user's words, then featured/date.
+  if (searchTerms.length > 0) {
+    const haystack = (e: any): string =>
+      [e.title, e.category, e.subcategory, e.venueName, e.city, e.country,
+        Array.isArray(e.tags) ? e.tags.join(' ') : ''].join(' ').toLowerCase();
+    const scoreOf = (e: any): number => {
+      const text = haystack(e);
+      return searchTerms.reduce((score, term) => score + (text.includes(term) ? 1 : 0), 0);
+    };
+    events = events
+      .map((e, i) => ({ e, i, score: scoreOf(e) }))
+      .sort((a, b) => b.score - a.score || a.i - b.i)
+      .map(x => x.e);
+  }
+
   return events;
+}
+
+/** Words worth matching against events — drops filler that hits everything. */
+private static readonly SEARCH_STOPWORDS = new Set([
+  'a','an','the','and','or','of','for','to','in','on','at','is','are','was','be',
+  'i','me','my','we','you','can','could','want','like','find','show','get','give',
+  'what','whats','which','where','when','who','any','some','all','tell','about',
+  'events','event','happening','going','looking','tonight','today','tomorrow',
+  'weekend','now','near','me','out','there','this','that','with','have','do','does',
+]);
+
+private extractSearchTerms(message: string): string[] {
+  return message
+    .toLowerCase()
+    .replace(/[^a-z0-9À-ɏ\s]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length > 2 && !MigoAIAgent.SEARCH_STOPWORDS.has(w))
+    .slice(0, 8);
 }
   
   /**
@@ -910,13 +994,16 @@ private async getRelevantEvents(
     const weekendStart = this.getWeekendStart();
     const weekendEnd = this.getWeekendEnd();
     const weekendLabel = `${weekendStart.toLocaleDateString()} – ${weekendEnd.toLocaleDateString()} (Fri–Sun)`;
-    // Pick up to 6 events with category diversity: max 2 from the same category
+    // Up to 12 events for the model to pick from, max 2 per category.
+    // totalEventCount is passed to the prompt so the model can say honestly how
+    // many events are actually happening — not just how many it listed.
+    const totalEventCount = events.length;
     const topEvents = (() => {
       const counts: Record<string, number> = {};
       const result: typeof events = [];
       for (const e of events) {
         const cat = (e.category || 'Other') as string;
-        if ((counts[cat] ?? 0) < 2 && result.length < 6) {
+        if ((counts[cat] ?? 0) < 2 && result.length < 12) {
           result.push(e);
           counts[cat] = (counts[cat] ?? 0) + 1;
         }
@@ -926,6 +1013,10 @@ private async getRelevantEvents(
 
     // Use short refs (E1–E6) so the model never sees raw UUIDs
     const eventIdMap: Record<string, string> = {};
+    const eventCountLine = totalEventCount > topEvents.length
+      ? `(showing ${topEvents.length} of ${totalEventCount} matching events)`
+      : `(${totalEventCount} matching events)`;
+
     const eventList = topEvents.length > 0
       ? topEvents.map((e, i) => {
           const ref = `E${i + 1}`;
@@ -936,7 +1027,7 @@ private async getRelevantEvents(
         }).join('\n')
       : 'No events found for this period';
 
-    const recentChat = history.slice(-2)
+    const recentChat = history.slice(-6)
       .map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.content}`)
       .join('\n');
 
@@ -950,7 +1041,7 @@ private async getRelevantEvents(
 User: ${context.user.name} | Interests: ${context.user.interests.join(', ') || 'general'} | Location: ${context.user.location.city}
 Today: ${today} | Weekend: ${weekendLabel}
 
-AVAILABLE EVENTS:
+AVAILABLE EVENTS ${eventCountLine}:
 ${eventList}
 ${placesSection}
 ${recentChat ? `RECENT CHAT:\n${recentChat}\n` : ''}User message: "${userMessage}"
@@ -960,6 +1051,8 @@ Reply with JSON only (no markdown, no extra text):
 
 Rules:
 - Always include at least 3 recommendations if events are available.
+- When the user asks for everything happening ("all events", "what's on", "list everything"), include a recommendation entry for EVERY event listed above (up to 12), not just your top picks.
+- If total matching events exceed the listed ones, say so in the response text ("I found N events — here are the highlights") and suggest a narrower search in suggestions.
 - Pick events from different categories when possible — no more than 2 from the same category.
 - Use only short refs (E1, E2…) in the eventId field. Never paste IDs or database codes in the response text.
 - Keep response text under 80 words.
@@ -1087,6 +1180,36 @@ Rules:
     
     // Parse the natural language query using the AI provider
     const parsedQuery = await this.aiProvider.parseSearchQuery(query, context);
+
+    // The LLM parser routinely misses explicit time hints — catch them here so
+    // "happening now" and "tonight" actually change the date window.
+    const q = query.toLowerCase();
+    if (/happening now|right now|currently on|on now|live now/.test(q)) {
+      parsedQuery.happeningNow = true;
+    } else if (/tonight|today|this evening|this afternoon|this morning/.test(q)) {
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      const end = new Date();
+      end.setHours(23, 59, 59, 999);
+      parsedQuery.dateRange = { start, end };
+    } else if (/tomorrow/.test(q)) {
+      const start = new Date();
+      start.setDate(start.getDate() + 1);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setHours(23, 59, 59, 999);
+      parsedQuery.dateRange = { start, end };
+    } else if (/weekend/.test(q)) {
+      parsedQuery.dateRange = { start: this.getWeekendStart(), end: this.getWeekendEnd() };
+    }
+
+    // "all events"/"everything" asks for breadth, not a keyword filter — strip
+    // generic event words the parser may emit so nothing is excluded.
+    if (parsedQuery.keywords?.length) {
+      parsedQuery.keywords = parsedQuery.keywords.filter(
+        (k: string) => !/^(events?|all|everything|anything)$/i.test(k)
+      );
+    }
     
     // Search for events using the parsed query
     const events = await eventService.searchEvents(parsedQuery);
@@ -1095,7 +1218,7 @@ Rules:
     const suggestions = this.generateSearchSuggestions(query, events.length);
     
     return {
-      events: events.slice(0, 20),
+      events: events.slice(0, 50),
       filters: parsedQuery,
       suggestions,
     };

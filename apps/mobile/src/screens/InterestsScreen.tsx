@@ -1,3 +1,4 @@
+import { colors } from '../theme';
 import React, { useState } from 'react';
 import {
   View,
@@ -112,7 +113,7 @@ const InterestsScreen: React.FC<Props> = ({ navigation }) => {
 
           {isLoading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#3b82f6" />
+              <ActivityIndicator size="large" color={colors.primary} />
               <Text style={styles.loadingText}>Saving your interests...</Text>
             </View>
           ) : (
@@ -146,7 +147,7 @@ const InterestsScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
   },
   scrollContent: {
     flexGrow: 1,
@@ -159,24 +160,24 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: colors.text,
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#6b7280',
+    color: colors.textMuted,
     textAlign: 'center',
     marginBottom: 16,
   },
   counter: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceAlt,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
   },
   counterText: {
-    color: '#4b5563',
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   interestsGrid: {
@@ -189,29 +190,29 @@ const styles = StyleSheet.create({
   interestButton: {
     paddingHorizontal: 20,
     paddingVertical: 12,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.bg,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
   },
   interestButtonSelected: {
-    backgroundColor: '#3b82f6',
-    borderColor: '#3b82f6',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   interestText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: colors.textSecondary,
   },
   interestTextSelected: {
-    color: '#fff',
+    color: colors.textInverse,
   },
   bottomSection: {
     marginTop: 'auto',
   },
   tip: {
     textAlign: 'center',
-    color: '#6b7280',
+    color: colors.textMuted,
     fontSize: 14,
     marginBottom: 20,
   },
@@ -221,25 +222,25 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 12,
-    color: '#6b7280',
+    color: colors.textMuted,
     fontSize: 14,
   },
   continueButton: {
-    backgroundColor: '#d1d5db',
+    backgroundColor: colors.border,
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
   },
   continueButtonActive: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
   },
   continueButtonText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 16,
     fontWeight: 'bold',
   },
   errorText: {
-    color: '#ef4444',
+    color: colors.danger,
     textAlign: 'center',
     marginTop: 12,
     fontSize: 14,

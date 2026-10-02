@@ -1,6 +1,7 @@
 import prisma from '../config/database';
-import { Prisma } from '@prisma/client';
+import { BookingType, EventStatus, EventVisibility, Prisma } from '@prisma/client';
 import config from '../config/env';
+import { getSourceInfo, getSupplierSlug } from './providers/source-registry';
 
 export interface EventFilters {
   page?: number;
@@ -34,6 +35,17 @@ const normalizeDate = (date: Date | string | undefined): Date | undefined => {
   return isNaN(d.getTime()) ? undefined : d;
 };
 
+export function notEndedWhere(now: Date = new Date()): Prisma.EventWhereInput {
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+  return {
+    OR: [
+      { endDate: { gte: now } },
+      { endDate: null, startDate: { gte: todayStart } },
+    ],
+  };
+}
+
 export class EventService {
   async getEvents(filters: EventFilters): Promise<{
     events: any[];
@@ -55,6 +67,7 @@ export class EventService {
     const where: Prisma.EventWhereInput = {
       status: 'ACTIVE',
       visibility: { in: ['PUBLIC', 'UNLISTED'] },
+      AND: [notEndedWhere()],
     };
     
     // Apply filters
@@ -227,7 +240,7 @@ export class EventService {
     }
   }
   
-  async getEventById(eventId: string, userId?: string): Promise<any> {
+  async getEventById(eventId: string, userId?: string, role?: string): Promise<any> {
     try {
       // First try to find by ID, then by migoId (as string), then by slug
       const whereConditions: Prisma.EventWhereInput[] = [
@@ -253,6 +266,13 @@ export class EventService {
       
       // Cast event to any to access id property safely
       const eventWithId = event as any;
+      if (
+        eventWithId.status === 'BANNED'
+        && eventWithId.organizerId !== userId
+        && role !== 'ADMIN'
+      ) {
+        return null;
+      }
       
       // Log the view
       if (userId) {
@@ -322,6 +342,35 @@ export class EventService {
         });
         isWishlisted = !!wishlist;
       }
+      let canReview = false;
+      let myReview = null;
+      if (userId) {
+        const [booking, review] = await Promise.all([
+          prisma.booking.findFirst({
+            where: {
+              eventId: eventWithId.id,
+              userId,
+              status: { in: ['CONFIRMED', 'CHECKED_IN'] },
+            },
+            select: { id: true },
+          }),
+          prisma.review.findUnique({
+            where: { userId_eventId: { userId, eventId: eventWithId.id } },
+            select: { id: true, overallRating: true, title: true, comment: true, createdAt: true, updatedAt: true },
+          }),
+        ]);
+        canReview = eventWithId.startDate <= new Date() && Boolean(booking);
+        myReview = review
+          ? {
+            id: review.id,
+            rating: review.overallRating,
+            title: review.title,
+            comment: review.comment,
+            createdAt: review.createdAt,
+            updatedAt: review.updatedAt,
+          }
+          : null;
+      }
       
       return {
         ...this.formatEventResponse(event, userId),
@@ -337,6 +386,8 @@ export class EventService {
           user: (review as any).user, // Use type assertion
         })),
         isWishlisted,
+        canReview,
+        myReview,
         metadata: {
           views: Number(eventWithId.views) + 1,
           wishlistCount: eventWithId.wishlistCount,
@@ -351,6 +402,59 @@ export class EventService {
       // Return mock event for development
       return this.getMockEvent(eventId, userId);
     }
+  }
+
+  async getMyEvents(userId: string): Promise<{ events: any[]; organizer: { isVerified: boolean } }> {
+    const [events, user] = await Promise.all([
+      prisma.event.findMany({
+      where: {
+        organizerId: userId,
+        status: { not: 'DELETED' },
+      },
+      orderBy: { startDate: 'desc' },
+      select: this.getEventSelectFields(),
+      }),
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          isVerified: true,
+          organizerProfile: { select: { isVerified: true } },
+        },
+      }),
+    ]);
+
+    const hostedEvents = await Promise.all(events.map(async event => {
+      const eventId = String((event as any).id);
+      const [confirmed, checkedIn, invites] = await Promise.all([
+        prisma.booking.count({
+          where: { eventId, status: 'CONFIRMED' },
+        }),
+        prisma.booking.count({
+          where: { eventId, status: 'CHECKED_IN' },
+        }),
+        prisma.eventInvite.findMany({
+          where: { eventId, inviterId: userId },
+          select: { code: true },
+        }),
+      ]);
+      const invited = invites.length
+        ? await prisma.booking.count({
+          where: { eventId, inviteCode: { in: invites.map(invite => invite.code) } },
+        })
+        : 0;
+      return {
+        ...this.formatEventResponse(event),
+        confirmed,
+        checkedIn,
+        invited,
+      };
+    }));
+    return {
+      events: hostedEvents,
+      organizer: {
+        isVerified: Boolean(user?.organizerProfile?.isVerified || user?.isVerified),
+      },
+    };
   }
   
   private async getSimilarEvents(event: any): Promise<any[]> {
@@ -426,6 +530,7 @@ export class EventService {
             lt: tomorrow,
           },
           ...(city && { city }),
+          AND: [notEndedWhere()],
         },
         take: limit,
         select: this.getEventSelectFields(),
@@ -456,6 +561,7 @@ export class EventService {
             lte: weekendEnd,
           },
           ...(city && { city }),
+          AND: [notEndedWhere()],
         },
         take: limit,
         select: this.getEventSelectFields(),
@@ -492,17 +598,24 @@ export class EventService {
   
   async searchEvents(filters: any): Promise<any[]> {
     try {
+      const andClauses: Prisma.EventWhereInput[] = [notEndedWhere()];
       const where: Prisma.EventWhereInput = {
         status: 'ACTIVE',
         visibility: { in: ['PUBLIC', 'UNLISTED'] },
-        startDate: { gte: new Date() },
       };
       
       if (filters.categories && filters.categories.length > 0) {
         where.category = { in: filters.categories };
       }
       
-      if (filters.dateRange) {
+      if (filters.happeningNow) {
+        const now = new Date();
+        andClauses.push(
+          { startDate: { lte: now } },
+          { OR: [{ endDate: { gte: now } }, { endDate: null }] }
+        );
+        where.startDate = undefined;
+      } else if (filters.dateRange && (filters.dateRange.start || filters.dateRange.end)) {
         where.startDate = {};
         if (filters.dateRange.start) {
           where.startDate.gte = new Date(filters.dateRange.start);
@@ -512,30 +625,40 @@ export class EventService {
         }
       }
       
-      if (filters.priceRange) {
-        where.OR = [
-          { isFree: true },
-          {
-            AND: [
-              filters.priceRange.min !== undefined ? { priceFrom: { gte: new Prisma.Decimal(filters.priceRange.min) } } : {},
-              filters.priceRange.max !== undefined ? { priceFrom: { lte: new Prisma.Decimal(filters.priceRange.max) } } : {},
-            ]
-          }
-        ];
+      if (filters.priceRange && (filters.priceRange.min !== undefined || filters.priceRange.max !== undefined)) {
+        andClauses.push({
+          OR: [
+            { isFree: true },
+            {
+              AND: [
+                filters.priceRange.min !== undefined ? { priceFrom: { gte: new Prisma.Decimal(filters.priceRange.min) } } : {},
+                filters.priceRange.max !== undefined ? { priceFrom: { lte: new Prisma.Decimal(filters.priceRange.max) } } : {},
+              ]
+            }
+          ]
+        });
       }
       
       if (filters.location && filters.location.city) {
-        where.city = filters.location.city;
+        where.city = { contains: filters.location.city, mode: 'insensitive' };
       }
       
       if (filters.keywords && filters.keywords.length > 0) {
-        where.OR = filters.keywords.map((keyword: string) => ({
-          OR: [
-            { title: { contains: keyword } },
-            { description: { contains: keyword } },
-            { venueName: { contains: keyword } },
-          ]
-        }));
+        andClauses.push({
+          OR: filters.keywords.map((keyword: string) => ({
+            OR: [
+              { title: { contains: keyword, mode: 'insensitive' } },
+              { description: { contains: keyword, mode: 'insensitive' } },
+              { venueName: { contains: keyword, mode: 'insensitive' } },
+              { category: { contains: keyword, mode: 'insensitive' } },
+              { city: { contains: keyword, mode: 'insensitive' } },
+            ]
+          }))
+        });
+      }
+
+      if (andClauses.length > 0) {
+        where.AND = andClauses;
       }
       
       if (filters.requirements && filters.requirements.length > 0) {
@@ -808,7 +931,7 @@ export class EventService {
     }
   }
   
-  private getEventSelectFields(userId?: string, fullDetails: boolean = false) {
+  getEventSelectFields(userId?: string, fullDetails: boolean = false) {
     const baseSelect: any = {
       id: true,
       migoId: true,
@@ -855,8 +978,14 @@ export class EventService {
       hasWiFi: true,
       facilities: true,
       dressCode: true,
+      schedule: true,
+      notes: true,
       ageRestriction: true,
       status: true,
+      bannedAt: true,
+      bannedReason: true,
+      bannedById: true,
+      supplierRank: true,
       visibility: true,
       isFeatured: true,
       isSponsored: true,
@@ -884,6 +1013,24 @@ export class EventService {
       publishedAt: true,
       approvedAt: true,
       organizerId: true,
+      organizer: {
+        select: {
+          id: true,
+          name: true,
+          displayName: true,
+          avatar: true,
+          avatarUrl: true,
+          isVerified: true,
+          organizerProfile: { select: { isVerified: true } },
+          _count: {
+            select: {
+              organizedEvents: {
+                where: { status: 'ACTIVE' },
+              },
+            },
+          },
+        },
+      },
     };
     
     if (fullDetails) {
@@ -897,16 +1044,40 @@ export class EventService {
         select: { id: true },
       };
       baseSelect.bookings = {
-        where: { userId },
-        select: { id: true, status: true },
+        where: {
+          userId,
+          status: { in: ['CONFIRMED', 'CHECKED_IN'] },
+        },
+        select: { id: true, status: true, ticketCount: true, qrCode: true },
       };
     }
     
     return baseSelect;
   }
   
-  private formatEventResponse(event: any, userId?: string): any {
+  formatEventResponse(event: any, userId?: string): any {
     const eventAny = event as any;
+    const source = getSourceInfo(eventAny.externalSource, eventAny.source);
+    const isNative = source.id === 'migo';
+    const organizer = isNative && eventAny.organizer
+      ? {
+          id: eventAny.organizer.id,
+          name: eventAny.organizer.displayName || eventAny.organizer.name || 'Migo organizer',
+          avatar: eventAny.organizer.avatar || eventAny.organizer.avatarUrl || null,
+          isVerified: Boolean(
+            eventAny.organizer.organizerProfile?.isVerified || eventAny.organizer.isVerified,
+          ),
+          eventsHosted: eventAny.organizer._count?.organizedEvents || 0,
+        }
+      : undefined;
+    const refundKey = isNative
+      ? (eventAny.isFree ? 'free_cancel_until_start' : 'organizer_policy')
+      : 'per_provider';
+    const refundText = refundKey === 'free_cancel_until_start'
+      ? 'Free tickets can be cancelled until the event starts.'
+      : refundKey === 'organizer_policy'
+        ? 'Refunds are available up to 48 hours before the event starts.'
+        : "Refunds follow the provider's policy.";
     // Return flat structure matching shared Event type
     const formatted: any = {
       id: eventAny.migoId ? eventAny.migoId.toString() : eventAny.id,
@@ -965,6 +1136,8 @@ export class EventService {
       hasWiFi: eventAny.hasWiFi,
       facilities: eventAny.facilities || [],
       dressCode: eventAny.dressCode,
+      schedule: eventAny.schedule || undefined,
+      notes: eventAny.notes || undefined,
       ageRestriction: eventAny.ageRestriction,
 
       // Status & visibility
@@ -978,6 +1151,10 @@ export class EventService {
       externalId: eventAny.externalId,
       externalSource: eventAny.externalSource || eventAny.source,
       externalUrl: eventAny.externalUrl,
+      supplierSlug: getSupplierSlug(eventAny.externalSource || eventAny.source),
+      bannedAt: eventAny.bannedAt,
+      bannedReason: eventAny.bannedReason,
+      supplierRank: eventAny.supplierRank,
 
       // Contact - flat structure
       organizerEmail: eventAny.organizerEmail,
@@ -989,6 +1166,14 @@ export class EventService {
 
       // Relations
       organizerId: eventAny.organizerId,
+      trust: {
+        source,
+        ...(organizer ? { organizer } : {}),
+        refund: refundKey,
+        refundKey,
+        refundText,
+        isOfficial: ['official', 'venue', 'ticketing'].includes(source.kind),
+      },
 
       // Stats - flat structure
       viewCount: Number(eventAny.views) || 0,
@@ -1001,7 +1186,23 @@ export class EventService {
       createdAt: eventAny.createdAt,
       updatedAt: eventAny.updatedAt,
       publishedAt: eventAny.publishedAt,
-        featuredUntil: eventAny.featuredUntil,
+      featuredUntil: eventAny.featuredUntil,
+      canRsvp: (
+        eventAny.status === 'ACTIVE'
+        && eventAny.startDate > new Date()
+        && eventAny.isFree
+        && !(eventAny.externalUrl && eventAny.bookingType === 'PAID' && !eventAny.isFree)
+        && ((eventAny.capacity || 0) === 0 || (eventAny.ticketsSold || 0) < eventAny.capacity)
+      ),
+      canBuy: (
+        eventAny.status === 'ACTIVE'
+        && eventAny.startDate > new Date()
+        && !eventAny.isFree
+        && Number(eventAny.priceFrom || 0) > 0
+        && !(eventAny.externalUrl && eventAny.bookingType === 'PAID')
+        && ((eventAny.capacity || 0) === 0 || (eventAny.ticketsSold || 0) < eventAny.capacity)
+      ),
+      myBookingId: null,
     };
 
     // Add user-specific fields matching shared Event type
@@ -1014,6 +1215,13 @@ export class EventService {
           status: booking.status,
           ticketCount: booking.ticketCount || 1,
         };
+        formatted.myBooking = {
+          id: booking.id,
+          status: booking.status,
+          ticketCount: booking.ticketCount || 1,
+          qrCode: booking.qrCode,
+        };
+        formatted.myBookingId = booking.id;
       }
     }
 
@@ -1026,20 +1234,52 @@ export class EventService {
         where: { id: userId },
         select: { isOrganizer: true },
       });
-      
-      if (!user?.isOrganizer) {
-        throw new Error('User is not an organizer');
-      }
-      
+
       const slug = this.generateSlug(eventData.title);
-      
+
+      const isFree = eventData.isFree === true;
+      const capacity = eventData.capacity ?? 0;
       const eventDataWithDates = {
-        ...eventData,
+        title: eventData.title,
+        description: eventData.description || eventData.title,
+        category: eventData.category,
+        subcategory: eventData.subcategory,
+        tags: eventData.tags || [],
         startDate: new Date(eventData.startDate),
         endDate: eventData.endDate ? new Date(eventData.endDate) : null,
+        venueName: eventData.venueName,
+        address: eventData.address,
+        city: eventData.city,
+        country: eventData.country,
+        latitude: eventData.latitude,
+        longitude: eventData.longitude,
+        priceFrom: eventData.priceFrom,
+        priceTo: eventData.priceTo,
+        currency: eventData.currency || 'AED',
+        isFree,
+        bookingType: isFree ? BookingType.FREE : BookingType.PAID,
+        ticketUrl: eventData.ticketUrl,
+        capacity,
+        ticketsSold: 0,
+        ticketsAvailable: capacity,
+        coverImage: eventData.coverImage,
+        images: eventData.images || (eventData.coverImage ? [eventData.coverImage] : []),
+        facilities: eventData.facilities || [],
+        isPetFriendly: eventData.isPetFriendly || false,
+        isWheelchairAccessible: eventData.isWheelchairAccessible || false,
+        hasParking: eventData.hasParking || false,
+        hasFood: eventData.hasFood || false,
+        hasDrinks: eventData.hasDrinks || false,
+        hasWiFi: eventData.hasWiFi || false,
+        ageRestriction: eventData.ageRestriction,
+        dressCode: eventData.dressCode,
+        schedule: eventData.schedule,
+        notes: eventData.notes,
+        visibility: EventVisibility.PUBLIC,
+        source: 'migo',
         slug,
         organizerId: userId,
-        status: 'PENDING',
+        status: EventStatus.ACTIVE,
         publishedAt: new Date(),
       };
       
@@ -1050,7 +1290,7 @@ export class EventService {
       
       await prisma.user.update({
         where: { id: userId },
-        data: { eventCount: { increment: 1 } }
+        data: { eventCount: { increment: 1 }, isOrganizer: true },
       });
       
       await prisma.organizerProfile.upsert({
@@ -1073,29 +1313,62 @@ export class EventService {
   
   async updateEvent(eventId: string, userId: string, updateData: any): Promise<any> {
     try {
-      const event = await prisma.event.findUnique({
-        where: { id: eventId },
-        select: { organizerId: true, status: true },
-      });
+      const [event, user] = await Promise.all([
+        prisma.event.findUnique({
+          where: { id: eventId },
+          select: { organizerId: true, status: true, ticketsSold: true },
+        }),
+        prisma.user.findUnique({
+          where: { id: userId },
+          select: { role: true, isAdmin: true },
+        }),
+      ]);
       
       if (!event) {
         throw new Error('Event not found');
       }
       
-      if (event.organizerId !== userId) {
+      if (event.organizerId !== userId && user?.role !== 'ADMIN' && !user?.isAdmin) {
         throw new Error('Not authorized to update this event');
       }
       
-      const updatedData: any = { ...updateData };
+      const updatedData: any = {
+        ...(updateData.title !== undefined && { title: updateData.title }),
+        ...(updateData.description !== undefined && { description: updateData.description }),
+        ...(updateData.category !== undefined && { category: updateData.category }),
+        ...(updateData.subcategory !== undefined && { subcategory: updateData.subcategory }),
+        ...(updateData.startDate !== undefined && { startDate: new Date(updateData.startDate) }),
+        ...(updateData.endDate !== undefined && { endDate: updateData.endDate ? new Date(updateData.endDate) : null }),
+        ...(updateData.venueName !== undefined && { venueName: updateData.venueName }),
+        ...(updateData.address !== undefined && { address: updateData.address }),
+        ...(updateData.city !== undefined && { city: updateData.city }),
+        ...(updateData.country !== undefined && { country: updateData.country }),
+        ...(updateData.latitude !== undefined && { latitude: updateData.latitude }),
+        ...(updateData.longitude !== undefined && { longitude: updateData.longitude }),
+        ...(updateData.priceFrom !== undefined && { priceFrom: updateData.priceFrom }),
+        ...(updateData.priceTo !== undefined && { priceTo: updateData.priceTo }),
+        ...(updateData.currency !== undefined && { currency: updateData.currency }),
+        ...(updateData.isFree !== undefined && {
+          isFree: updateData.isFree,
+          bookingType: updateData.isFree ? 'FREE' : 'PAID',
+        }),
+        ...(updateData.ticketUrl !== undefined && { ticketUrl: updateData.ticketUrl }),
+        ...(updateData.capacity !== undefined && {
+          capacity: updateData.capacity,
+          ticketsAvailable: updateData.capacity > 0
+            ? updateData.capacity - (event as any).ticketsSold
+            : null,
+        }),
+        ...(updateData.coverImage !== undefined && { coverImage: updateData.coverImage }),
+        ...(updateData.images !== undefined && { images: updateData.images }),
+        ...(updateData.facilities !== undefined && { facilities: updateData.facilities }),
+        ...(updateData.tags !== undefined && { tags: updateData.tags }),
+        ...(updateData.dressCode !== undefined && { dressCode: updateData.dressCode }),
+        ...(updateData.schedule !== undefined && { schedule: updateData.schedule }),
+        ...(updateData.notes !== undefined && { notes: updateData.notes }),
+      };
       if (updateData.title) {
         updatedData.slug = this.generateSlug(updateData.title);
-      }
-      
-      if (updateData.startDate) {
-        updatedData.startDate = new Date(updateData.startDate);
-      }
-      if (updateData.endDate) {
-        updatedData.endDate = new Date(updateData.endDate);
       }
       
       const updatedEvent = await prisma.event.update({
@@ -1124,7 +1397,7 @@ export class EventService {
         }),
         prisma.user.findUnique({
           where: { id: userId },
-          select: { isAdmin: true },
+          select: { role: true, isAdmin: true },
         }),
       ]);
       
@@ -1132,7 +1405,7 @@ export class EventService {
         throw new Error('Event not found');
       }
       
-      if (event.organizerId !== userId && !user?.isAdmin) {
+      if (event.organizerId !== userId && user?.role !== 'ADMIN' && !user?.isAdmin) {
         throw new Error('Not authorized to delete this event');
       }
       

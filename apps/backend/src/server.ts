@@ -3,6 +3,8 @@ import app from './app';
 import prisma from './config/database';
 import config from './config/env';
 import { startPlaceWorker, stopPlaceWorker } from './services/places/place-worker';
+import * as eventSyncScheduler from './services/event-sync.scheduler';
+import { refreshSupplierSourceCache } from './services/providers/source-registry';
 
 const PORT = config.PORT || 5000;
 
@@ -76,6 +78,9 @@ async function ensureOllama(): Promise<void> {
 async function bootstrap() {
   // Start Ollama before Express so first AI request doesn't time out
   await ensureOllama();
+  await refreshSupplierSourceCache().catch(error => {
+    console.warn('Supplier source cache could not be initialized', error.message);
+  });
 
   const server = app.listen(PORT, () => {
     console.log(`🚀 Server running in ${config.NODE_ENV} mode`);
@@ -86,6 +91,7 @@ async function bootstrap() {
     // Drains the place-search queue, one scrape job at a time. Disable with
     // PLACES_WORKER_ENABLED=false on instances that should not scrape.
     startPlaceWorker();
+    eventSyncScheduler.start();
   });
 
   // Handle unhandled promise rejections
@@ -100,6 +106,7 @@ async function bootstrap() {
     console.log(`👋 ${signal} RECEIVED. Shutting down gracefully...`);
 
     stopPlaceWorker();
+    eventSyncScheduler.stop();
 
     server.close(async () => {
       console.log('🛑 Server closed');

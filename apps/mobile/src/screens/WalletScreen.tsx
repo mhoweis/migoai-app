@@ -1,605 +1,521 @@
-// src/screens/WalletScreen.tsx
-import React, { useEffect, useState } from 'react';
+import { colors } from '../theme';
+import { useBreakpoint } from '../hooks/useBreakpoint';
+import { LinearGradient } from 'expo-linear-gradient';
+import { gradients } from '../theme';
+import React, { useCallback, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Dimensions,
+  ActivityIndicator,
   Alert,
+  FlatList,
+  Image,
+  Linking,
   Modal,
-  TextInput,
-  KeyboardAvoidingView,
   Platform,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useWalletStore, Ticket } from '../store/walletStore';
-import { useUserStore } from '../store/userStore';
+import QRCode from 'react-native-qrcode-svg';
+import { useFocusEffect } from '@react-navigation/native';
+import { navigateToTab } from '../navigation/navigationRef';
+import { Ticket, ticketsService } from '../services/tickets.service';
+import { socialService } from '../services/social.service';
+import { formatEventDate, useLocale, categoryLabel } from '../i18n';
+import { radius, shadow, spacing, type } from '../theme';
+import GradientButton from '../components/GradientButton';
+import { EventListSkeleton } from '../components/Skeleton';
+import Container from '../components/Container';
 
-const { width } = Dimensions.get('window');
-const TICKET_WIDTH = width - 48;
-
-const CATEGORY_COLORS: Record<string, string> = {
-  Music: '#6d28d9',
-  Sports: '#065f46',
-  Art: '#b45309',
-  Food: '#dc2626',
-  Tech: '#1d4ed8',
-  Business: '#374151',
-  Health: '#0f766e',
-  Theater: '#7c3aed',
-  Comedy: '#d97706',
-  Other: '#3b82f6',
+const categoryColors: Record<string, string> = {
+  Music: colors.primaryDark,
+  Sports: colors.success,
+  Art: colors.warning,
+  Food: colors.danger,
+  Tech: colors.primaryDark,
+  Business: colors.textSecondary,
+  Health: colors.success,
+  Theater: colors.primary,
+  Comedy: colors.warning,
+  Other: colors.primary,
 };
 
-const CATEGORIES = Object.keys(CATEGORY_COLORS);
+const ticketColor = (category?: string) => categoryColors[category || ''] || categoryColors.Other;
 
-const getColor = (category?: string) =>
-  CATEGORY_COLORS[category || ''] || CATEGORY_COLORS['Other'];
+type WalletView = 'upcoming' | 'past';
 
-const fmtDate = (iso: string) => {
-  const d = new Date(iso);
-  return {
-    day:   d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(),
-    date:  d.getDate().toString().padStart(2, '0'),
-    month: d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
-    year:  d.getFullYear(),
-    time:  d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-  };
+const ticketEndTime = (ticket: Ticket): number => {
+  if (ticket.event.endDate) return new Date(ticket.event.endDate).getTime();
+  const end = new Date(ticket.event.startDate);
+  end.setHours(23, 59, 59, 999);
+  return end.getTime();
 };
 
-// ─── Add-Ticket Modal ────────────────────────────────────────────────────────
-const EMPTY_FORM = {
-  eventTitle: '',
-  eventDate: '',
-  eventTime: '',
-  venueName: '',
-  city: '',
-  ticketType: '',
-  seatInfo: '',
-  confirmationCode: '',
-  price: '',
-  category: 'Other',
+const isPastTicket = (ticket: Ticket, now: number): boolean => ticketEndTime(ticket) < now;
+
+const formatDate = (value: string) => {
+  const date = new Date(value);
+  return `${date.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })} at ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
 };
 
-function AddTicketModal({
-  visible,
-  holderName,
-  onClose,
-  onAdd,
+function TicketCard({
+  ticket,
+  onCancel,
+  onTransfer,
+  onCancelTransfer,
+  onApple,
+  onGoogle,
+  capabilities,
+  past,
+  t,
 }: {
-  visible: boolean;
-  holderName: string;
-  onClose: () => void;
-  onAdd: (ticket: Ticket) => void;
+  ticket: Ticket;
+  onCancel: (ticket: Ticket) => void;
+  onTransfer: (ticket: Ticket) => void;
+  onCancelTransfer: (ticket: Ticket) => void;
+  onApple: (ticket: Ticket) => void;
+  onGoogle: (ticket: Ticket) => void;
+  capabilities: { apple: boolean; google: boolean };
+  past: boolean;
+  t: ReturnType<typeof useLocale>['t'];
 }) {
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [step, setStep] = useState<'method' | 'manual'>('method');
-
-  const set = (k: keyof typeof EMPTY_FORM) => (v: string) =>
-    setForm((f) => ({ ...f, [k]: v }));
-
-  const handleAdd = () => {
-    if (!form.eventTitle.trim()) {
-      Alert.alert('Required', 'Please enter the event name.');
-      return;
+  const active = ticket.status === 'CONFIRMED' && !past;
+  const statusLabel = ticket.status === 'CHECKED_IN'
+    ? (past ? t('attended') : t('checked_in'))
+    : (past ? t('event_ended') : t('confirmed'));
+  const color = ticketColor(ticket.event.category || undefined);
+  const sendToWhatsApp = async () => {
+    try {
+      const invite = await socialService.invite(ticket.event.id);
+      const text = `My ticket for ${ticket.event.title} — ${formatDate(ticket.event.startDate)}. Get yours: ${invite.shareUrl}`;
+      await Linking.openURL(`https://wa.me/?text=${encodeURIComponent(text)}`);
+    } catch {
+      Alert.alert(t('unable_to_share'), t('please_try_again'));
     }
-    if (!form.eventDate.trim()) {
-      Alert.alert('Required', 'Please enter the event date (YYYY-MM-DD).');
-      return;
-    }
-    if (!form.venueName.trim()) {
-      Alert.alert('Required', 'Please enter the venue name.');
-      return;
-    }
-
-    const dateTimeStr = form.eventTime
-      ? `${form.eventDate}T${form.eventTime}`
-      : `${form.eventDate}T00:00`;
-
-    const ticket: Ticket = {
-      id: `manual-${Date.now()}`,
-      eventTitle: form.eventTitle.trim(),
-      eventDate: new Date(dateTimeStr).toISOString(),
-      venueName: form.venueName.trim(),
-      city: form.city.trim(),
-      holderName,
-      ticketType: form.ticketType.trim() || undefined,
-      seatInfo: form.seatInfo.trim() || undefined,
-      confirmationCode: form.confirmationCode.trim() || `MIGO-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-      price: form.price.trim() || undefined,
-      category: form.category,
-    };
-
-    onAdd(ticket);
-    setForm(EMPTY_FORM);
-    setStep('method');
-    onClose();
   };
-
-  const handleClose = () => {
-    setForm(EMPTY_FORM);
-    setStep('method');
-    onClose();
-  };
-
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <SafeAreaView style={modal.container}>
-          {/* Header */}
-          <View style={modal.header}>
-            <TouchableOpacity onPress={handleClose}>
-              <Ionicons name="close" size={24} color="#374151" />
-            </TouchableOpacity>
-            <Text style={modal.title}>Add Ticket</Text>
-            <View style={{ width: 24 }} />
-          </View>
-
-          {step === 'method' ? (
-            <ScrollView contentContainerStyle={modal.methodList}>
-              <Text style={modal.sectionLabel}>How would you like to add your ticket?</Text>
-
-              {/* Manual entry */}
-              <TouchableOpacity style={modal.methodCard} onPress={() => setStep('manual')}>
-                <View style={[modal.methodIcon, { backgroundColor: '#eff6ff' }]}>
-                  <Ionicons name="create-outline" size={26} color="#3b82f6" />
-                </View>
-                <View style={modal.methodText}>
-                  <Text style={modal.methodTitle}>Enter Manually</Text>
-                  <Text style={modal.methodSub}>Type in your ticket details from a confirmation email or booking</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
-              </TouchableOpacity>
-
-              {/* Email instructions */}
-              <TouchableOpacity
-                style={modal.methodCard}
-                onPress={() =>
-                  Alert.alert(
-                    'Import from Email',
-                    'To add a ticket from an email:\n\n1. Open your booking confirmation email\n2. Find the event name, date, venue and confirmation code\n3. Tap "Enter Manually" and fill in those details\n\nFull email scanning coming soon!',
-                    [{ text: 'Got it', onPress: () => setStep('manual') }],
-                  )
-                }
-              >
-                <View style={[modal.methodIcon, { backgroundColor: '#f0fdf4' }]}>
-                  <Ionicons name="mail-outline" size={26} color="#16a34a" />
-                </View>
-                <View style={modal.methodText}>
-                  <Text style={modal.methodTitle}>From Email</Text>
-                  <Text style={modal.methodSub}>Import ticket details from your booking confirmation email</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
-              </TouchableOpacity>
-
-              {/* QR scan placeholder */}
-              <TouchableOpacity
-                style={[modal.methodCard, { opacity: 0.5 }]}
-                onPress={() => Alert.alert('Coming Soon', 'QR code scanning will be available in the next update.')}
-              >
-                <View style={[modal.methodIcon, { backgroundColor: '#fefce8' }]}>
-                  <Ionicons name="qr-code-outline" size={26} color="#ca8a04" />
-                </View>
-                <View style={modal.methodText}>
-                  <Text style={modal.methodTitle}>Scan QR Code</Text>
-                  <Text style={modal.methodSub}>Scan a ticket QR code directly — coming soon</Text>
-                </View>
-                <View style={modal.comingSoon}><Text style={modal.comingSoonText}>Soon</Text></View>
-              </TouchableOpacity>
-            </ScrollView>
-          ) : (
-            <ScrollView contentContainerStyle={modal.form} keyboardShouldPersistTaps="handled">
-              <TouchableOpacity style={modal.backRow} onPress={() => setStep('method')}>
-                <Ionicons name="chevron-back" size={16} color="#3b82f6" />
-                <Text style={modal.backText}>Back</Text>
-              </TouchableOpacity>
-
-              <Field label="Event Name *" value={form.eventTitle} onChange={set('eventTitle')} placeholder="e.g. Coldplay World Tour" />
-              <Field label="Date (YYYY-MM-DD) *" value={form.eventDate} onChange={set('eventDate')} placeholder="2025-06-15" keyboardType="numbers-and-punctuation" />
-              <Field label="Time (HH:MM)" value={form.eventTime} onChange={set('eventTime')} placeholder="20:00" keyboardType="numbers-and-punctuation" />
-              <Field label="Venue *" value={form.venueName} onChange={set('venueName')} placeholder="Coca-Cola Arena" />
-              <Field label="City" value={form.city} onChange={set('city')} placeholder="Dubai" />
-              <Field label="Ticket Type" value={form.ticketType} onChange={set('ticketType')} placeholder="VIP / General / Front Row" />
-              <Field label="Seat / Section" value={form.seatInfo} onChange={set('seatInfo')} placeholder="Block A, Row 3, Seat 12" />
-              <Field label="Confirmation Code" value={form.confirmationCode} onChange={set('confirmationCode')} placeholder="ABC123" autoCapitalize="characters" />
-              <Field label="Price (optional)" value={form.price} onChange={set('price')} placeholder="250" keyboardType="numeric" />
-
-              {/* Category picker */}
-              <Text style={modal.fieldLabel}>Category</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={modal.catRow}>
-                {CATEGORIES.map((cat) => (
-                  <TouchableOpacity
-                    key={cat}
-                    style={[modal.catChip, form.category === cat && { backgroundColor: getColor(cat) }]}
-                    onPress={() => setForm((f) => ({ ...f, category: cat }))}
-                  >
-                    <Text style={[modal.catChipText, form.category === cat && { color: '#fff' }]}>{cat}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              <TouchableOpacity style={modal.addBtn} onPress={handleAdd}>
-                <Ionicons name="ticket" size={18} color="#fff" />
-                <Text style={modal.addBtnText}>Add to Wallet</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          )}
-        </SafeAreaView>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
-}
-
-function Field({
-  label, value, onChange, placeholder, keyboardType = 'default', autoCapitalize = 'words',
-}: {
-  label: string; value: string; onChange: (v: string) => void;
-  placeholder: string; keyboardType?: any; autoCapitalize?: any;
-}) {
-  return (
-    <View style={modal.fieldWrap}>
-      <Text style={modal.fieldLabel}>{label}</Text>
-      <TextInput
-        style={modal.input}
-        value={value}
-        onChangeText={onChange}
-        placeholder={placeholder}
-        placeholderTextColor="#9ca3af"
-        keyboardType={keyboardType}
-        autoCapitalize={autoCapitalize}
-      />
-    </View>
-  );
-}
-
-// ─── Ticket Card ──────────────────────────────────────────────────────────────
-function TicketCard({ ticket, onDelete }: { ticket: Ticket; onDelete: (id: string) => void }) {
-  const color = getColor(ticket.category);
-  const dt = fmtDate(ticket.eventDate);
-  const isPast = new Date(ticket.eventDate) < new Date();
-
-  return (
-    <View style={[card.wrapper, isPast && { opacity: 0.6 }]}>
-      {/* Coloured header */}
-      <View style={[card.top, { backgroundColor: color }]}>
-        <View style={card.catBadge}>
-          <Text style={card.catText}>{(ticket.category || 'Event').toUpperCase()}</Text>
-        </View>
-        <Text style={card.title} numberOfLines={2}>{ticket.eventTitle}</Text>
-        <View style={card.venueRow}>
-          <Ionicons name="location-outline" size={13} color="rgba(255,255,255,0.8)" />
-          <Text style={card.venueText} numberOfLines={1}>
-            {ticket.venueName}{ticket.city ? `, ${ticket.city}` : ''}
-          </Text>
-        </View>
-
-        <View style={card.dateRow}>
-          <View style={card.dateBlock}>
-            <Text style={card.dateDay}>{dt.day}</Text>
-            <Text style={card.dateNum}>{dt.date}</Text>
-            <Text style={card.dateMon}>{dt.month} {dt.year}</Text>
-          </View>
-          <View style={card.sep} />
-          <View style={card.dateBlock}>
-            <Ionicons name="time-outline" size={14} color="rgba(255,255,255,0.7)" />
-            <Text style={card.dateNum}>{dt.time}</Text>
-            <Text style={card.dateMon}>Time</Text>
-          </View>
-          {ticket.ticketType && (
-            <>
-              <View style={card.sep} />
-              <View style={card.dateBlock}>
-                <Ionicons name="ticket-outline" size={14} color="rgba(255,255,255,0.7)" />
-                <Text style={card.dateNum} numberOfLines={1}>{ticket.ticketType}</Text>
-                <Text style={card.dateMon}>Type</Text>
-              </View>
-            </>
-          )}
-        </View>
-      </View>
-
-      {/* Perforation */}
-      <View style={[card.perf, { backgroundColor: color }]}>
-        <View style={card.circleL} />
-        <View style={card.dashes}>
-          {Array.from({ length: 20 }).map((_, i) => <View key={i} style={card.dash} />)}
-        </View>
-        <View style={card.circleR} />
-      </View>
-
-      {/* White stub */}
-      <View style={[card.bottom, { borderColor: color }]}>
-        <View style={card.stubRow}>
-          <View style={card.stubField}>
-            <Text style={card.stubLabel}>HOLDER</Text>
-            <Text style={card.stubValue} numberOfLines={1}>{ticket.holderName}</Text>
-          </View>
-          {ticket.seatInfo && (
-            <View style={card.stubField}>
-              <Text style={card.stubLabel}>SEAT</Text>
-              <Text style={card.stubValue}>{ticket.seatInfo}</Text>
-            </View>
-          )}
-          <View style={card.stubField}>
-            <Text style={card.stubLabel}>PRICE</Text>
-            <Text style={card.stubValue}>
-              {ticket.price ? `AED ${ticket.price}` : 'FREE'}
-            </Text>
-          </View>
-        </View>
-
-        <View style={card.qrRow}>
-          <View style={card.qrBox}>
-            <Ionicons name="qr-code" size={60} color="#1f2937" />
-          </View>
-          <View style={{ flex: 1, gap: 4 }}>
-            <Text style={card.stubLabel}>CONFIRMATION</Text>
-            <Text style={card.confirmCode}>{ticket.confirmationCode}</Text>
-            <Text style={[card.stubLabel, { marginTop: 4 }]}>Present at venue entrance</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={card.deleteBtn}
-          onPress={() =>
-            Alert.alert('Remove Ticket', 'Remove this ticket from your wallet?', [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Remove', style: 'destructive', onPress: () => onDelete(ticket.id) },
-            ])
-          }
-        >
-          <Ionicons name="trash-outline" size={13} color="#ef4444" />
-          <Text style={card.deleteTxt}>Remove ticket</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-}
-
-// ─── Main Screen ─────────────────────────────────────────────────────────────
-export default function WalletScreen({ navigation }: any) {
-  const { user } = useUserStore();
-  const { tickets, loadTickets, addTicket, removeTicket, upcomingTickets } = useWalletStore();
-  const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
-  const [showAdd, setShowAdd] = useState(false);
-
-  useEffect(() => { loadTickets(); }, []);
-
-  const upcoming = upcomingTickets();
-  const past = tickets.filter((t) => new Date(t.eventDate) < new Date());
-  const displayed = tab === 'upcoming' ? upcoming : past;
-
-  return (
-    <SafeAreaView style={s.container}>
-      {/* Header */}
-      <View style={s.header}>
-        {navigation.canGoBack() ? (
-          <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-            <Ionicons name="chevron-back" size={24} color="#1f2937" />
-          </TouchableOpacity>
-        ) : (
-          <View style={s.backBtn} />
-        )}
-        <View style={{ flex: 1 }}>
-          <Text style={s.headerTitle}>My Wallet</Text>
-          <Text style={s.headerSub}>
-            {tickets.length} ticket{tickets.length !== 1 ? 's' : ''}
-          </Text>
-        </View>
-        <TouchableOpacity style={s.addBtn} onPress={() => setShowAdd(true)}>
-          <Ionicons name="add" size={22} color="#fff" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Tabs */}
-      <View style={s.tabs}>
-        {(['upcoming', 'past'] as const).map((t) => (
-          <TouchableOpacity
-            key={t}
-            style={[s.tab, tab === t && s.tabActive]}
-            onPress={() => setTab(t)}
-          >
-            <Text style={[s.tabTxt, tab === t && s.tabTxtActive]}>
-              {t === 'upcoming' ? `Upcoming (${upcoming.length})` : `Past (${past.length})`}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Tip banner */}
-      {tickets.length === 0 && (
-        <View style={s.tipBanner}>
-          <Ionicons name="information-circle-outline" size={18} color="#3b82f6" />
-          <Text style={s.tipText}>
-            Tap <Text style={{ fontWeight: '700' }}>+</Text> to add tickets from the app, an email confirmation, or enter them manually.
-          </Text>
+    <View style={styles.card}>
+      {ticket.event.coverImage ? (
+        <Image source={{ uri: ticket.event.coverImage }} style={styles.coverImage} />
+      ) : (
+        <View style={[styles.coverImage, { backgroundColor: color }]}>
+          <Ionicons name="ticket-outline" size={42} color={colors.textInverse} />
         </View>
       )}
-
-      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-        {displayed.length === 0 ? (
-          <View style={s.empty}>
-            <Ionicons name="ticket-outline" size={72} color="#d1d5db" />
-            <Text style={s.emptyTitle}>
-              {tab === 'upcoming' ? 'No upcoming tickets' : 'No past tickets'}
-            </Text>
-            <Text style={s.emptySub}>
-              {tab === 'upcoming'
-                ? 'Add a ticket using the + button above'
-                : 'Attended events will appear here'}
-            </Text>
-            {tab === 'upcoming' && (
-              <TouchableOpacity style={s.emptyAddBtn} onPress={() => setShowAdd(true)}>
-                <Ionicons name="add-circle-outline" size={18} color="#fff" />
-                <Text style={s.emptyAddTxt}>Add Your First Ticket</Text>
+        <View style={styles.cardBody}>
+        <View style={styles.cardHeading}>
+          <Text style={styles.category}>{categoryLabel(ticket.event.category)}</Text>
+          <View style={[styles.statusBadge, (ticket.status === 'CHECKED_IN' || past) && styles.usedBadge]}>
+            <Text style={[styles.statusText, past && styles.pastStatusText]}>{statusLabel}</Text>
+          </View>
+        </View>
+        <Text style={styles.title}>{ticket.event.title}</Text>
+        <Text style={styles.meta}>{formatEventDate(ticket.event.startDate, { withTime: true })}</Text>
+        <Text style={styles.meta}>
+          {ticket.event.venueName || t('location_tba')}{ticket.event.city ? ` · ${ticket.event.city}` : ''}
+        </Text>
+        <Text style={styles.quantity}>{ticket.ticketCount} × {t('event')}</Text>
+        <Text style={styles.price}>
+          {Number(ticket.totalAmount || 0) > 0
+            ? `${ticket.currency || ticket.event.currency || 'AED'} ${Number(ticket.totalAmount).toFixed(2)} paid`
+            : t('free')}
+        </Text>
+        {!past ? (
+          <View style={styles.perforation}>
+            <View style={styles.perforationCircleLeft} />
+            <View style={styles.perforationLine} />
+            <View style={styles.perforationCircleRight} />
+          </View>
+        ) : null}
+        {ticket.qrCode && !past ? (
+          <View style={styles.qrSection}>
+            <View style={styles.qrFrame}><QRCode value={ticket.qrCode} size={160} /></View>
+            <Text style={styles.code}>{ticket.qrCode}</Text>
+          </View>
+        ) : null}
+        {active && (
+          <View style={styles.actions}>
+            {capabilities.apple && Platform.OS === 'web' ? (
+              <TouchableOpacity style={styles.actionButton} onPress={() => onApple(ticket)}>
+                <Text style={styles.actionText}>{t('add_apple_wallet')}</Text>
+              </TouchableOpacity>
+            ) : null}
+            {capabilities.google ? (
+              <TouchableOpacity style={styles.actionButton} onPress={() => onGoogle(ticket)}>
+                <Text style={styles.actionText}>{t('save_google_wallet')}</Text>
+              </TouchableOpacity>
+            ) : null}
+            {ticket.pendingTransfer ? (
+              <>
+                <Text style={styles.pendingText}>{t('transfer_sent', { email: ticket.pendingTransfer.toEmail })}</Text>
+                <TouchableOpacity style={styles.cancelTransferButton} onPress={() => onCancelTransfer(ticket)}>
+                  <Text style={styles.cancelText}>{t('cancel_transfer')}</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <TouchableOpacity style={styles.actionButton} onPress={() => onTransfer(ticket)}>
+                <Text style={styles.actionText}>{t('transfer_ticket')}</Text>
               </TouchableOpacity>
             )}
           </View>
-        ) : (
-          displayed.map((ticket) => (
-            <TicketCard key={ticket.id} ticket={ticket} onDelete={removeTicket} />
-          ))
         )}
-      </ScrollView>
+        {active && (
+          <TouchableOpacity style={styles.shareTicketButton} onPress={sendToWhatsApp}>
+            <Ionicons name="logo-whatsapp" size={16} color={colors.success} />
+            <Text style={styles.shareTicketText}>{t('send_to_whatsapp')}</Text>
+          </TouchableOpacity>
+        )}
+        {active && (
+          <TouchableOpacity style={styles.cancelButton} onPress={() => onCancel(ticket)}>
+            <Ionicons name="close-circle-outline" size={16} color={colors.danger} />
+            <Text style={styles.cancelText}>{t('cancel_ticket')}</Text>
+          </TouchableOpacity>
+        )}
+        {past && (ticket.status === 'CONFIRMED' || ticket.status === 'CHECKED_IN') ? (
+          <TouchableOpacity
+            accessibilityRole="button"
+            style={styles.reviewTicketButton}
+            onPress={() => navigateToTab('Events', 'EventDetail', { eventId: ticket.event.id })}
+          >
+            <Ionicons name="star-outline" size={16} color={colors.primary} />
+            <Text style={styles.reviewTicketText}>{t('write_review')}</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    </View>
+  );
+}
 
-      <AddTicketModal
-        visible={showAdd}
-        holderName={user?.name || 'Ticket Holder'}
-        onClose={() => setShowAdd(false)}
-        onAdd={addTicket}
-      />
+export default function WalletScreen() {
+  const { t } = useLocale();
+  const { isWebDesktop } = useBreakpoint();
+  const ticketColumns = isWebDesktop ? 2 : 1;
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [view, setView] = useState<WalletView>('upcoming');
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [offline, setOffline] = useState(false);
+  const [capabilities, setCapabilities] = useState({ apple: false, google: false });
+  const [recipientTicket, setRecipientTicket] = useState<Ticket | null>(null);
+  const [recipientEmail, setRecipientEmail] = useState('');
+  const cacheKey = 'migo.wallet.cache';
+
+  const loadTickets = useCallback(async (pull = false) => {
+    if (pull) setRefreshing(true);
+    else setLoading(true);
+    if (!pull) {
+      const cached = await AsyncStorage.getItem(cacheKey);
+      if (cached) {
+        try {
+          setTickets(JSON.parse(cached));
+          setLoading(false);
+        } catch {
+          await AsyncStorage.removeItem(cacheKey);
+        }
+      }
+    }
+    try {
+      const nextTickets = await ticketsService.myTickets();
+      setTickets(nextTickets);
+      setOffline(false);
+      await AsyncStorage.setItem(cacheKey, JSON.stringify(nextTickets));
+    } catch {
+      setOffline(true);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useFocusEffect(useCallback(() => {
+    void loadTickets();
+    void ticketsService.passesConfig().then(setCapabilities).catch(() => undefined);
+  }, [loadTickets]));
+
+  const transferTicket = (ticket: Ticket) => {
+    if (Platform.OS === 'ios') {
+      Alert.prompt(t('recipient_email'), undefined, async value => {
+        if (value) {
+          try {
+            const result = await ticketsService.transfer(ticket.id, value);
+            await Linking.openURL(result.whatsappUrl);
+            await loadTickets();
+          } catch {
+            Alert.alert(t('transfer_unavailable'), t('please_try_again'));
+          }
+        }
+      }, 'plain-text');
+      return;
+    }
+    setRecipientTicket(ticket);
+  };
+
+  const submitTransfer = async () => {
+    if (!recipientTicket || !recipientEmail.trim()) return;
+    try {
+      const result = await ticketsService.transfer(recipientTicket.id, recipientEmail.trim());
+      setRecipientTicket(null);
+      setRecipientEmail('');
+      await loadTickets();
+      await Linking.openURL(result.whatsappUrl);
+    } catch {
+      Alert.alert(t('transfer_unavailable'), t('please_try_again'));
+    }
+  };
+
+  const cancelTransfer = (ticket: Ticket) => {
+    if (!ticket.pendingTransfer) return;
+    Alert.alert(t('cancel_transfer'), t('transfer_sent', { email: ticket.pendingTransfer.toEmail }), [
+      { text: t('cancel'), style: 'cancel' },
+      {
+        text: t('cancel_transfer'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await ticketsService.cancelTransfer(ticket.pendingTransfer!.id);
+            await loadTickets();
+          } catch {
+            Alert.alert(t('transfer_unavailable'), t('please_try_again'));
+          }
+        },
+      },
+    ]);
+  };
+
+  const openApple = async (ticket: Ticket) => {
+    if (Platform.OS !== 'web') return;
+    const response = await fetch(ticketsService.applePassUrl(ticket.id));
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `migo-${ticket.id}.pkpass`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const openGoogle = async (ticket: Ticket) => {
+    try {
+      await Linking.openURL(await ticketsService.googlePassUrl(ticket.id));
+    } catch {
+      Alert.alert(t('transfer_unavailable'), t('please_try_again'));
+    }
+  };
+
+  const cancelTicket = (ticket: Ticket) => {
+    Alert.alert(t('cancel_ticket'), t('cancel_ticket_help', { title: ticket.event.title }), [
+      { text: t('cancel'), style: 'cancel' },
+      {
+        text: t('cancel_ticket'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await ticketsService.cancelTicket(ticket.id);
+            await loadTickets();
+          } catch {
+            Alert.alert(t('unable_cancel'), t('please_try_again'));
+          }
+        },
+      },
+    ]);
+  };
+
+  const now = Date.now();
+  const upcomingTickets = tickets.filter(ticket => !isPastTicket(ticket, now));
+  const pastTickets = tickets
+    .filter(ticket => isPastTicket(ticket, now))
+    .sort((a, b) => ticketEndTime(b) - ticketEndTime(a));
+  const visibleTickets = view === 'upcoming' ? upcomingTickets : pastTickets;
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <EventListSkeleton count={3} />
+      </SafeAreaView>
+    );
+  }
+
+  return (
+      <SafeAreaView style={styles.container}>
+      <LinearGradient colors={gradients.dusk} style={styles.header}>
+        <Container style={styles.headerContent}>
+          <View>
+            <Text style={styles.headerEyebrow}>{t('wallet')}</Text>
+            <Text style={styles.headerTitle}>{t('your_tickets')}</Text>
+          </View>
+          <View style={styles.headerIcon}><Ionicons name="ticket-outline" size={28} color={colors.textInverse} /></View>
+        </Container>
+      </LinearGradient>
+      {offline ? <Text style={styles.offline}>{t('offline_saved_tickets')}</Text> : null}
+      <Container style={styles.segmentContainer}>
+        <View style={styles.segment} accessibilityRole="tablist">
+          {(['upcoming', 'past'] as WalletView[]).map(option => {
+            const selected = view === option;
+            const count = option === 'upcoming' ? upcomingTickets.length : pastTickets.length;
+            return (
+              <TouchableOpacity
+                key={option}
+                accessibilityRole="tab"
+                accessibilityState={{ selected }}
+                onPress={() => setView(option)}
+                style={[styles.segmentOption, selected && styles.segmentOptionActive]}
+              >
+                <Text style={[styles.segmentText, selected && styles.segmentTextActive]}>
+                  {t(option === 'upcoming' ? 'upcoming_tickets' : 'past_tickets')} ({count})
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </Container>
+      <Container style={[styles.ticketListContainer, !isWebDesktop && styles.mobileTicketListContainer]}>
+        <FlatList<Ticket>
+          key={`wallet-${ticketColumns}`}
+          data={visibleTickets}
+          numColumns={ticketColumns}
+          keyExtractor={(ticket: Ticket) => ticket.id}
+          renderItem={({ item }: { item: Ticket }) => (
+            <View style={ticketColumns > 1 ? styles.ticketCell : undefined}>
+              <TicketCard
+                ticket={item}
+                onCancel={cancelTicket}
+                onTransfer={transferTicket}
+                onCancelTransfer={cancelTransfer}
+                onApple={openApple}
+                onGoogle={openGoogle}
+                capabilities={capabilities}
+                past={view === 'past'}
+                t={t}
+              />
+            </View>
+          )}
+          columnWrapperStyle={ticketColumns > 1 ? styles.ticketRow : undefined}
+          style={isWebDesktop ? styles.desktopList : undefined}
+          contentContainerStyle={[
+            visibleTickets.length ? styles.list : styles.emptyList,
+            isWebDesktop && styles.desktopListContent,
+          ]}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadTickets(true)} />}
+          ListEmptyComponent={(
+            <View style={styles.empty}>
+              <View style={styles.emptyIcon}>
+                <Ionicons name="ticket-outline" size={48} color={colors.primary} />
+              </View>
+              <Text style={styles.emptyTitle}>{t(view === 'past' ? 'no_past_tickets' : 'no_tickets')}</Text>
+              <Text style={styles.emptyText}>{t(view === 'past' ? 'no_past_tickets_help' : 'no_tickets_help')}</Text>
+              <GradientButton label={t('browse_events')} onPress={() => navigateToTab('Events')} />
+            </View>
+          )}
+        />
+      </Container>
+      <Modal visible={Boolean(recipientTicket)} transparent animationType="fade" onRequestClose={() => setRecipientTicket(null)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>{t('transfer_ticket')}</Text>
+            <TextInput
+              style={styles.input}
+              value={recipientEmail}
+              onChangeText={setRecipientEmail}
+              placeholder={t('recipient_email')}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity onPress={() => setRecipientTicket(null)}><Text>{t('cancel')}</Text></TouchableOpacity>
+              <TouchableOpacity onPress={() => void submitTransfer()}><Text style={styles.actionText}>{t('send_to_whatsapp')}</Text></TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f1f5f9' },
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.bg },
+  loader: { flex: 1 },
+  headerContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerEyebrow: { color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: '700' },
+  headerIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' },
   header: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 20, paddingVertical: 14,
-    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb',
+    justifyContent: 'center',
+    minHeight: 156,
+    paddingVertical: 24,
   },
-  backBtn: { marginRight: 12 },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#1f2937' },
-  headerSub: { fontSize: 12, color: '#6b7280', marginTop: 1 },
-  addBtn: {
-    backgroundColor: '#3b82f6',
-    borderRadius: 20, padding: 8,
+  headerTitle: { ...type.h1, color: colors.textInverse, marginTop: 6 },
+  desktopList: { width: '100%' },
+  ticketListContainer: { flex: 1 },
+  mobileTicketListContainer: { paddingHorizontal: 0 },
+  list: { paddingHorizontal: 20, paddingVertical: 24, gap: 16 },
+  desktopListContent: { paddingHorizontal: 0 },
+  ticketRow: { gap: 20, paddingHorizontal: 0 },
+  ticketCell: { flex: 1, minWidth: 0 },
+  emptyList: { flexGrow: 1, padding: 24 },
+  card: {
+    overflow: 'hidden',
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    ...shadow.card,
   },
-  tabs: {
-    flexDirection: 'row', backgroundColor: '#fff',
-    borderBottomWidth: 1, borderBottomColor: '#e5e7eb', paddingHorizontal: 20,
+  coverImage: {
+    width: '100%',
+    height: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  tab: { paddingVertical: 12, marginRight: 24 },
-  tabActive: { borderBottomWidth: 2, borderBottomColor: '#3b82f6' },
-  tabTxt: { fontSize: 14, fontWeight: '600', color: '#9ca3af' },
-  tabTxtActive: { color: '#3b82f6' },
-  tipBanner: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    margin: 16, padding: 12,
-    backgroundColor: '#eff6ff', borderRadius: 10,
-    borderWidth: 1, borderColor: '#bfdbfe',
-  },
-  tipText: { flex: 1, fontSize: 13, color: '#1d4ed8', lineHeight: 18 },
-  scroll: { paddingVertical: 20, paddingHorizontal: 24, gap: 28 },
-  empty: { alignItems: 'center', paddingTop: 50, gap: 12 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#374151' },
-  emptySub: { fontSize: 14, color: '#9ca3af', textAlign: 'center' },
-  emptyAddBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    marginTop: 8, backgroundColor: '#3b82f6',
-    paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12,
-  },
-  emptyAddTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
-});
-
-const card = StyleSheet.create({
-  wrapper: {
-    width: TICKET_WIDTH, borderRadius: 20, overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.14, shadowRadius: 14, elevation: 8,
-  },
-  top: { padding: 22, paddingBottom: 18 },
-  catBadge: {
-    alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.22)',
-    borderRadius: 8, paddingHorizontal: 10, paddingVertical: 3, marginBottom: 10,
-  },
-  catText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
-  title: { color: '#fff', fontSize: 21, fontWeight: '800', lineHeight: 26, marginBottom: 8 },
-  venueRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 16 },
-  venueText: { color: 'rgba(255,255,255,0.85)', fontSize: 13 },
-  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  dateBlock: { alignItems: 'center', gap: 2 },
-  dateDay: { color: 'rgba(255,255,255,0.65)', fontSize: 10, fontWeight: '600' },
-  dateNum: { color: '#fff', fontSize: 17, fontWeight: '800' },
-  dateMon: { color: 'rgba(255,255,255,0.65)', fontSize: 10 },
-  sep: { width: 1, height: 34, backgroundColor: 'rgba(255,255,255,0.25)' },
-  perf: {
-    flexDirection: 'row', alignItems: 'center', height: 20, overflow: 'visible',
-  },
-  circleL: {
-    width: 22, height: 22, borderRadius: 11,
-    backgroundColor: '#f1f5f9', marginLeft: -11, zIndex: 1,
-  },
-  circleR: {
-    width: 22, height: 22, borderRadius: 11,
-    backgroundColor: '#f1f5f9', marginRight: -11, zIndex: 1,
-  },
-  dashes: { flex: 1, flexDirection: 'row', justifyContent: 'center', gap: 5 },
-  dash: { width: 6, height: 2, backgroundColor: 'rgba(255,255,255,0.35)', borderRadius: 1 },
-  bottom: {
-    backgroundColor: '#fff', padding: 18,
-    borderLeftWidth: 2, borderRightWidth: 2, borderBottomWidth: 2,
-    borderBottomLeftRadius: 20, borderBottomRightRadius: 20,
-  },
-  stubRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 18 },
-  stubField: { flex: 1 },
-  stubLabel: { fontSize: 9, fontWeight: '700', color: '#9ca3af', letterSpacing: 1, marginBottom: 3 },
-  stubValue: { fontSize: 13, fontWeight: '700', color: '#1f2937' },
-  qrRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 4 },
-  qrBox: {
-    width: 84, height: 84, borderRadius: 8,
-    backgroundColor: '#f9fafb', justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1, borderColor: '#e5e7eb',
-  },
-  confirmCode: { fontSize: 17, fontWeight: '800', color: '#1f2937', letterSpacing: 2 },
-  deleteBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 5, marginTop: 14, paddingVertical: 8,
-    borderRadius: 8, backgroundColor: '#fef2f2',
-  },
-  deleteTxt: { fontSize: 12, color: '#ef4444', fontWeight: '600' },
-});
-
-const modal = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingVertical: 16,
-    borderBottomWidth: 1, borderBottomColor: '#f3f4f6',
-  },
-  title: { fontSize: 17, fontWeight: '700', color: '#1f2937' },
-  sectionLabel: { fontSize: 15, fontWeight: '600', color: '#374151', marginBottom: 16 },
-  methodList: { padding: 24, gap: 14 },
-  methodCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: '#f9fafb', borderRadius: 14,
-    padding: 16, borderWidth: 1, borderColor: '#e5e7eb',
-  },
-  methodIcon: { width: 48, height: 48, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  methodText: { flex: 1 },
-  methodTitle: { fontSize: 15, fontWeight: '700', color: '#1f2937' },
-  methodSub: { fontSize: 13, color: '#6b7280', marginTop: 2 },
-  comingSoon: {
-    backgroundColor: '#fef9c3', borderRadius: 8,
-    paddingHorizontal: 8, paddingVertical: 3,
-  },
-  comingSoonText: { fontSize: 11, color: '#ca8a04', fontWeight: '700' },
-  backRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 16 },
-  backText: { color: '#3b82f6', fontSize: 15, fontWeight: '600' },
-  form: { padding: 24, gap: 4, paddingBottom: 48 },
-  fieldWrap: { marginBottom: 12 },
-  fieldLabel: { fontSize: 12, fontWeight: '700', color: '#6b7280', marginBottom: 6, letterSpacing: 0.5 },
-  input: {
-    borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10,
-    paddingHorizontal: 14, paddingVertical: 11,
-    fontSize: 15, color: '#1f2937', backgroundColor: '#f9fafb',
-  },
-  catRow: { gap: 8, paddingBottom: 4 },
-  catChip: {
-    paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: 20, borderWidth: 1, borderColor: '#e5e7eb',
-    backgroundColor: '#f9fafb',
-  },
-  catChipText: { fontSize: 13, fontWeight: '600', color: '#374151' },
-  addBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    marginTop: 24, backgroundColor: '#3b82f6',
-    paddingVertical: 14, borderRadius: 14,
-  },
-  addBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  cardBody: { padding: spacing.lg },
+  cardHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  category: { color: colors.primary, fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: colors.successSoft },
+  usedBadge: { backgroundColor: colors.border },
+  pastStatusText: { color: colors.textSecondary },
+  segmentContainer: { paddingTop: 16 },
+  segment: { flexDirection: 'row', marginHorizontal: 20, padding: 4, borderRadius: radius.pill, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  segmentOption: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 40, borderRadius: radius.pill },
+  segmentOptionActive: { backgroundColor: colors.primary },
+  segmentText: { color: colors.textSecondary, fontSize: 14, fontWeight: '700' },
+  segmentTextActive: { color: colors.textInverse },
+  statusText: { color: colors.success, fontSize: 12, fontWeight: '700' },
+  title: { marginTop: 8, ...type.h2 },
+  meta: { marginTop: 5, color: colors.textSecondary, fontSize: 14 },
+  quantity: { marginTop: 12, color: colors.text, fontSize: 14, fontWeight: '600' },
+  price: { marginTop: 6, color: colors.primary, fontSize: 14, fontWeight: '700' },
+  perforation: { flexDirection: 'row', alignItems: 'center', marginHorizontal: -spacing.lg, marginTop: spacing.lg },
+  perforationCircleLeft: { width: 18, height: 18, borderRadius: 9, backgroundColor: colors.bg, marginLeft: -9 },
+  perforationCircleRight: { width: 18, height: 18, borderRadius: 9, backgroundColor: colors.bg, marginRight: -9 },
+  perforationLine: { flex: 1, borderTopWidth: 1, borderStyle: 'dashed', borderColor: colors.border },
+  qrSection: { alignItems: 'center', gap: 8, paddingVertical: 18, marginTop: 0 },
+  qrFrame: { padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.surface },
+  code: { maxWidth: '100%', color: colors.textMuted, fontSize: 11, textAlign: 'center' },
+  cancelButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: 14 },
+  cancelText: { color: colors.danger, fontSize: 14, fontWeight: '600' },
+  shareTicketButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: 14 },
+  reviewTicketButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: 14 },
+  reviewTicketText: { color: colors.primary, fontWeight: '800', fontSize: 13 },
+  shareTicketText: { color: colors.success, fontSize: 14, fontWeight: '600' },
+  actions: { gap: 10, marginTop: 14 },
+  actionButton: { paddingVertical: 10, borderRadius: 8, backgroundColor: colors.primarySoft, alignItems: 'center' },
+  actionText: { color: colors.primary, fontSize: 14, fontWeight: '700' },
+  pendingText: { color: colors.warning, fontSize: 13, textAlign: 'center' },
+  cancelTransferButton: { alignItems: 'center' },
+  offline: { paddingHorizontal: 16, paddingVertical: 8, color: colors.warning, backgroundColor: colors.warningSoft, textAlign: 'center' },
+  modalBackdrop: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: 'rgba(0,0,0,0.4)' },
+  modalCard: { padding: 20, borderRadius: 16, backgroundColor: colors.textInverse },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: colors.text },
+  input: { marginTop: 16, padding: 12, borderWidth: 1, borderColor: colors.border, borderRadius: 8 },
+  modalActions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 18 },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 120 },
+  emptyTitle: { marginTop: 16, fontSize: 20, fontWeight: '700', color: colors.textSecondary },
+  emptyText: { marginTop: 6, marginBottom: 24, color: colors.textMuted, textAlign: 'center' },
+  emptyIcon: { width: 96, height: 96, borderRadius: 48, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
 });

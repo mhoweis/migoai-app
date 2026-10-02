@@ -71,17 +71,69 @@ export function navigateToMainStack(screenName: string, params?: Record<string, 
  * Navigate to a tab, optionally to a nested screen inside that tab's stack.
  * e.g. navigateToTab('Events', 'EventsMain', { venueFilter: 'Dubai Expo' })
  */
+// The mounted navigator in App.tsx names its tab routes HomeTab/EventsTab/
+// ProfileTab, while screens call navigateToTab with short names.
+// Map short names to the mounted tab route names.
+const TAB_ROUTE_MAP: Record<string, string> = {
+  Home: 'HomeTab',
+  Events: 'EventsTab',
+  Profile: 'ProfileTab',
+  Wallet: 'WalletTab',
+};
+
+const TAB_STACK_ROOT_SCREENS: Record<string, string> = {
+  Home: 'HomeMain',
+  Events: 'EventsMain',
+  Profile: 'MyProfile',
+  Wallet: 'WalletMain',
+};
+
 export function navigateToTab(
   tabName: string,
   nestedScreen?: string,
   nestedParams?: Record<string, any>,
 ) {
+  if (tabName === 'Chat') {
+    navigationRef.current?.navigate('Chat', nestedParams);
+    return;
+  }
   if (_tabNav) {
-    if (nestedScreen) {
-      _tabNav.navigate(tabName, { screen: nestedScreen, params: nestedParams });
+    const targetScreen = nestedScreen || TAB_STACK_ROOT_SCREENS[tabName];
+    if (targetScreen) {
+      _tabNav.navigate(tabName, {
+        screen: targetScreen,
+        ...(nestedParams ? { params: nestedParams } : {}),
+      });
     } else {
       _tabNav.navigate(tabName);
     }
+    return;
+  }
+  // Fallback: the default Expo tab navigator never registers _tabNav (it has
+  // no CustomTabBar). Navigate from the root container instead, using the
+  // mounted route names and passing nested params directly to the tab screen.
+  const route = TAB_ROUTE_MAP[tabName] || tabName;
+  if (nestedScreen === 'EventDetail' && navigationRef.current?.navigate) {
+    navigationRef.current.navigate('EventDetail', nestedParams);
+    return;
+  }
+  if (navigationRef.current?.navigate) {
+    const rootState = navigationRef.current.getRootState();
+    const focusedRoute = rootState?.routes?.[rootState.index ?? 0];
+    if (
+      focusedRoute?.name !== 'Main' &&
+      rootState?.routes?.some((rootRoute: any) => rootRoute.name === 'Main')
+    ) {
+      navigationRef.current.goBack();
+    }
+    const nestedRoute = route === 'ProfileTab' ? nestedScreen || 'MyProfile' : undefined;
+    const params = nestedRoute
+      ? { screen: nestedRoute, ...(nestedParams ? { params: nestedParams } : {}) }
+      : nestedParams;
+    navigationRef.current.navigate('Main', {
+      screen: route,
+      ...(params ? { params } : {}),
+    });
   } else {
     console.warn('[navigationRef] Tab navigation not ready');
   }

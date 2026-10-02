@@ -1,3 +1,4 @@
+import { colors } from '../theme';
 // src/screens/AIEventsScreen.tsx
 // Opened from the AI Chat "View All" button via direct stack navigation.
 // Receives dateFrom / dateTo as route params and shows matching events.
@@ -163,7 +164,7 @@ export default function AIEventsScreen() {
             />
           ) : (
             <View style={[styles.cardImage, styles.placeholder]}>
-              <Ionicons name="image-outline" size={40} color="#d1d5db" />
+              <Ionicons name="image-outline" size={40} color={colors.border} />
             </View>
           )}
           <View style={styles.imageOverlay}>
@@ -171,11 +172,11 @@ export default function AIEventsScreen() {
               <Ionicons
                 name={savedIds.has(item.id) ? 'bookmark' : 'bookmark-outline'}
                 size={18}
-                color="#fff"
+                color={colors.textInverse}
               />
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionBtn} onPress={() => handleShare(item)}>
-              <Ionicons name="share-social-outline" size={18} color="#fff" />
+              <Ionicons name="share-social-outline" size={18} color={colors.textInverse} />
             </TouchableOpacity>
           </View>
         </View>
@@ -183,13 +184,13 @@ export default function AIEventsScreen() {
         {/* Info */}
         <View style={styles.cardBody}>
           <View style={styles.categoryRow}>
-            <Ionicons name={getCategoryIcon(item.category)} size={13} color="#3b82f6" />
+            <Ionicons name={getCategoryIcon(item.category)} size={13} color={colors.primary} />
             <Text style={styles.categoryText}>{item.category || 'Event'}</Text>
           </View>
           <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
 
           <View style={styles.detailRow}>
-            <Ionicons name="calendar-outline" size={14} color="#6b7280" />
+            <Ionicons name="calendar-outline" size={14} color={colors.textMuted} />
             <Text style={styles.detailText}>
               {new Date(item.startDate).toLocaleDateString('en-AE', {
                 weekday: 'short', day: 'numeric', month: 'short',
@@ -199,7 +200,7 @@ export default function AIEventsScreen() {
           </View>
 
           <View style={styles.detailRow}>
-            <Ionicons name="location-outline" size={14} color="#6b7280" />
+            <Ionicons name="location-outline" size={14} color={colors.textMuted} />
             <Text style={styles.detailText} numberOfLines={1}>
               {item.venueName || item.city || 'Location TBA'}
             </Text>
@@ -227,7 +228,7 @@ export default function AIEventsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={22} color="#111827" />
+          <Ionicons name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
         <View style={styles.headerText}>
           <Text style={styles.headerTitle}>Events</Text>
@@ -237,18 +238,18 @@ export default function AIEventsScreen() {
 
       {/* Search */}
       <View style={styles.searchRow}>
-        <Ionicons name="search-outline" size={18} color="#9ca3af" style={styles.searchIcon} />
+        <Ionicons name="search-outline" size={18} color={colors.textMuted} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search events…"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor={colors.textMuted}
           value={search}
           onChangeText={setSearch}
           returnKeyType="search"
         />
         {search.length > 0 && (
           <TouchableOpacity onPress={() => setSearch('')}>
-            <Ionicons name="close-circle" size={18} color="#9ca3af" />
+            <Ionicons name="close-circle" size={18} color={colors.textMuted} />
           </TouchableOpacity>
         )}
       </View>
@@ -283,7 +284,7 @@ export default function AIEventsScreen() {
 
       {/* Events list */}
       {loading ? (
-        <ActivityIndicator size="large" color="#3b82f6" style={{ marginTop: 40 }} />
+        <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
       ) : (
         <FlatList
           data={filtered}
@@ -295,12 +296,12 @@ export default function AIEventsScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={async () => { setRefreshing(true); await fetchEvents(); setRefreshing(false); }}
-              tintColor="#3b82f6"
+              tintColor={colors.primary}
             />
           }
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Ionicons name="calendar-outline" size={56} color="#d1d5db" />
+              <Ionicons name="calendar-outline" size={56} color={colors.border} />
               <Text style={styles.emptyTitle}>No events found</Text>
               <Text style={styles.emptyText}>
                 {search || selectedCategory !== 'All'
@@ -317,49 +318,49 @@ export default function AIEventsScreen() {
 
 // ─── styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container:    { flex: 1, backgroundColor: '#f9fafb' },
-  header:       { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
+  container:    { flex: 1, backgroundColor: colors.bg },
+  header:       { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: colors.textInverse, borderBottomWidth: 1, borderBottomColor: colors.border },
   backBtn:      { padding: 4, marginRight: 12 },
   headerText:   { flex: 1 },
-  headerTitle:  { fontSize: 18, fontWeight: '700', color: '#111827' },
-  headerSub:    { fontSize: 12, color: '#6b7280', marginTop: 1 },
+  headerTitle:  { fontSize: 18, fontWeight: '700', color: colors.text },
+  headerSub:    { fontSize: 12, color: colors.textMuted, marginTop: 1 },
 
-  searchRow:    { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', marginHorizontal: 16, marginTop: 12, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: '#e5e7eb' },
+  searchRow:    { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.textInverse, marginHorizontal: 16, marginTop: 12, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: colors.border },
   searchIcon:   { marginRight: 8 },
-  searchInput:  { flex: 1, fontSize: 15, color: '#111827' },
+  searchInput:  { flex: 1, fontSize: 15, color: colors.text },
 
   categoryContainer: { height: 50 },
   categoryList: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
-  catChip:      { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#f3f4f6', borderWidth: 1, borderColor: '#e5e7eb', height: 32 },
-  catChipActive:{ backgroundColor: '#3b82f6', borderColor: '#3b82f6' },
-  catChipText:  { fontSize: 13, color: '#374151', fontWeight: '500' },
-  catChipTextActive: { color: '#fff' },
+  catChip:      { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border, height: 32 },
+  catChipActive:{ backgroundColor: colors.primary, borderColor: colors.primary },
+  catChipText:  { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
+  catChipTextActive: { color: colors.textInverse },
 
-  resultCount:  { paddingHorizontal: 16, paddingBottom: 4, fontSize: 13, color: '#6b7280' },
+  resultCount:  { paddingHorizontal: 16, paddingBottom: 4, fontSize: 13, color: colors.textMuted },
 
   listContent:  { paddingHorizontal: 16, paddingBottom: 24 },
 
-  card:         { backgroundColor: '#fff', borderRadius: 16, marginBottom: 16, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2, overflow: 'hidden' },
+  card:         { backgroundColor: colors.textInverse, borderRadius: 16, marginBottom: 16, shadowColor: colors.text, shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2, overflow: 'hidden' },
   imageWrapper: { position: 'relative' },
   cardImage:    { width: '100%', height: 180 },
-  placeholder:  { backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' },
+  placeholder:  { backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   imageOverlay: { position: 'absolute', top: 10, right: 10, flexDirection: 'row', gap: 8 },
   actionBtn:    { backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 18, padding: 6 },
 
   cardBody:     { padding: 14 },
   categoryRow:  { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
-  categoryText: { fontSize: 12, color: '#3b82f6', fontWeight: '600' },
-  cardTitle:    { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 8 },
+  categoryText: { fontSize: 12, color: colors.primary, fontWeight: '600' },
+  cardTitle:    { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 8 },
   detailRow:    { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
-  detailText:   { fontSize: 13, color: '#6b7280', flex: 1 },
+  detailText:   { fontSize: 13, color: colors.textMuted, flex: 1 },
 
   cardFooter:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
-  price:        { fontSize: 15, fontWeight: '700', color: '#111827' },
-  priceFree:    { color: '#10b981' },
-  detailsBtn:   { backgroundColor: '#3b82f6', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 6 },
-  detailsBtnText:{ color: '#fff', fontSize: 13, fontWeight: '600' },
+  price:        { fontSize: 15, fontWeight: '700', color: colors.text },
+  priceFree:    { color: colors.success },
+  detailsBtn:   { backgroundColor: colors.primary, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 6 },
+  detailsBtnText:{ color: colors.textInverse, fontSize: 13, fontWeight: '600' },
 
   emptyState:   { alignItems: 'center', marginTop: 60, paddingHorizontal: 32 },
-  emptyTitle:   { fontSize: 18, fontWeight: '600', color: '#374151', marginTop: 16, marginBottom: 8 },
-  emptyText:    { fontSize: 14, color: '#9ca3af', textAlign: 'center', lineHeight: 20 },
+  emptyTitle:   { fontSize: 18, fontWeight: '600', color: colors.textSecondary, marginTop: 16, marginBottom: 8 },
+  emptyText:    { fontSize: 14, color: colors.textMuted, textAlign: 'center', lineHeight: 20 },
 });

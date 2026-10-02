@@ -26,7 +26,13 @@ export interface AuthResponse {
 
 export class AuthService {
   private jwtSecret = config.JWT_SECRET;
-  private jwtRefreshSecret = config.JWT_REFRESH_SECRET || config.JWT_SECRET;
+  private jwtRefreshSecret = config.JWT_REFRESH_SECRET;
+  private static readonly REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+  private static readonly REUSE_GRACE_MS = 60_000;
+
+  private hashRefreshToken(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex');
+  }
 
   private normalizePhone(phone: string): string {
     const normalized = phone.trim().replace(/[^\d+]/g, '');
@@ -187,13 +193,16 @@ export class AuthService {
       },
     });
     
-    if (!user || !user.password) {
+    if (!user || user.status === 'DELETED' || !user.password) {
       throw new Error('Invalid credentials');
     }
     
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
       throw new Error('Invalid credentials');
+    }
+    if (user.status === 'PAUSED') {
+      throw Object.assign(new Error('Account paused'), { code: 'ACCOUNT_PAUSED' });
     }
     
     // Update last login
@@ -229,25 +238,9 @@ export class AuthService {
     };
     
     // Generate access token
-    const accessToken = jwt.sign(payload, this.jwtSecret, {
-      expiresIn: '15m',
-    });
+    const accessToken = this.signAccessToken(payload);
     
-    // Generate refresh token
-    const refreshToken = jwt.sign(
-      { userId: user.id, type: 'refresh' },
-      this.jwtRefreshSecret,
-      { expiresIn: '7d' }
-    );
-    
-    // Store refresh token in database (optional for now)
-    // await prisma.refreshToken.create({
-    //   data: {
-    //     userId: user.id,
-    //     token: refreshToken,
-    //     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    //   }
-    // });
+    const refreshToken = await this.issueRefreshToken(user.id);
     
     return {
       accessToken,
@@ -256,17 +249,91 @@ export class AuthService {
     };
   }
   
-  // Refresh access token
+  private signAccessToken(payload: JwtPayload): string {
+    return jwt.sign({ ...payload, type: 'access' }, this.jwtSecret, {
+      algorithm: 'HS256',
+      expiresIn: '15m',
+    });
+  }
+
+  private async issueRefreshToken(userId: string): Promise<string> {
+    const refreshToken = jwt.sign(
+      { userId, type: 'refresh', jti: crypto.randomUUID() },
+      this.jwtRefreshSecret,
+      { algorithm: 'HS256', expiresIn: '7d' }
+    );
+
+    // Prune rows that can never be presented again so the table does not grow
+    // unboundedly with active usage.
+    await prisma.refreshToken.deleteMany({
+      where: {
+        OR: [
+          { expiresAt: { lt: new Date() } },
+          { revoked: true, updatedAt: { lt: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
+        ],
+      },
+    }).catch(() => undefined);
+
+    await prisma.refreshToken.create({
+      data: {
+        userId,
+        token: this.hashRefreshToken(refreshToken),
+        expiresAt: new Date(Date.now() + AuthService.REFRESH_TTL_MS),
+      },
+    });
+
+    return refreshToken;
+  }
+
+  // Refresh access token. Refresh tokens are single-use: each call revokes the
+  // presented token and issues a new one. Reuse of a revoked token revokes
+  // every session for that user.
   async refreshAccessToken(refreshToken: string): Promise<{
     accessToken: string;
+    refreshToken: string;
     expiresIn: number;
   }> {
     try {
-      // Verify refresh token
-      const decoded = jwt.verify(refreshToken, this.jwtRefreshSecret) as { userId: string; type: string };
+      const decoded = jwt.verify(refreshToken, this.jwtRefreshSecret, {
+        algorithms: ['HS256'],
+      }) as { userId: string; type: string };
       
       if (decoded.type !== 'refresh') {
         throw new Error('Invalid token type');
+      }
+
+      const stored = await prisma.refreshToken.findUnique({
+        where: { token: this.hashRefreshToken(refreshToken) },
+      });
+
+      if (!stored || stored.userId !== decoded.userId) {
+        throw new Error('Unknown refresh token');
+      }
+
+      if (stored.expiresAt.getTime() < Date.now()) {
+        throw new Error('Refresh token expired');
+      }
+
+      if (stored.revoked) {
+        // Concurrent-refresh grace: two parallel requests can present the same
+        // token within seconds of rotation (the mobile interceptor refreshes
+        // per 401). Treat very recent reuse as a race and issue a fresh pair
+        // below instead of revoking every session.
+        if (Date.now() - stored.updatedAt.getTime() > AuthService.REUSE_GRACE_MS) {
+          await prisma.refreshToken.updateMany({
+            where: { userId: stored.userId, revoked: false },
+            data: { revoked: true, expiresAt: new Date() },
+          });
+          throw new Error('Refresh token reuse detected');
+        }
+      } else {
+        const { count } = await prisma.refreshToken.updateMany({
+          where: { id: stored.id, revoked: false },
+          data: { revoked: true },
+        });
+        if (count === 0) {
+          // Same race within the same instant — fall through and issue a pair.
+        }
       }
       
       // Find user
@@ -274,8 +341,11 @@ export class AuthService {
         where: { id: decoded.userId },
       });
       
-      if (!user) {
+      if (!user || user.status === 'DELETED') {
         throw new Error('User not found');
+      }
+      if (user.status === 'PAUSED') {
+        throw Object.assign(new Error('Account paused'), { code: 'ACCOUNT_PAUSED' });
       }
       
       // Generate new access token
@@ -285,23 +355,30 @@ export class AuthService {
         role: user.role,
       };
       
-      const accessToken = jwt.sign(payload, this.jwtSecret, {
-        expiresIn: '15m',
-      });
+      const accessToken = this.signAccessToken(payload);
+      const newRefreshToken = await this.issueRefreshToken(user.id);
       
       return {
         accessToken,
+        refreshToken: newRefreshToken,
         expiresIn: 15 * 60,
       };
     } catch (error: any) {
+      if (error?.code === 'ACCOUNT_PAUSED') {
+        throw error;
+      }
       throw new Error('Invalid refresh token');
     }
   }
   
   // Logout
-  async logout(userId: string, _refreshToken?: string): Promise<void> {
-    // For now, just log the logout
-    console.log(`User ${userId} logged out`);
+  async logout(userId: string, refreshToken?: string): Promise<void> {
+    await prisma.refreshToken.updateMany({
+      where: refreshToken
+        ? { userId, token: this.hashRefreshToken(refreshToken) }
+        : { userId },
+      data: { revoked: true, expiresAt: new Date() },
+    });
 
     // Update user last active
     await prisma.user.update({
@@ -312,11 +389,17 @@ export class AuthService {
   
   // Validate token
   async validateToken(token: string): Promise<JwtPayload> {
-    return jwt.verify(token, this.jwtSecret) as JwtPayload;
+    const decoded = jwt.verify(token, this.jwtSecret, {
+      algorithms: ['HS256'],
+    }) as JwtPayload & { type?: string };
+    if (decoded.type === 'refresh') {
+      throw new jwt.JsonWebTokenError('Invalid token type');
+    }
+    return decoded;
   }
   
   // Helper methods
-  private sanitizeUser(user: User): any {
+  sanitizeUser(user: User): any {
     const {
       password,
       phoneVerificationCode,
