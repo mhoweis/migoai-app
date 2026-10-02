@@ -117,6 +117,14 @@ const sources: Record<string, SourceInfo> = {
     url: 'https://www.difc.com',
     refundPolicy: 'external',
   },
+  'mercedes-benz-brand-center': {
+    id: 'mercedes-benz-brand-center',
+    label: 'Mercedes-Benz Brand Center Dubai',
+    labelAr: 'مركز مرسيدس-بنز براند سنتر دبي',
+    kind: 'venue',
+    url: 'https://mercedesbenzbrandcenter.ae',
+    refundPolicy: 'external',
+  },
   ticketmaster: {
     id: 'ticketmaster',
     label: 'Ticketmaster',
@@ -156,6 +164,15 @@ const sources: Record<string, SourceInfo> = {
     kind: 'demo',
     url: '',
     refundPolicy: 'free',
+  },
+};
+
+export const providerSuppliers: Record<string, { name: string; website: string; slug: string }> = {
+  difc: { name: 'DIFC', website: 'https://www.difc.com', slug: 'difc' },
+  'mercedes-benz-brand-center': {
+    name: 'Mercedes-Benz Brand Center Dubai',
+    website: 'https://mercedesbenzbrandcenter.ae/corporate-bookings-offroad',
+    slug: 'mercedes-benz-brand-center',
   },
 };
 

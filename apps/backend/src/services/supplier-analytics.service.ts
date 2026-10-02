@@ -1,6 +1,6 @@
 import { BookingStatus, CampaignStatus, Prisma } from '@prisma/client';
 import prisma from '../database/prisma';
-import sourceRegistry, { SourceInfo } from './providers/source-registry';
+import sourceRegistry, { providerSuppliers, SourceInfo } from './providers/source-registry';
 import { getSupplierPackage, supplierPackages } from './supplier-packages';
 
 export interface SupplierDateRange {
@@ -88,16 +88,19 @@ function signalQuery(context: Prisma.JsonValue | null): string {
 }
 
 async function ensureSuppliers() {
-  await Promise.all(sourceInfos.map(source => prisma.supplier.upsert({
-    where: { sourceKey: source.id },
-    update: {},
-    create: {
-      sourceKey: source.id,
-      name: source.label,
-      website: source.url || null,
-      ...(source.id === 'difc' ? { slug: 'difc', status: 'ACTIVE' as const } : {}),
-    },
-  })));
+  await Promise.all(sourceInfos.map(source => {
+    const supplierSpec = providerSuppliers[source.id];
+    return prisma.supplier.upsert({
+      where: { sourceKey: source.id },
+      update: {},
+      create: {
+        sourceKey: source.id,
+        name: source.label,
+        website: supplierSpec?.website || source.url || null,
+        ...(supplierSpec ? { slug: supplierSpec.slug, status: 'ACTIVE' as const } : {}),
+      },
+    });
+  }));
   return prisma.supplier.findMany({
     include: { members: { select: { id: true } } },
   });

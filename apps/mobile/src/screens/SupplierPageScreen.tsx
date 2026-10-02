@@ -12,6 +12,7 @@ import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/nativ
 import { Ionicons } from '@expo/vector-icons';
 import type { Event } from '@migo/shared';
 import { useLocale } from '../i18n';
+import { useBreakpoint } from '../hooks/useBreakpoint';
 import { accountTypesService } from '../services/accountTypes.service';
 import { navigateToTab } from '../navigation/navigationRef';
 import EventCard from '../components/EventCard';
@@ -41,6 +42,7 @@ export default function SupplierPageScreen() {
   const route = useRoute<any>();
   const slug = route.params?.slug as string;
   const { t, isRTL } = useLocale();
+  const { isPhone, isWebDesktop } = useBreakpoint();
   const [page, setPage] = useState<SupplierPageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -79,7 +81,7 @@ export default function SupplierPageScreen() {
             )}
             <View style={styles.supplierCopy}>
               <View style={styles.nameRow}>
-                <AdminHeader title={page.supplier.name} />
+                <Text style={[styles.supplierName, isPhone && styles.supplierNamePhone]}>{page.supplier.name}</Text>
                 {page.supplier.verified ? <Ionicons name="checkmark-circle" size={20} color={colors.success} /> : null}
               </View>
               {page.supplier.description ? <Text style={styles.description}>{page.supplier.description}</Text> : null}
@@ -95,11 +97,15 @@ export default function SupplierPageScreen() {
           {page.events.length ? (
             <View style={styles.eventGrid}>
               {page.events.map(event => (
-                <EventCard
+                <View
                   key={event.id}
-                  event={event}
-                  onPress={() => navigateToTab('Events', 'EventDetail', { eventId: event.id })}
-                />
+                  style={[styles.eventCard, isWebDesktop ? styles.eventCardDesktop : isPhone ? styles.eventCardPhone : styles.eventCardTablet]}
+                >
+                  <EventCard
+                    event={event}
+                    onPress={() => navigateToTab('Events', 'EventDetail', { eventId: event.id })}
+                  />
+                </View>
               ))}
             </View>
           ) : <EmptyState label={t('supplier_no_events')} />}
@@ -115,9 +121,15 @@ const styles = StyleSheet.create({
   logo: { width: 88, height: 88, borderRadius: radius.lg },
   logoFallback: { width: 88, height: 88, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primarySoft },
   supplierCopy: { flex: 1, gap: 8, minWidth: 0 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  nameRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, minWidth: 0 },
+  supplierName: { ...type.h1, fontSize: 32, lineHeight: 38, color: colors.ink, flexShrink: 1 },
+  supplierNamePhone: { fontSize: 22, lineHeight: 28 },
   description: { ...type.body },
   websiteButton: { flexDirection: 'row', alignItems: 'center', gap: 7, alignSelf: 'flex-start', paddingVertical: 6 },
   websiteText: { color: colors.primary, fontWeight: '700' },
   eventGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
+  eventCard: { minWidth: 0 },
+  eventCardDesktop: { width: '31%' },
+  eventCardTablet: { width: '48%' },
+  eventCardPhone: { width: '100%' },
 });

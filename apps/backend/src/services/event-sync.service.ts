@@ -10,6 +10,7 @@ import { dwtcProvider } from './providers/dwtc.provider';
 import { dubaiExhibitionCentreProvider } from './providers/dubai-exhibition-centre.provider';
 import { myDubaiCommunitiesProvider } from './providers/my-dubai-communities.provider';
 import { difcProvider } from './providers/difc.provider';
+import { mercedesBenzBrandCenterProvider } from './providers/mercedes-benz-brand-center.provider';
 import { visitDubaiProvider } from './providers/visit-dubai.provider';
 import { visitAbuDhabiProvider } from './providers/visit-abu-dhabi.provider';
 import { lumaProvider } from './providers/luma.provider';
@@ -22,7 +23,11 @@ import { alserkalProvider } from './providers/alserkal.provider';
 import { EventProvider, NormalizedEvent } from './providers/types';
 import { SupplierFeedProvider } from './providers/supplier-feed.provider';
 import { geocodeVenue } from './places/geocode.service';
-import { refreshSupplierSourceCache, updateSupplierSourceCache } from './providers/source-registry';
+import {
+  providerSuppliers,
+  refreshSupplierSourceCache,
+  updateSupplierSourceCache,
+} from './providers/source-registry';
 
 export interface ProviderSyncSummary {
   fetched: number;
@@ -52,6 +57,7 @@ export class EventSyncService {
     dubaiExhibitionCentreProvider,
     myDubaiCommunitiesProvider,
     difcProvider,
+    mercedesBenzBrandCenterProvider,
     visitDubaiProvider,
     visitAbuDhabiProvider,
     lumaProvider,
@@ -90,23 +96,25 @@ export class EventSyncService {
         perProvider[provider.name] = summary;
         syncedSources.add(provider.name);
 
-        if (provider.name === difcProvider.name) {
+        const supplierSpec = providerSuppliers[provider.name];
+        if (supplierSpec) {
           try {
             const supplier = await prisma.supplier.upsert({
-              where: { sourceKey: 'difc' },
+              where: { sourceKey: provider.name },
               update: {},
               create: {
-                sourceKey: 'difc',
-                name: 'DIFC',
-                website: 'https://www.difc.com',
-                slug: 'difc',
+                sourceKey: provider.name,
+                ...supplierSpec,
                 status: 'ACTIVE',
               },
             });
             updateSupplierSourceCache(supplier);
           } catch (error: any) {
             summary.errors += 1;
-            logger.error('DIFC supplier setup failed', { error: error.message });
+            logger.error('Provider supplier setup failed', {
+              provider: provider.name,
+              error: error.message,
+            });
             continue;
           }
         }

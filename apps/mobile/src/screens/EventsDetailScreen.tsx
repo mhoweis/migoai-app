@@ -368,7 +368,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <TouchableOpacity
                 disabled={!(event as any).supplierSlug}
                 accessibilityRole={(event as any).supplierSlug ? 'button' : undefined}
-                onPress={() => (event as any).supplierSlug && navigation.navigate('SupplierPage', { slug: (event as any).supplierSlug })}
+                onPress={() => (event as any).supplierSlug && navigateToTab('Profile', 'SupplierPage', { slug: (event as any).supplierSlug })}
                 style={[styles.sourceChip, { backgroundColor: sourceBadge(event.trust, locale)?.backgroundColor }]}
               >
                 <Ionicons name="shield-checkmark" size={15} color={sourceBadge(event.trust, locale)?.color} />
@@ -603,7 +603,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   style={styles.bookingSourceChip}
                   disabled={!(event as any).supplierSlug}
                   accessibilityRole={(event as any).supplierSlug ? 'button' : undefined}
-                  onPress={() => (event as any).supplierSlug && navigation.navigate('SupplierPage', { slug: (event as any).supplierSlug })}
+                  onPress={() => (event as any).supplierSlug && navigateToTab('Profile', 'SupplierPage', { slug: (event as any).supplierSlug })}
                 >
                   <Text style={styles.bookingSource}>{sourceBadge(event.trust, locale)?.text}</Text>
                 </TouchableOpacity>
