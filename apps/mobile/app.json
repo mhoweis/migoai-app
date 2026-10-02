@@ -72,6 +72,12 @@
           "recordAudioAndroid": false
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "645ca729-0461-4425-93a5-2aaef4d427a5"
+      }
+    },
+    "owner": "mh.prg"
   }
 }
