@@ -2,6 +2,7 @@ import prisma from '../config/database';
 import { BookingType, EventStatus, EventVisibility, Prisma } from '@prisma/client';
 import config from '../config/env';
 import { getSourceInfo, getSupplierSlug } from './providers/source-registry';
+import { eventDateOverlapWhere } from './event-date-range';
 
 export interface EventFilters {
   page?: number;
@@ -27,14 +28,6 @@ export interface EventFilters {
   lng?: number;
   userId?: string;
 }
-
-// Helper function to normalize dates
-const normalizeDate = (date: Date | string | undefined): Date | undefined => {
-  if (!date) return undefined;
-  if (date instanceof Date) return date;
-  const d = new Date(date);
-  return isNaN(d.getTime()) ? undefined : d;
-};
 
 export function notEndedWhere(now: Date = new Date()): Prisma.EventWhereInput {
   const todayStart = new Date(now);
@@ -65,10 +58,11 @@ export class EventService {
     const skip = (page - 1) * limit;
     
     // Build where clause
+    const andConditions: Prisma.EventWhereInput[] = [notEndedWhere()];
     const where: Prisma.EventWhereInput = {
       status: 'ACTIVE',
       visibility: { in: ['PUBLIC', 'UNLISTED'] },
-      AND: [notEndedWhere()],
+      AND: andConditions,
     };
     
     // Apply filters
@@ -92,15 +86,7 @@ export class EventService {
       where.country = filters.country;
     }
     
-    // Normalize dates before using them
-    const dateFrom = normalizeDate(filters.dateFrom);
-    const dateTo = normalizeDate(filters.dateTo);
-    
-    if (dateFrom || dateTo) {
-      where.startDate = {};
-      if (dateFrom) where.startDate.gte = dateFrom;
-      if (dateTo) where.startDate.lte = dateTo;
-    }
+    andConditions.push(...eventDateOverlapWhere(filters.dateFrom, filters.dateTo));
     
     // Only apply price filter if explicitly requested (not default values)
     // Include events with NULL prices to show Ticketmaster events
@@ -525,17 +511,14 @@ export class EventService {
       
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
+      const todayEnd = new Date(tomorrow.getTime() - 1);
       
       const events = await prisma.event.findMany({
         where: {
           status: 'ACTIVE',
           visibility: { in: ['PUBLIC', 'UNLISTED'] },
-          startDate: {
-            gte: today,
-            lt: tomorrow,
-          },
           ...(city && { city }),
-          AND: [notEndedWhere()],
+          AND: [notEndedWhere(), ...eventDateOverlapWhere(today, todayEnd)],
         },
         take: limit,
         select: this.getEventSelectFields(),
@@ -561,12 +544,8 @@ export class EventService {
         where: {
           status: 'ACTIVE',
           visibility: { in: ['PUBLIC', 'UNLISTED'] },
-          startDate: {
-            gte: weekendStart,
-            lte: weekendEnd,
-          },
           ...(city && { city }),
-          AND: [notEndedWhere()],
+          AND: [notEndedWhere(), ...eventDateOverlapWhere(weekendStart, weekendEnd)],
         },
         take: limit,
         select: this.getEventSelectFields(),
@@ -621,13 +600,7 @@ export class EventService {
         );
         where.startDate = undefined;
       } else if (filters.dateRange && (filters.dateRange.start || filters.dateRange.end)) {
-        where.startDate = {};
-        if (filters.dateRange.start) {
-          where.startDate.gte = new Date(filters.dateRange.start);
-        }
-        if (filters.dateRange.end) {
-          where.startDate.lte = new Date(filters.dateRange.end);
-        }
+        andClauses.push(...eventDateOverlapWhere(filters.dateRange.start, filters.dateRange.end));
       }
       
       if (filters.priceRange && (filters.priceRange.min !== undefined || filters.priceRange.max !== undefined)) {

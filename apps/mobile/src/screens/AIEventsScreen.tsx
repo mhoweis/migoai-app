@@ -21,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '../services/api';
 import { getBookingUrl } from '../config/affiliates';
 import { useSavedEventsStore } from '../store/savedEventsStore';
+import { matchesEventDateRange } from '../utils/eventDateRange';
 
 // ─── types ───────────────────────────────────────────────────────────────────
 export type AIEventsParams = {
@@ -99,15 +100,7 @@ export default function AIEventsScreen() {
 
     // Date range
     if (dateFrom || dateTo) {
-      const from = dateFrom ? new Date(dateFrom).getTime() : null;
-      const to   = dateTo   ? new Date(dateTo).getTime()   : null;
-      result = result.filter(e => {
-        const t = new Date(e.startDate).getTime();
-        if (from && to) return t >= from && t <= to;
-        if (from) return t >= from;
-        if (to)   return t <= to;
-        return true;
-      });
+      result = result.filter(event => matchesEventDateRange(event, dateFrom, dateTo));
     }
 
     // Category

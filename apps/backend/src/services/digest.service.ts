@@ -1,6 +1,7 @@
 import config from '../config/env';
 import prisma from '../config/database';
 import { getSourceInfo, SourceInfo } from './providers/source-registry';
+import { eventDateOverlapWhere } from './event-date-range';
 
 export interface WeekendDigestEvent {
   id: string;
@@ -88,7 +89,7 @@ export async function buildWeekendDigest(city?: string, locale: 'en' | 'ar' = 'e
     where: {
       status: 'ACTIVE',
       visibility: 'PUBLIC',
-      startDate: { gte: start, lte: end },
+      AND: eventDateOverlapWhere(start, end),
       ...(normalizedCity ? { city: { equals: normalizedCity, mode: 'insensitive' } } : {}),
     },
     orderBy: { startDate: 'asc' },

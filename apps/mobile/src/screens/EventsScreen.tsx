@@ -27,6 +27,7 @@ import Chip from '../components/Chip';
 import { EventListSkeleton } from '../components/Skeleton';
 import { trackSearch } from '../services/signals.service';
 import { fetchAllEvents } from '../utils/fetchAllEvents';
+import { matchesEventDateRange } from '../utils/eventDateRange';
 import EventCard from '../components/EventCard';
 import Container from '../components/Container';
 import { useBreakpoint } from '../hooks/useBreakpoint';
@@ -120,10 +121,26 @@ const EventsScreen = () => {
     };
   };
 
-  // Fetch events when selected city changes
+  const matchesSearch = (event: Event, query: string): boolean => {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) return true;
+
+    const eventAny = event as any;
+    const tags = Array.isArray(eventAny.tags) ? eventAny.tags : [];
+    return [
+      event.title,
+      event.description,
+      event.venueName,
+      event.city,
+      getEventSource(event).label,
+      eventAny.trust?.source?.labelAr,
+      ...tags,
+    ].some(value => typeof value === 'string' && value.toLowerCase().includes(normalizedQuery));
+  };
+
   useEffect(() => {
     fetchEvents();
-  }, [selectedCity]);
+  }, []);
 
   useEffect(() => {
     trackSearch(searchQuery);
@@ -242,7 +259,7 @@ const EventsScreen = () => {
   // Apply filters when any filter changes
   useEffect(() => {
     applyFilters();
-  }, [events, searchQuery, selectedCategory, sortBy, venueFilter, sourceFilter, dateFrom, dateTo]);
+  }, [events, searchQuery, selectedCity, selectedCategory, sortBy, venueFilter, sourceFilter, dateFrom, dateTo]);
 
   // Update dynamic filter options based on current filters
   useEffect(() => {
@@ -252,17 +269,7 @@ const EventsScreen = () => {
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      // Fetch events filtered by selected city (or all cities)
-      const params: any = {
-        limit: 200,
-      };
-
-      // Only add city filter if a specific city is selected (not "All Cities")
-      if (selectedCity && selectedCity !== 'All Cities') {
-        params.city = selectedCity;
-      }
-
-      const allEvents = await fetchAllEvents(params);
+      const allEvents = await fetchAllEvents({ limit: 200 });
 
       // Keep events that have not finished yet: ongoing events until their end
       // time, and events without an end time for the whole of their start day.
@@ -295,29 +302,30 @@ const EventsScreen = () => {
 
     // Apply date range filter
     if (dateFrom || dateTo) {
-      const from = dateFrom ? new Date(dateFrom).getTime() : null;
-      const to = dateTo ? new Date(dateTo).getTime() : null;
-      filtered = filtered.filter(event => {
-        const eventTime = new Date(event.startDate).getTime();
-        if (from && to) return eventTime >= from && eventTime <= to;
-        if (from) return eventTime >= from;
-        if (to) return eventTime <= to;
-        return true;
-      });
+      filtered = filtered.filter(event => matchesEventDateRange(event, dateFrom, dateTo));
     }
 
     // Apply search filter
-    if (searchQuery.trim()) {
-      filtered = filtered.filter(event =>
-        event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (event.description && event.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (event.venueName && event.venueName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (event.city && event.city.toLowerCase().includes(searchQuery.toLowerCase()))
-      );
+    const query = searchQuery.trim();
+    if (query) {
+      filtered = filtered.filter(event => matchesSearch(event, query));
     }
 
+    const cityOptions = filtered.filter(event => {
+      if (venueFilter.trim() && normalizeVenueName(event.venueName) !== normalizeVenueName(venueFilter)) {
+        return false;
+      }
+      if (selectedCategory !== 'All' && event.category !== selectedCategory) {
+        return false;
+      }
+      if (sourceFilter && getEventSource(event).id !== sourceFilter) {
+        return false;
+      }
+      return true;
+    });
+
     // Apply city filter (for calculating dynamic venues and categories)
-    if (selectedCity && selectedCity !== 'All Cities') {
+    if (!query && selectedCity && selectedCity !== 'All Cities') {
       filtered = filtered.filter(event => event.city === selectedCity);
     }
 
@@ -340,7 +348,7 @@ const EventsScreen = () => {
 
     // Calculate available cities from filtered events (excluding the currently selected city)
     const cityMap = new Map<string, number>();
-    filtered.forEach(event => {
+    cityOptions.forEach(event => {
       if (event.city && event.city !== selectedCity) {
         cityMap.set(event.city, (cityMap.get(event.city) || 0) + 1);
       }
@@ -403,14 +411,13 @@ const EventsScreen = () => {
 
     let filtered = [...events];
 
-    // Apply search filter
-    if (searchQuery.trim()) {
-      filtered = filtered.filter(event =>
-        event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (event.description && event.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (event.venueName && event.venueName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (event.city && event.city.toLowerCase().includes(searchQuery.toLowerCase()))
-      );
+    const query = searchQuery.trim();
+    if (query) {
+      filtered = filtered.filter(event => matchesSearch(event, query));
+    }
+
+    if (!query && selectedCity && selectedCity !== 'All Cities') {
+      filtered = filtered.filter(event => event.city === selectedCity);
     }
 
     // Apply venue filter (set when navigating from Top Venues on HomeScreen)
@@ -431,15 +438,7 @@ const EventsScreen = () => {
 
     // Apply date range filter
     if (dateFrom || dateTo) {
-      const from = dateFrom ? new Date(dateFrom).getTime() : null;
-      const to = dateTo ? new Date(dateTo).getTime() : null;
-      filtered = filtered.filter(event => {
-        const eventTime = new Date(event.startDate).getTime();
-        if (from && to) return eventTime >= from && eventTime <= to;
-        if (from) return eventTime >= from;
-        if (to) return eventTime <= to;
-        return true;
-      });
+      filtered = filtered.filter(event => matchesEventDateRange(event, dateFrom, dateTo));
     }
 
     // Apply category filter
@@ -557,7 +556,7 @@ const EventsScreen = () => {
     const getCityCount = (cityName: string) => {
       if (cityName === 'All Cities') return 0;
       const city = dynamicCities.find(c => c.name === cityName);
-      return city ? city.count : 0;
+      return city?.count ?? availableCities.find(c => c.name === cityName)?.count ?? 0;
     };
 
     return (

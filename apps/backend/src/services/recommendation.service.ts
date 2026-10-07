@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { Event } from '@migo/shared';
 import prisma from '../database/prisma';
 import { eventService, notEndedWhere } from './events.service';
+import { eventDateOverlapWhere } from './event-date-range';
 import logger from '../utils/logger';
 
 export type SignalType = 'search' | 'view' | 'save' | 'unsave' | 'book' | 'attend' | 'click_out';
@@ -157,8 +158,7 @@ export async function recommendEvents(
         status: 'ACTIVE',
         visibility: { in: ['PUBLIC', 'UNLISTED'] },
         city: { equals: opts.city, mode: 'insensitive' },
-        startDate: { gte: opts.from, lte: opts.to },
-        AND: [notEndedWhere()],
+        AND: [notEndedWhere(), ...eventDateOverlapWhere(opts.from, opts.to)],
         bookings: {
           none: {
             userId,

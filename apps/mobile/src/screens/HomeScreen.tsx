@@ -25,6 +25,7 @@ import { socialService, SocialUser } from '../services/social.service';
 import { navigateToTab, navigationRef } from '../navigation/navigationRef';
 import { categoryLabel, formatEventDate, formatEventWhen, formatPrice, useLocale } from '../i18n';
 import { sourceBadge } from '../utils/trust';
+import { matchesEventDateRange } from '../utils/eventDateRange';
 import { LinearGradient } from 'expo-linear-gradient';
 import Chip from '../components/Chip';
 import { gradients, radius, shadow, spacing, type } from '../theme';
@@ -159,15 +160,13 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
   // Filter events happening on today's date
   const getTodayEvents = (events: Event[]): Event[] => {
-    const today = new Date();
-    return events.filter((event: Event) => {
-      const d = new Date(event.startDate);
-      return (
-        d.getFullYear() === today.getFullYear() &&
-        d.getMonth() === today.getMonth() &&
-        d.getDate() === today.getDate()
-      );
-    });
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setHours(23, 59, 59, 999);
+    return events.filter(event =>
+      matchesEventDateRange(event, start.toISOString(), end.toISOString())
+    );
   };
 
   // Filter events from today to end of current week (Sunday).
@@ -175,10 +174,9 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const getThisWeekEvents = (events: Event[]): Event[] => {
     const { start, end } = getThisWeekRange();
 
-    return events.filter((event: Event) => {
-      const d = new Date(event.startDate);
-      return d >= start && d <= end;
-    });
+    return events.filter(event =>
+      matchesEventDateRange(event, start.toISOString(), end.toISOString())
+    );
   };
 
   const getThisWeekRange = (): { start: Date; end: Date } => {

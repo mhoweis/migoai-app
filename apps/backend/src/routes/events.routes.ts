@@ -27,11 +27,15 @@ const parseNumberParam = (param: any, defaultValue: number): number => {
 };
 
 // Helper function to parse date safely
-const parseDateParam = (param: any): Date | undefined => {
+const parseDateParam = (param: any, endOfDay = false): Date | undefined => {
   const value = parseQueryParam<string>(param);
   if (!value) return undefined;
-  
-  const date = new Date(value);
+
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const normalized = dateOnly
+    ? `${value}T${endOfDay ? '23:59:59.999' : '00:00:00.000'}+04:00`
+    : value;
+  const date = new Date(normalized);
   return isNaN(date.getTime()) ? undefined : date;
 };
 
@@ -71,7 +75,7 @@ router.get("/", asyncHandler(async (req: Request, res: Response) => {
     source: parseQueryParam<string>(req.query.source),
     country: parseQueryParam<string>(req.query.country),
     dateFrom: parseDateParam(req.query.dateFrom),
-    dateTo: parseDateParam(req.query.dateTo),
+    dateTo: parseDateParam(req.query.dateTo, true),
     priceMin: parseNumberParam(req.query.priceMin, 0),
     priceMax: parseNumberParam(req.query.priceMax, 1000),
     isFree: parseBooleanParam(req.query.isFree),
@@ -120,7 +124,7 @@ router.get("/recommended", authenticate, asyncHandler(async (req: AuthRequest, r
   const from = parseDateParam(req.query.from) || new Date();
   const defaultTo = new Date(from);
   defaultTo.setDate(defaultTo.getDate() + 7);
-  const to = parseDateParam(req.query.to) || defaultTo;
+  const to = parseDateParam(req.query.to, true) || defaultTo;
   const requestedLimit = parseNumberParam(req.query.limit, 10);
   const limit = Math.min(Math.max(requestedLimit, 1), 50);
   const events = await recommendEvents(req.userId!, { city, from, to, limit });
