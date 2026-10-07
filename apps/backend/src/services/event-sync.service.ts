@@ -13,6 +13,9 @@ import { difcProvider } from './providers/difc.provider';
 import { mercedesBenzBrandCenterProvider } from './providers/mercedes-benz-brand-center.provider';
 import { visitDubaiProvider } from './providers/visit-dubai.provider';
 import { visitAbuDhabiProvider } from './providers/visit-abu-dhabi.provider';
+import { adnecProvider } from './providers/adnec.provider';
+import { heartOfRakProvider } from './providers/heart-of-rak.provider';
+import { myAlAinProvider } from './providers/my-al-ain.provider';
 import { lumaProvider } from './providers/luma.provider';
 import { abuDhabiFestivalProvider } from './providers/abu-dhabi-festival.provider';
 import { visitSharjahProvider } from './providers/visit-sharjah.provider';
@@ -60,6 +63,9 @@ export class EventSyncService {
     mercedesBenzBrandCenterProvider,
     visitDubaiProvider,
     visitAbuDhabiProvider,
+    adnecProvider,
+    heartOfRakProvider,
+    myAlAinProvider,
     lumaProvider,
     abuDhabiFestivalProvider,
     visitSharjahProvider,
@@ -270,6 +276,30 @@ export class EventSyncService {
           continue;
         }
 
+        const nearbyEvents = await prisma.event.findMany({
+          where: {
+            city: normalized.city,
+            externalSource: { not: normalized.externalSource },
+            startDate: {
+              gte: new Date(normalized.startDate.getTime() - 24 * 60 * 60 * 1000),
+              lte: new Date(normalized.startDate.getTime() + 24 * 60 * 60 * 1000),
+            },
+          },
+          take: 50,
+          select: { id: true, title: true },
+        });
+        const crossSourceDuplicate = nearbyEvents.find(event =>
+          this.titlesMatch(normalized.title, event.title));
+        if (crossSourceDuplicate) {
+          summary.skipped += 1;
+          logger.info('dedupe', {
+            provider: normalized.externalSource,
+            externalId: normalized.externalId,
+            duplicateEventId: crossSourceDuplicate.id,
+          });
+          continue;
+        }
+
         await prisma.event.create({
           data: this.eventCreateData(normalized, now, organizerId),
         });
@@ -283,6 +313,23 @@ export class EventSyncService {
         });
       }
     }
+  }
+
+  private titlesMatch(first: string, second: string): boolean {
+    const normalizeTitle = (title: string): string => title
+      .toLowerCase()
+      .replace(/\([^)]*\)/g, ' ')
+      .replace(/\b(?:19|20)\d{2}\b/g, ' ')
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')
+      .trim()
+      .replace(/\s+/g, ' ');
+    const left = normalizeTitle(first);
+    const right = normalizeTitle(second);
+    if (!left || !right) return false;
+    if (left === right) return true;
+    const shorter = left.length <= right.length ? left : right;
+    const longer = left.length <= right.length ? right : left;
+    return shorter.split(' ').length >= 3 && ` ${longer} `.includes(` ${shorter} `);
   }
 
   async syncSupplierFeed(supplierId: string): Promise<ProviderSyncSummary & { fetched: number; upserted: number }> {

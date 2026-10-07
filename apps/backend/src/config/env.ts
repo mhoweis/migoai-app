@@ -103,7 +103,7 @@ const envSchema = z.object({
     value => typeof value === 'string' ? value.toLowerCase() === 'true' : value,
     z.boolean().default(false),
   ),
-  SYNC_CITIES: z.string().default('Dubai,Abu Dhabi,Sharjah'),
+  SYNC_CITIES: z.string().default('Dubai,Abu Dhabi,Sharjah,Ras Al Khaimah'),
   EVENT_SYNC_INTERVAL_MINUTES: z.coerce.number().min(0).default(60),
   EVENT_SYNC_ON_BOOT: z.preprocess(
     value => typeof value === 'string' ? value.toLowerCase() === 'true' : value,

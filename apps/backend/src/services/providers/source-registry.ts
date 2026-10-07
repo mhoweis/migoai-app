@@ -29,6 +29,30 @@ const sources: Record<string, SourceInfo> = {
     url: 'https://visitabudhabi.ae',
     refundPolicy: 'external',
   },
+  adnec: {
+    id: 'adnec',
+    label: 'ADNEC Centre Abu Dhabi',
+    labelAr: 'مركز أدنيك أبوظبي',
+    kind: 'venue',
+    url: 'https://www.adnec.ae',
+    refundPolicy: 'external',
+  },
+  'heart-of-rak': {
+    id: 'heart-of-rak',
+    label: 'Heart of RAK',
+    labelAr: 'قلب رأس الخيمة',
+    kind: 'community',
+    url: 'https://heartofrak.com',
+    refundPolicy: 'external',
+  },
+  'my-al-ain': {
+    id: 'my-al-ain',
+    label: 'MyAlAin',
+    labelAr: 'ماي العين',
+    kind: 'community',
+    url: 'https://myalain.ae',
+    refundPolicy: 'external',
+  },
   'visit-sharjah': {
     id: 'visit-sharjah',
     label: 'Visit Sharjah',
@@ -169,6 +193,26 @@ const sources: Record<string, SourceInfo> = {
 
 export const providerSuppliers: Record<string, { name: string; website: string; slug: string }> = {
   difc: { name: 'DIFC', website: 'https://www.difc.com', slug: 'difc' },
+  adnec: {
+    name: 'ADNEC Centre Abu Dhabi',
+    website: 'https://www.adnec.ae/en/eventlisting',
+    slug: 'adnec',
+  },
+  'visit-abu-dhabi': {
+    name: 'Visit Abu Dhabi',
+    website: 'https://visitabudhabi.ae/en/events',
+    slug: 'visit-abu-dhabi',
+  },
+  'heart-of-rak': {
+    name: 'Heart of RAK',
+    website: 'https://heartofrak.com/en/calendar',
+    slug: 'heart-of-rak',
+  },
+  'my-al-ain': {
+    name: 'MyAlAin',
+    website: 'https://myalain.ae/events/',
+    slug: 'my-al-ain',
+  },
   'expo-city': {
     name: 'Expo City Dubai',
     website: 'https://www.expocitydubai.com/en/al-wasl-season/',

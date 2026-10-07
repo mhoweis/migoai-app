@@ -43,7 +43,7 @@ const copy: Record<Language, Record<LegalPage, LegalCopy>> = {
         {
           heading: 'Events and third-party providers',
           paragraphs: [
-            'Event listings and booking links may be supplied by event organizers, venues and ticketing partners, including Visit Dubai, Visit Abu Dhabi, Visit Sharjah, UAE Government, Expo City Dubai, Dubai World Trade Centre, Dubai Exhibition Centre, Expo Centre Sharjah, Yas Island, Alserkal Avenue, Abu Dhabi Festival, DIFC, MyDubai Communities, Ticketmaster, Luma and Eventbrite. A booking completed on a third-party site is governed by that provider’s privacy notice and terms. We may share the information necessary with the organizer or ticket provider to fulfil a booking or respond to a support request.',
+            'Event listings and booking links may be supplied by event organizers, venues and ticketing partners, including Visit Dubai, Visit Abu Dhabi, Visit Sharjah, UAE Government, Expo City Dubai, Dubai World Trade Centre, Dubai Exhibition Centre, Expo Centre Sharjah, ADNEC Centre Abu Dhabi, Yas Island, Alserkal Avenue, Abu Dhabi Festival, DIFC, MyDubai Communities, Heart of RAK, MyAlAin, Ticketmaster, Luma and Eventbrite. A booking completed on a third-party site is governed by that provider’s privacy notice and terms. We may share the information necessary with the organizer or ticket provider to fulfil a booking or respond to a support request.',
             'When you follow an outbound booking link, the destination site may receive your browser or device information and may set its own cookies. Migo may record the referral and event for attribution and reporting.',
           ],
         },
@@ -175,7 +175,7 @@ const copy: Record<Language, Record<LegalPage, LegalCopy>> = {
         {
           heading: 'الفعاليات والجهات الخارجية',
           paragraphs: [
-            'قد تأتي قوائم الفعاليات وروابط الحجز من المنظمين والأماكن وشركاء التذاكر، بما في ذلك Visit Dubai وVisit Abu Dhabi وVisit Sharjah وحكومة الإمارات ومدينة إكسبو دبي ومركز دبي التجاري العالمي ومركز دبي للمعارض ومركز إكسبو الشارقة وجزيرة ياس والسركال أفنيو ومهرجان أبوظبي وDIFC ومجتمعات دبي وTicketmaster وLuma وEventbrite. يخضع الحجز الذي يتم على موقع جهة خارجية لإشعار الخصوصية وشروط تلك الجهة. وقد نشارك المعلومات اللازمة مع المنظم أو مزود التذاكر لتنفيذ الحجز أو الرد على طلب دعم.',
+            'قد تأتي قوائم الفعاليات وروابط الحجز من المنظمين والأماكن وشركاء التذاكر، بما في ذلك Visit Dubai وVisit Abu Dhabi وVisit Sharjah وحكومة الإمارات ومدينة إكسبو دبي ومركز دبي التجاري العالمي ومركز دبي للمعارض ومركز إكسبو الشارقة ومركز أدنيك أبوظبي وHeart of RAK وMyAlAin وجزيرة ياس والسركال أفنيو ومهرجان أبوظبي وDIFC ومجتمعات دبي وTicketmaster وLuma وEventbrite. يخضع الحجز الذي يتم على موقع جهة خارجية لإشعار الخصوصية وشروط تلك الجهة. وقد نشارك المعلومات اللازمة مع المنظم أو مزود التذاكر لتنفيذ الحجز أو الرد على طلب دعم.',
             'عند فتح رابط حجز خارجي، قد يحصل الموقع الوجهة على معلومات المتصفح أو الجهاز وقد يضع ملفات تعريف الارتباط الخاصة به. وقد يسجل Migo الإحالة والفعالية لأغراض الإسناد والتقارير.',
           ],
         },

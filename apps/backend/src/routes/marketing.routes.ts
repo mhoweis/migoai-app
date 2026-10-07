@@ -48,7 +48,7 @@ type WelcomeCopy = {
   rights: string;
 };
 
-const officialSources = ['Visit Dubai', 'DWTC', 'Visit Abu Dhabi', 'Expo City Dubai', 'Visit Sharjah', 'Dubai Exhibition Centre', 'MyDubai Communities', 'DIFC'];
+const officialSources = ['Visit Dubai', 'DWTC', 'Visit Abu Dhabi', 'Visit Sharjah', 'ADNEC Centre Abu Dhabi', 'Expo City Dubai', 'Dubai Exhibition Centre', 'MyDubai Communities', 'Heart of RAK', 'DIFC'];
 
 const copy: Record<Language, WelcomeCopy> = {
   en: {
