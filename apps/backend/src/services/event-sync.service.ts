@@ -99,15 +99,17 @@ export class EventSyncService {
         const supplierSpec = providerSuppliers[provider.name];
         if (supplierSpec) {
           try {
-            const supplier = await prisma.supplier.upsert({
-              where: { sourceKey: provider.name },
-              update: {},
-              create: {
-                sourceKey: provider.name,
-                ...supplierSpec,
-                status: 'ACTIVE',
-              },
-            });
+            const existing = await prisma.supplier.findUnique({ where: { sourceKey: provider.name } });
+            const supplier = !existing
+              ? await prisma.supplier.create({
+                data: { sourceKey: provider.name, ...supplierSpec, status: 'ACTIVE' },
+              })
+              : existing.status === 'PROSPECT'
+                ? await prisma.supplier.update({
+                  where: { id: existing.id },
+                  data: { ...supplierSpec, status: 'ACTIVE' },
+                })
+                : existing;
             updateSupplierSourceCache(supplier);
           } catch (error: any) {
             summary.errors += 1;

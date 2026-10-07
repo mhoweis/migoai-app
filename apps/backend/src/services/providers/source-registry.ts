@@ -169,6 +169,11 @@ const sources: Record<string, SourceInfo> = {
 
 export const providerSuppliers: Record<string, { name: string; website: string; slug: string }> = {
   difc: { name: 'DIFC', website: 'https://www.difc.com', slug: 'difc' },
+  'expo-city': {
+    name: 'Expo City Dubai',
+    website: 'https://www.expocitydubai.com/en/al-wasl-season/',
+    slug: 'expo-city-dubai',
+  },
   'mercedes-benz-brand-center': {
     name: 'Mercedes-Benz Brand Center Dubai',
     website: 'https://mercedesbenzbrandcenter.ae/corporate-bookings-offroad',
