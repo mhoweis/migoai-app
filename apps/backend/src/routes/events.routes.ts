@@ -76,6 +76,7 @@ router.get("/", asyncHandler(async (req: Request, res: Response) => {
     country: parseQueryParam<string>(req.query.country),
     dateFrom: parseDateParam(req.query.dateFrom),
     dateTo: parseDateParam(req.query.dateTo, true),
+    includeEnded: parseBooleanParam(req.query.includeEnded),
     priceMin: parseNumberParam(req.query.priceMin, 0),
     priceMax: parseNumberParam(req.query.priceMax, 1000),
     isFree: parseBooleanParam(req.query.isFree),

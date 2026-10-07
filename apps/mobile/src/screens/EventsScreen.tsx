@@ -1,6 +1,6 @@
 import { colors } from '../theme';
 // migo-mobile/src/screens/EventsScreen.tsx
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import DateRangePickerModal from '../components/DateRangePickerModal';
 import {
   View,
@@ -56,6 +56,7 @@ const EventsScreen = () => {
   const columnCount = width < 600 ? 1 : width < 1024 ? 2 : width < 1400 ? 3 : 4;
   const { savedIds, toggleSaved, loadSavedEvents } = useSavedEventsStore();
   const [events, setEvents] = useState<Event[]>([]);
+  const [endedInRange, setEndedInRange] = useState<Event[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -95,6 +96,37 @@ const EventsScreen = () => {
   const [dateFrom, setDateFrom] = useState<string>(route.params?.dateFrom || '');
   const [dateTo, setDateTo] = useState<string>(route.params?.dateTo || '');
   const [datePickerVisible, setDatePickerVisible] = useState(false);
+
+  const isPresetActive = (preset: 'today' | 'tomorrow' | 'weekend'): boolean => {
+    if (!dateFrom) return false;
+    const from = new Date(dateFrom);
+    const to = dateTo ? new Date(dateTo) : null;
+    const today = new Date();
+    const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+    if (preset === 'today') {
+      return from.toDateString() === today.toDateString() &&
+        (!to || to.toDateString() === today.toDateString());
+    }
+    if (preset === 'tomorrow') {
+      return from.toDateString() === tomorrow.toDateString() &&
+        (!to || to.toDateString() === tomorrow.toDateString());
+    }
+    if (preset === 'weekend') {
+      return from.getDay() === 5;
+    }
+    return false;
+  };
+
+  const isCustomRange = !!(dateFrom || dateTo) &&
+    !isPresetActive('today') && !isPresetActive('tomorrow') && !isPresetActive('weekend');
+  const listEvents = useMemo(() => {
+    const ids = new Set<string>();
+    return [...events, ...endedInRange].filter(event => {
+      if (ids.has(event.id)) return false;
+      ids.add(event.id);
+      return true;
+    });
+  }, [events, endedInRange]);
 
   const handleShare = async (item: Event) => {
     try {
@@ -259,12 +291,12 @@ const EventsScreen = () => {
   // Apply filters when any filter changes
   useEffect(() => {
     applyFilters();
-  }, [events, searchQuery, selectedCity, selectedCategory, sortBy, venueFilter, sourceFilter, dateFrom, dateTo]);
+  }, [listEvents, searchQuery, selectedCity, selectedCategory, sortBy, venueFilter, sourceFilter, dateFrom, dateTo]);
 
   // Update dynamic filter options based on current filters
   useEffect(() => {
     updateDynamicFilters();
-  }, [events, dateFrom, dateTo, selectedCity, selectedCategory, venueFilter, sourceFilter, searchQuery]);
+  }, [listEvents, dateFrom, dateTo, selectedCity, selectedCategory, venueFilter, sourceFilter, searchQuery]);
 
   const fetchEvents = async () => {
     try {
@@ -289,16 +321,46 @@ const EventsScreen = () => {
     }
   };
 
+  const fetchEndedEvents = async (isCancelled: () => boolean = () => false) => {
+    if (!isCustomRange) {
+      if (!isCancelled()) setEndedInRange([]);
+      return;
+    }
+    try {
+      const endedEvents = await fetchAllEvents({
+        includeEnded: 'true',
+        ...(dateFrom ? { dateFrom } : {}),
+        ...(dateTo ? { dateTo } : {}),
+      });
+      if (!isCancelled()) {
+        setEndedInRange(endedEvents.filter(event => event.hasEnded));
+      }
+    } catch (error) {
+      if (!isCancelled()) {
+        console.error('Failed to fetch ended events:', error);
+        setEndedInRange([]);
+      }
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchEndedEvents(() => cancelled);
+    return () => {
+      cancelled = true;
+    };
+  }, [dateFrom, dateTo, isCustomRange]);
+
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchEvents();
+    await Promise.all([fetchEvents(), fetchEndedEvents()]);
     setRefreshing(false);
   };
 
   const updateDynamicFilters = () => {
-    if (!Array.isArray(events)) return;
+    if (!Array.isArray(listEvents)) return;
 
-    let filtered = [...events];
+    let filtered = [...listEvents];
 
     // Apply date range filter
     if (dateFrom || dateTo) {
@@ -402,14 +464,13 @@ const EventsScreen = () => {
   };
 
   const applyFilters = () => {
-    // Ensure events is an array before spreading
-    if (!Array.isArray(events)) {
-      console.error('Events is not an array:', events);
+    if (!Array.isArray(listEvents)) {
+      console.error('Events is not an array:', listEvents);
       setFilteredEvents([]);
       return;
     }
 
-    let filtered = [...events];
+    let filtered = [...listEvents];
 
     const query = searchQuery.trim();
     if (query) {
@@ -432,7 +493,7 @@ const EventsScreen = () => {
       console.log('Normalized venue filter:', normalizedVenueFilter);
       console.log('Events after venue filter:', filtered.length);
       if (filtered.length === 0) {
-        console.log('Available venues in events:', events.map(e => e.venueName).filter(Boolean));
+        console.log('Available venues in events:', listEvents.map(e => e.venueName).filter(Boolean));
       }
     }
 
@@ -508,27 +569,6 @@ const EventsScreen = () => {
       setDateFrom(fri.toISOString());
       setDateTo(sun.toISOString());
     }
-  };
-
-  const isPresetActive = (preset: 'today' | 'tomorrow' | 'weekend'): boolean => {
-    if (!dateFrom) return false;
-    const from = new Date(dateFrom);
-    const to = dateTo ? new Date(dateTo) : null;
-    const today = new Date();
-    const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
-    if (preset === 'today') {
-      return from.toDateString() === today.toDateString() &&
-        (!to || to.toDateString() === today.toDateString());
-    }
-    if (preset === 'tomorrow') {
-      return from.toDateString() === tomorrow.toDateString() &&
-        (!to || to.toDateString() === tomorrow.toDateString());
-    }
-    if (preset === 'weekend') {
-      // Active when dateFrom is a Friday
-      return from.getDay() === 5;
-    }
-    return false;
   };
 
   const getActiveDateLabel = (): string => {
@@ -675,9 +715,6 @@ const EventsScreen = () => {
   );
 
   const renderDateFilter = () => {
-    const isCustomActive = !!(dateFrom || dateTo) &&
-      !isPresetActive('today') && !isPresetActive('tomorrow') && !isPresetActive('weekend');
-
     const dateOptions = [
       { key: 'today', label: t('today'), preset: 'today' as const },
       { key: 'tomorrow', label: t('tomorrow'), preset: 'tomorrow' as const },
@@ -694,7 +731,7 @@ const EventsScreen = () => {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.dateChipsContainer}
           renderItem={({ item }) => {
-            const active = item.preset ? isPresetActive(item.preset) : isCustomActive;
+            const active = item.preset ? isPresetActive(item.preset) : isCustomRange;
             return (
               <Chip
                 label={item.label}

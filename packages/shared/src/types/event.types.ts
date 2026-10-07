@@ -120,6 +120,7 @@ export interface Event {
   myBookingId?: string | null;
   canRsvp?: boolean;
   canBuy?: boolean;
+  hasEnded?: boolean;
   trust?: {
     source: {
       id: string;

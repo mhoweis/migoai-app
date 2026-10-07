@@ -47,7 +47,7 @@ export default function EventCard({ event, onPress, onSave, onShare, saved, foot
         style={styles.cardContent}
       >
         <View style={styles.media}>
-          {image ? <Image source={{ uri: image }} style={styles.image} resizeMode="cover" /> : <View style={[styles.image, styles.placeholder]}><Ionicons name="calendar-outline" size={34} color={colors.textMuted} /></View>}
+          {image ? <Image source={{ uri: image }} style={[styles.image, event.hasEnded && styles.endedImage]} resizeMode="cover" /> : <View style={[styles.image, styles.placeholder, event.hasEnded && styles.endedImage]}><Ionicons name="calendar-outline" size={34} color={colors.textMuted} /></View>}
           <View style={styles.badge}><DateBadge date={event.startDate} /></View>
           {!!rank ? <View style={styles.rank}><Text style={styles.rankText}>{rank}</Text></View> : null}
         </View>
@@ -55,6 +55,7 @@ export default function EventCard({ event, onPress, onSave, onShare, saved, foot
           <View style={styles.categoryRow}>
             <View style={styles.categoryChip}><Text style={styles.category} numberOfLines={1}>{categoryLabel(event.category)}</Text></View>
             {badge && ['official', 'venue'].includes(badge.kind) ? <View style={styles.official}><Ionicons name="shield-checkmark" size={12} color={colors.info} /><Text style={styles.officialText}>{t('official')}</Text></View> : null}
+            {event.hasEnded ? <View style={styles.ended}><Text style={styles.endedText} numberOfLines={1}>{t('event_ended')}</Text></View> : null}
           </View>
           <Text style={styles.title} numberOfLines={2}>{event.title}</Text>
           <Text style={styles.meta} numberOfLines={1}>{[event.venueName, event.city].filter(Boolean).join(' · ') || t('location_tba')}</Text>
@@ -88,11 +89,14 @@ const styles = StyleSheet.create({
   actions: { position: 'absolute', top: 12, right: 12, zIndex: 1, flexDirection: 'row', gap: 8 },
   iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: 'rgba(20,15,46,0.64)' },
   body: { padding: spacing.md, gap: 7 },
-  categoryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  categoryChip: { alignSelf: 'flex-start', maxWidth: '72%', paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.sm, backgroundColor: colors.primarySoft },
+  categoryRow: { flexDirection: 'row', alignItems: 'center', gap: 6, overflow: 'hidden' },
+  categoryChip: { alignSelf: 'flex-start', flexShrink: 1, maxWidth: '50%', paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.sm, backgroundColor: colors.primarySoft },
   category: { color: colors.primaryDark, fontSize: 11, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase' },
   official: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.infoSoft, paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.sm },
   officialText: { color: colors.info, fontSize: 11, fontWeight: '700' },
+  endedImage: { opacity: 0.6 },
+  ended: { flexShrink: 1, backgroundColor: colors.surfaceAlt, paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.sm },
+  endedText: { color: colors.textMuted, fontSize: 11, fontWeight: '700' },
   title: { ...type.h3, color: colors.ink, minHeight: 44 },
   meta: { color: colors.textSecondary, fontSize: 13 },
   when: { color: colors.textMuted, fontSize: 12, fontWeight: '600' },

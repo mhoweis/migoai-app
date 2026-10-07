@@ -190,6 +190,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     );
   };
 
+  const hasEnded = Boolean(event?.hasEnded);
   const handleRsvp = async () => {
     if (!event) return;
     try {
@@ -215,6 +216,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   const handleBookingAction = () => {
+    if (hasEnded && !event?.myBookingId) return;
     if (event?.myBookingId) navigateToTab('Wallet');
     else if (event?.canRsvp) void handleRsvp();
     else if (event?.canBuy) setCheckoutOpen(true);
@@ -223,7 +225,9 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const bookingActionLabel = event?.myBookingId
     ? t('view_ticket')
-    : event?.canRsvp
+    : hasEnded
+      ? t('event_ended')
+      : event?.canRsvp
       ? t('get_free_ticket')
       : event?.canBuy
         ? `${t('buy_ticket')} · ${formatPrice(Number(event.priceFrom || 0), event.currency || 'AED')}`
@@ -563,7 +567,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           )}
 
           {/* External Link */}
-          {event.externalUrl && (
+          {event.externalUrl && !hasEnded && (
             <TouchableOpacity
               style={styles.externalLinkButton}
               onPress={() => Linking.openURL(getBookingUrl(event.id, 'detail_link')).catch(() =>
@@ -587,7 +591,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <Text style={styles.bookingInfo}>{event.venueName || t('location_tba')}{event.city ? ` · ${event.city}` : ''}</Text>
               {event.capacity ? <Text style={styles.bookingInfo}>{t('capacity')}: {event.capacity}</Text> : null}
               <Text style={styles.bookingRefund}>{t(`refund_${(event as any).trust?.refundKey || 'per_provider'}` as any)}</Text>
-              <GradientButton style={styles.bookingButton} label={bookingActionLabel} onPress={handleBookingAction} />
+              <GradientButton style={styles.bookingButton} label={bookingActionLabel} onPress={handleBookingAction} disabled={hasEnded && !event.myBookingId} />
               <View style={styles.bookingActions}>
                 <TouchableOpacity accessibilityRole="button" accessibilityLabel={savedIds.has(event.id) ? t('remove_saved_event') : t('save_event')} style={styles.bookingAction} onPress={handleBookmark}>
                   <Ionicons name={savedIds.has(event.id) ? 'bookmark' : 'bookmark-outline'} size={18} color={colors.primary} />
@@ -630,6 +634,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           style={styles.bottomBarButton}
           label={bookingActionLabel}
           onPress={handleBookingAction}
+          disabled={hasEnded && !event.myBookingId}
         />
       </View> : null}
       <Modal

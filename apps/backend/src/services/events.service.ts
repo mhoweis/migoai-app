@@ -14,6 +14,7 @@ export interface EventFilters {
   country?: string;
   dateFrom?: Date | string;
   dateTo?: Date | string;
+  includeEnded?: boolean;
   priceMin?: number;
   priceMax?: number;
   isFree?: boolean;
@@ -40,6 +41,15 @@ export function notEndedWhere(now: Date = new Date()): Prisma.EventWhereInput {
   };
 }
 
+export function eventHasEnded(
+  event: { startDate: Date; endDate?: Date | null },
+  now: Date = new Date(),
+): boolean {
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+  return event.endDate ? event.endDate < now : event.startDate < todayStart;
+}
+
 export class EventService {
   async getEvents(filters: EventFilters): Promise<{
     events: any[];
@@ -58,7 +68,9 @@ export class EventService {
     const skip = (page - 1) * limit;
     
     // Build where clause
-    const andConditions: Prisma.EventWhereInput[] = [notEndedWhere()];
+    const andConditions: Prisma.EventWhereInput[] = filters.includeEnded && (filters.dateFrom || filters.dateTo)
+      ? []
+      : [notEndedWhere()];
     const where: Prisma.EventWhereInput = {
       status: 'ACTIVE',
       visibility: { in: ['PUBLIC', 'UNLISTED'] },
@@ -1180,6 +1192,7 @@ export class EventService {
         && !(eventAny.externalUrl && eventAny.bookingType === 'PAID')
         && ((eventAny.capacity || 0) === 0 || (eventAny.ticketsSold || 0) < eventAny.capacity)
       ),
+      hasEnded: eventHasEnded(eventAny),
       myBookingId: null,
     };
 
