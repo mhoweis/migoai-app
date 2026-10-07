@@ -1,9 +1,14 @@
 // src/routes/events.routes.ts - COMPLETE FIXED VERSION
 import { Router, Request, Response } from "express";
 import { eventService, EventFilters } from "../services/events.service";
-import { authenticate, AuthRequest } from "../middlewares/auth.middleware";
+import { authenticate, AuthRequest, optionalAuthenticate, requireHost } from "../middlewares/auth.middleware";
 import { asyncHandler } from "../middlewares/error.middleware";
 import { z } from "zod";
+import prisma from "../database/prisma";
+import { createEventInvite, getEventSocial, getFriendsGoingEvents } from "../services/social.service";
+import { getWebBase } from "./share.routes";
+import { recommendEvents } from "../services/recommendation.service";
+import { createEventReview, listEventReviews } from "../services/reviews.service";
 
 const router = Router();
 
@@ -22,11 +27,15 @@ const parseNumberParam = (param: any, defaultValue: number): number => {
 };
 
 // Helper function to parse date safely
-const parseDateParam = (param: any): Date | undefined => {
+const parseDateParam = (param: any, endOfDay = false): Date | undefined => {
   const value = parseQueryParam<string>(param);
   if (!value) return undefined;
-  
-  const date = new Date(value);
+
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const normalized = dateOnly
+    ? `${value}T${endOfDay ? '23:59:59.999' : '00:00:00.000'}+04:00`
+    : value;
+  const date = new Date(normalized);
   return isNaN(date.getTime()) ? undefined : date;
 };
 
@@ -63,9 +72,11 @@ router.get("/", asyncHandler(async (req: Request, res: Response) => {
     category: parseQueryParam<string>(req.query.category),
     subcategory: parseQueryParam<string>(req.query.subcategory),
     city: parseQueryParam<string>(req.query.city),
+    source: parseQueryParam<string>(req.query.source),
     country: parseQueryParam<string>(req.query.country),
     dateFrom: parseDateParam(req.query.dateFrom),
-    dateTo: parseDateParam(req.query.dateTo),
+    dateTo: parseDateParam(req.query.dateTo, true),
+    includeEnded: parseBooleanParam(req.query.includeEnded),
     priceMin: parseNumberParam(req.query.priceMin, 0),
     priceMax: parseNumberParam(req.query.priceMax, 1000),
     isFree: parseBooleanParam(req.query.isFree),
@@ -109,12 +120,122 @@ router.get("/weekend", asyncHandler(async (req: Request, res: Response) => {
   res.json({ success: true, data: result });
 }));
 
+router.get("/recommended", authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const city = parseQueryParam<string>(req.query.city, 'Dubai') || 'Dubai';
+  const from = parseDateParam(req.query.from) || new Date();
+  const defaultTo = new Date(from);
+  defaultTo.setDate(defaultTo.getDate() + 7);
+  const to = parseDateParam(req.query.to, true) || defaultTo;
+  const requestedLimit = parseNumberParam(req.query.limit, 10);
+  const limit = Math.min(Math.max(requestedLimit, 1), 50);
+  const events = await recommendEvents(req.userId!, { city, from, to, limit });
+  res.json({ success: true, data: { events } });
+}));
+
+router.get("/friends-going", authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const requestedLimit = parseNumberParam(req.query.limit, 10);
+  const limit = Math.min(Math.max(requestedLimit, 1), 30);
+  const events = await getFriendsGoingEvents(req.userId!, limit);
+  res.json({ success: true, data: { events } });
+}));
+
+router.get("/mine", authenticate, requireHost, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const result = await eventService.getMyEvents(req.userId!);
+  res.json({ success: true, data: result });
+}));
+
+router.get("/:id/social", optionalAuthenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const event = await prisma.event.findUnique({ where: { id: req.params.id }, select: { id: true } });
+  if (!event) {
+    res.status(404).json({ success: false, error: "Event not found" });
+    return;
+  }
+  const result = await getEventSocial(req.params.id, req.userId);
+  res.json({ success: true, data: result });
+}));
+
+router.post("/:id/invite", authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const input = z.object({
+    returnUrl: z.string().url().optional(),
+  }).parse(req.body || {});
+  let validatedBase: string | undefined;
+  if (input.returnUrl) {
+    const parsed = new URL(input.returnUrl);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      res.status(400).json({ success: false, error: "returnUrl must use http or https" });
+      return;
+    }
+    validatedBase = parsed.origin;
+  }
+  const result = await createEventInvite(req.params.id, req.userId!, getWebBase(req, validatedBase));
+  if (!result) {
+    res.status(404).json({ success: false, error: "Event not found" });
+    return;
+  }
+  res.json({ success: true, data: result });
+}));
+
+router.get("/:id/reviews", optionalAuthenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const event = await prisma.event.findFirst({
+    where: { OR: [{ id: req.params.id }, { migoId: req.params.id }, { slug: req.params.id }] },
+    select: { status: true, organizerId: true },
+  });
+  if (
+    !event
+    || (
+      event.status === "BANNED"
+      && event.organizerId !== req.userId
+      && req.user?.role !== "ADMIN"
+    )
+  ) {
+    res.status(404).json({ success: false, error: "Event not found" });
+    return;
+  }
+  const page = req.query.page === undefined ? 1 : Number(req.query.page);
+  const pageSize = req.query.pageSize === undefined ? 5 : Number(req.query.pageSize);
+  if (
+    !Number.isInteger(page) || page < 1
+    || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 50
+  ) {
+    res.status(400).json({ success: false, error: "Invalid pagination" });
+    return;
+  }
+  const data = await listEventReviews(req.params.id, req.userId, page, pageSize, req.user?.role);
+  res.json({ success: true, data });
+}));
+
+router.post("/:id/reviews", authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const input = z.object({
+    rating: z.number().int().min(1).max(5),
+    title: z.string().trim().max(120).nullable().optional(),
+    comment: z.string().trim().max(2000).nullable().optional(),
+  }).strict().safeParse(req.body);
+  if (!input.success) {
+    res.status(400).json({ success: false, error: "Invalid review" });
+    return;
+  }
+  const result = await createEventReview(req.params.id, req.userId!, input.data);
+  if (!result) {
+    res.status(404).json({ success: false, error: "Event not found" });
+    return;
+  }
+  if ("error" in result) {
+    res.status(403).json({ success: false, error: "A confirmed booking is required to review", code: result.error });
+    return;
+  }
+  res.json({ success: true, data: result.review });
+}));
+
 // Get event by ID
-router.get("/:id", asyncHandler(async (req: AuthRequest, res: Response) => {
+router.get("/:id", optionalAuthenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const userId = req.userId;
   
-  const result = await eventService.getEventById(id, userId);
+  const result = await eventService.getEventById(id, userId, req.user?.role);
+  if (!result) {
+    res.status(404).json({ success: false, error: 'Event not found' });
+    return;
+  }
   res.json({ success: true, data: result });
 }));
 
@@ -140,35 +261,48 @@ router.get("/filters/quick", asyncHandler(async (req: Request, res: Response) =>
 }));
 
 // Create event (organizer)
-router.post("/", authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+router.post("/", authenticate, requireHost, asyncHandler(async (req: AuthRequest, res: Response) => {
   // Validation schema for event creation
   const eventSchema = z.object({
     title: z.string().min(3).max(200),
-    description: z.string().min(10).max(5000),
+    description: z.string().max(5000).optional(),
     category: z.string(),
     subcategory: z.string().optional(),
     startDate: z.string(),
     endDate: z.string().optional(),
     venueName: z.string(),
-    address: z.string(),
+    address: z.string().optional(),
     city: z.string(),
-    country: z.string(),
-    locationLat: z.number(),
-    locationLng: z.number(),
+    country: z.string().default('United Arab Emirates'),
+    locationLat: z.number().optional(),
+    locationLng: z.number().optional(),
     priceFrom: z.number().optional(),
     priceTo: z.number().optional(),
-    currency: z.string().default("USD"),
+    currency: z.string().default("AED"),
     isFree: z.boolean().default(false),
-    ticketUrl: z.string().url(),
+    ticketUrl: z.string().url().optional(),
+    capacity: z.number().int().min(0).optional(),
+    coverImage: z.string().url().optional(),
     images: z.array(z.string().url()).optional().default([]),
     ageRestriction: z.number().optional(),
-    dressCode: z.string().optional(),
+    dressCode: z.enum(['formal', 'semi_formal', 'smart_casual', 'casual', 'themed', 'sportswear', 'none']).optional(),
+    notes: z.string().max(2000).optional(),
+    schedule: z.array(z.object({
+      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      startTime: z.string().regex(/^\d{2}:\d{2}$/),
+      endTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+    })).max(31).optional(),
     isPetFriendly: z.boolean().default(false),
     facilities: z.array(z.string()).optional().default([]),
     tags: z.array(z.string()).optional().default([]),
   });
 
-  const validatedData = eventSchema.parse(req.body);
+  const validatedInput = eventSchema.parse(req.body);
+  const validatedData = {
+    ...validatedInput,
+    latitude: validatedInput.locationLat,
+    longitude: validatedInput.locationLng,
+  };
   const userId = req.userId!;
   
   const result = await eventService.createEvent(userId, validatedData);
@@ -176,7 +310,7 @@ router.post("/", authenticate, asyncHandler(async (req: AuthRequest, res: Respon
 }));
 
 // Update event (organizer)
-router.put("/:id", authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+router.put("/:id", authenticate, requireHost, asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const updateData = req.body;
   const userId = req.userId!;
@@ -200,22 +334,35 @@ router.put("/:id", authenticate, asyncHandler(async (req: AuthRequest, res: Resp
     currency: z.string().optional(),
     isFree: z.boolean().optional(),
     ticketUrl: z.string().url().optional(),
+    capacity: z.number().int().min(0).optional(),
+    coverImage: z.string().url().optional(),
     images: z.array(z.string().url()).optional(),
     ageRestriction: z.number().optional(),
-    dressCode: z.string().optional(),
+    dressCode: z.enum(['formal', 'semi_formal', 'smart_casual', 'casual', 'themed', 'sportswear', 'none']).optional(),
+    notes: z.string().max(2000).optional(),
+    schedule: z.array(z.object({
+      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      startTime: z.string().regex(/^\d{2}:\d{2}$/),
+      endTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+    })).max(31).optional(),
     isPetFriendly: z.boolean().optional(),
     facilities: z.array(z.string()).optional(),
     tags: z.array(z.string()).optional(),
   }).partial();
 
-  const validatedData = updateSchema.parse(updateData);
+  const validatedInput = updateSchema.parse(updateData);
+  const validatedData = {
+    ...validatedInput,
+    ...(validatedInput.locationLat !== undefined && { latitude: validatedInput.locationLat }),
+    ...(validatedInput.locationLng !== undefined && { longitude: validatedInput.locationLng }),
+  };
   
   const result = await eventService.updateEvent(id, userId, validatedData);
   res.json({ success: true, data: result });
 }));
 
 // Delete event (organizer)
-router.delete("/:id", authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+router.delete("/:id", authenticate, requireHost, asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const userId = req.userId!;
   

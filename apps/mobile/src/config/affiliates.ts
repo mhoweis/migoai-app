@@ -14,7 +14,8 @@
  *   - click-outs are attributable to a user, an event and a feed placement
  */
 
-import { getApiBaseUrl } from './index';
+import { Platform } from 'react-native';
+import { API_BASE_URL } from '../services/api';
 
 export const PLATINUMLIST_BASE = 'https://platinumlist.net';
 
@@ -25,9 +26,21 @@ export const PLATINUMLIST_BASE = 'https://platinumlist.net';
  * @param placement Where the tap happened, for attribution ("detail", "ai_feed")
  */
 export function getBookingUrl(eventId: string, placement?: string): string {
-  const base = getApiBaseUrl().replace(/\/$/, '');
-  const query = placement ? `?from=${encodeURIComponent(placement)}` : '';
-  return `${base}/go/${encodeURIComponent(eventId)}${query}`;
+  const base = (
+    Platform.OS === 'web' && typeof window !== 'undefined' && !API_BASE_URL
+      ? window.location.origin
+      : API_BASE_URL
+  ).replace(/\/$/, '');
+  const platform = Platform.OS !== 'web'
+    ? 'app'
+    : typeof window !== 'undefined' && window.innerWidth >= 1024
+      ? 'website'
+      : 'mobile_web';
+  const query = [
+    ...(placement ? [`from=${encodeURIComponent(placement)}`] : []),
+    `platform=${platform}`,
+  ].join('&');
+  return `${base}/go/${encodeURIComponent(eventId)}?${query}`;
 }
 
 /**
@@ -51,11 +64,19 @@ export function isPlatinumlistUrl(url?: string | null): boolean {
 export function supplierLabel(event: {
   externalSource?: string | null;
   externalUrl?: string | null;
+  trust?: { source?: { label: string } } | null;
 }): string {
+  if (event.trust?.source?.label) return event.trust.source.label;
   if (event.externalSource) {
     const source = event.externalSource.toLowerCase();
     if (source === 'platinumlist') return 'Platinumlist';
-    return event.externalSource;
+    return event.externalSource
+      .split(/[-_]/)
+      .filter(Boolean)
+      .map((word) => word.length <= 4 && /^[a-z]+$/i.test(word)
+        ? word.toUpperCase()
+        : `${word[0].toUpperCase()}${word.slice(1).toLowerCase()}`)
+      .join(' ');
   }
   if (isPlatinumlistUrl(event.externalUrl)) return 'Platinumlist';
   return 'Website';

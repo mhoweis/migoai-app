@@ -5,6 +5,12 @@
 import { EventCategory, BookingType, LocationType, EventStatus, EventVisibility } from '../constants';
 import { SocialLinks } from './common.types';
 
+export interface EventScheduleDay {
+  date: string;
+  startTime: string;
+  endTime?: string;
+}
+
 export interface Event {
   id: string;
   title: string;
@@ -56,6 +62,8 @@ export interface Event {
   hasWiFi: boolean;
   facilities?: string[];
   dressCode?: string;
+  schedule?: EventScheduleDay[];
+  notes?: string;
   ageRestriction?: number;
   ageGroup?: string;
 
@@ -102,6 +110,37 @@ export interface Event {
     id: string;
     status: string;
     ticketCount: number;
+  };
+  myBooking?: {
+    id: string;
+    status: string;
+    ticketCount: number;
+    qrCode?: string;
+  };
+  myBookingId?: string | null;
+  canRsvp?: boolean;
+  canBuy?: boolean;
+  hasEnded?: boolean;
+  trust?: {
+    source: {
+      id: string;
+      label: string;
+      labelAr: string;
+      kind: string;
+      url: string;
+      refundPolicy: string;
+    };
+    organizer?: {
+      id: string;
+      name: string;
+      avatar?: string | null;
+      isVerified: boolean;
+      eventsHosted: number;
+    };
+    refund: string;
+    refundText: string;
+    refundKey: string;
+    isOfficial: boolean;
   };
 
   // Timestamps

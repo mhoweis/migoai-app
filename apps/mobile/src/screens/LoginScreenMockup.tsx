@@ -1,3 +1,4 @@
+import { colors } from '../theme';
 // src/screens/LoginScreen.tsx
 import React, { useState } from 'react';
 import {
@@ -33,11 +34,11 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
     }
 
     setLoading(true);
-    
+
     // Mock login - replace with your API call
     setTimeout(() => {
       setLoading(false);
-      
+
       // Mock user data
       const mockUser = {
         id: '1',
@@ -50,7 +51,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
           theme: 'light' as const,
         },
       };
-      
+
       setUser(mockUser);
       //setFirstLogin(true); // Show interests screen on first login
       //navigation.navigate('Main');
@@ -69,14 +70,14 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.header}>
-            <Ionicons name="calendar" size={48} color="#3b82f6" />
+            <Ionicons name="calendar" size={48} color={colors.primary} />
             <Text style={styles.title}>Welcome Back</Text>
             <Text style={styles.subtitle}>Sign in to continue exploring events</Text>
           </View>
 
           <View style={styles.form}>
             <View style={styles.inputContainer}>
-              <Ionicons name="mail-outline" size={20} color="#9ca3af" style={styles.inputIcon} />
+              <Ionicons name="mail-outline" size={20} color={colors.textMuted} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="Email address"
@@ -93,7 +94,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
             </View>
 
             <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed-outline" size={20} color="#9ca3af" style={styles.inputIcon} />
+              <Ionicons name="lock-closed-outline" size={20} color={colors.textMuted} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="Password"
@@ -108,10 +109,10 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 editable={!loading}
               />
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                <Ionicons 
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'} 
-                  size={20} 
-                  color="#9ca3af" 
+                <Ionicons
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={20}
+                  color={colors.textMuted}
                 />
               </TouchableOpacity>
             </View>
@@ -126,7 +127,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={colors.textInverse} />
               ) : (
                 <Text style={styles.loginButtonText}>Sign In</Text>
               )}
@@ -139,19 +140,19 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
             </View>
 
             <View style={styles.socialButtons}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.socialButton}
                 onPress={() => handleSocialLogin('Google')}
               >
                 <Ionicons name="logo-google" size={24} color="#DB4437" />
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.socialButton}
                 onPress={() => handleSocialLogin('Apple')}
               >
-                <Ionicons name="logo-apple" size={24} color="#000" />
+                <Ionicons name="logo-apple" size={24} color={colors.text} />
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.socialButton}
                 onPress={() => handleSocialLogin('Facebook')}
               >
@@ -178,7 +179,7 @@ import { ScrollView } from 'react-native';
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
   },
   keyboardView: {
     flex: 1,
@@ -195,12 +196,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: colors.text,
     marginTop: 16,
   },
   subtitle: {
     fontSize: 16,
-    color: '#6b7280',
+    color: colors.textMuted,
     marginTop: 8,
   },
   form: {
@@ -209,12 +210,12 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.bg,
     borderRadius: 12,
     paddingHorizontal: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
   },
   inputIcon: {
     marginRight: 12,
@@ -229,12 +230,12 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   forgotPasswordText: {
-    color: '#3b82f6',
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
   loginButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     height: 56,
     borderRadius: 12,
     justifyContent: 'center',
@@ -242,10 +243,10 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   loginButtonDisabled: {
-    backgroundColor: '#93c5fd',
+    backgroundColor: colors.primarySoft,
   },
   loginButtonText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -257,11 +258,11 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: colors.border,
   },
   dividerText: {
     marginHorizontal: 16,
-    color: '#9ca3af',
+    color: colors.textMuted,
     fontSize: 14,
   },
   socialButtons: {
@@ -274,11 +275,11 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.bg,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
   },
   footer: {
     flexDirection: 'row',
@@ -286,11 +287,11 @@ const styles = StyleSheet.create({
     marginTop: 'auto',
   },
   footerText: {
-    color: '#6b7280',
+    color: colors.textMuted,
     fontSize: 14,
   },
   footerLink: {
-    color: '#3b82f6',
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },

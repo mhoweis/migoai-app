@@ -14,6 +14,7 @@ import { Request, Response, NextFunction } from 'express';
 import { authService } from '../services/auth.service';
 import config from '../config/env';
 import logger from '../utils/logger';
+import prisma from '../config/database';
 
 export const DEV_USER = {
   id: 'test_user_123',
@@ -35,12 +36,26 @@ export const devAuthMiddleware = async (req: Request, res: Response, next: NextF
     const token = authHeader.split(' ')[1];
     try {
       const decoded = await authService.validateToken(token);
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.userId },
+        select: { id: true, email: true, role: true, status: true },
+      });
+      if (!user) {
+        return res.status(401).json({ success: false, error: 'Authentication failed' });
+      }
+      if (user.status === 'PAUSED') {
+        return res.status(403).json({
+          success: false,
+          error: 'Account paused',
+          code: 'ACCOUNT_PAUSED',
+        });
+      }
       (req as any).user = {
-        id: decoded.userId,
-        email: decoded.email,
-        role: decoded.role,
+        id: user.id,
+        email: user.email || '',
+        role: user.role,
       };
-      (req as any).userId = decoded.userId;
+      (req as any).userId = user.id;
       return next();
     } catch (error: any) {
       if (!devAuthEnabled()) {

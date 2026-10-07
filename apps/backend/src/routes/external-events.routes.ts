@@ -2,9 +2,20 @@
 import express, { Request, Response } from 'express';
 import externalEventsService from '../services/external-events.service';
 import logger from '../utils/logger';
-import { authenticate } from '../middlewares/auth.middleware';
+import { authenticate, requireAdmin } from '../middlewares/auth.middleware';
+import eventSyncService from '../services/event-sync.service';
+import * as eventSyncScheduler from '../services/event-sync.scheduler';
 
 const router = express.Router();
+
+router.post('/sync-now', authenticate, requireAdmin, async (_req: Request, res: Response) => {
+  const result = await eventSyncScheduler.runNow();
+  res.json({ success: true, data: result });
+});
+
+router.get('/sync-status', authenticate, requireAdmin, async (_req: Request, res: Response) => {
+  res.json({ success: true, data: eventSyncScheduler.getStatus() });
+});
 
 /**
  * GET /api/external-events/fetch
@@ -30,7 +41,6 @@ router.get('/fetch', authenticate, async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch external events',
-      error: error.message,
     });
   }
 });
@@ -62,7 +72,6 @@ router.get('/ticketmaster', authenticate, async (req: Request, res: Response) =>
     res.status(500).json({
       success: false,
       message: 'Failed to fetch Ticketmaster events',
-      error: error.message,
     });
   }
 });
@@ -92,7 +101,6 @@ router.get('/eventbrite', authenticate, async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch Eventbrite events',
-      error: error.message,
     });
   }
 });
@@ -123,7 +131,6 @@ router.get('/meetup', authenticate, async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch Meetup events',
-      error: error.message,
     });
   }
 });
@@ -154,7 +161,6 @@ router.get('/platinumlist', authenticate, async (req: Request, res: Response) =>
     res.status(500).json({
       success: false,
       message: 'Failed to fetch Platinumlist events',
-      error: error.message,
     });
   }
 });
@@ -163,7 +169,7 @@ router.get('/platinumlist', authenticate, async (req: Request, res: Response) =>
  * POST /api/external-events/sync
  * Fetch and sync external events to database
  */
-router.post('/sync', authenticate, async (req: Request, res: Response) => {
+router.post('/sync', authenticate, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { city, country, keyword } = req.body;
 
@@ -192,7 +198,6 @@ router.post('/sync', authenticate, async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Failed to sync external events',
-      error: error.message,
     });
   }
 });
@@ -201,7 +206,7 @@ router.post('/sync', authenticate, async (req: Request, res: Response) => {
  * POST /api/external-events/sync/:source
  * Sync events from a specific source
  */
-router.post('/sync/:source', authenticate, async (req: Request, res: Response) => {
+router.post('/sync/:source', authenticate, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { source } = req.params;
     const params = req.body;
@@ -246,7 +251,6 @@ router.post('/sync/:source', authenticate, async (req: Request, res: Response) =
     res.status(500).json({
       success: false,
       message: `Failed to sync ${req.params.source} events`,
-      error: error.message,
     });
   }
 });

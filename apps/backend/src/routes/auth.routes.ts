@@ -12,6 +12,24 @@ const sendOtpLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Too many verification codes requested. Please try again later.' },
 });
+const credentialLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many attempts. Please try again later.' },
+});
+const refreshLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please try again later.' },
+});
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MIN_PASSWORD_LENGTH = 8;
+const MAX_PASSWORD_LENGTH = 128;
+
 const verifyOtpLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
@@ -58,12 +76,33 @@ router.post('/phone-signup/verify-otp', verifyOtpLimiter, async (req: Request, r
 });
 
 // Register
-router.post('/register', async (req: Request, res: Response) => {
+router.post('/register', credentialLimiter, async (req: Request, res: Response) => {
   try {
     const { email, password, name, phone } = req.body;
     
     if (!email || !password) {
       res.status(400).json({ error: 'Email and password are required' });
+      return;
+    }
+
+    if (typeof email !== 'string' || email.length > 254 || !EMAIL_PATTERN.test(email.trim())) {
+      res.status(400).json({ error: 'Enter a valid email address' });
+      return;
+    }
+
+    if (
+      typeof password !== 'string'
+      || password.length < MIN_PASSWORD_LENGTH
+      || password.length > MAX_PASSWORD_LENGTH
+    ) {
+      res.status(400).json({
+        error: `Password must be between ${MIN_PASSWORD_LENGTH} and ${MAX_PASSWORD_LENGTH} characters`,
+      });
+      return;
+    }
+
+    if (name !== undefined && (typeof name !== 'string' || name.length > 100)) {
+      res.status(400).json({ error: 'Name must be at most 100 characters' });
       return;
     }
     
@@ -83,12 +122,18 @@ router.post('/register', async (req: Request, res: Response) => {
 });
 
 // Login
-router.post('/login', async (req: Request, res: Response) => {
+router.post('/login', credentialLimiter, async (req: Request, res: Response) => {
   try {
     const { identifier, email, phone, password } = req.body;
     const loginIdentifier = identifier || email || phone;
     
-    if (!loginIdentifier || !password) {
+    if (
+      typeof loginIdentifier !== 'string'
+      || typeof password !== 'string'
+      || !loginIdentifier
+      || !password
+      || password.length > MAX_PASSWORD_LENGTH
+    ) {
       res.status(400).json({ error: 'Email or phone number and password are required' });
       return;
     }
@@ -107,16 +152,20 @@ router.post('/login', async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    res.status(401).json({ error: error.message });
+    if (error?.code === 'ACCOUNT_PAUSED') {
+      res.status(403).json({ success: false, error: 'Account paused', code: 'ACCOUNT_PAUSED' });
+      return;
+    }
+    res.status(401).json({ error: 'Invalid credentials' });
   }
 });
 
 // Refresh token
-router.post('/refresh-token', async (req: Request, res: Response) => {
+router.post('/refresh-token', refreshLimiter, async (req: Request, res: Response) => {
   try {
     const { refreshToken } = req.body;
     
-    if (!refreshToken) {
+    if (!refreshToken || typeof refreshToken !== 'string') {
       res.status(400).json({ error: 'Refresh token is required' });
       return;
     }
@@ -128,7 +177,11 @@ router.post('/refresh-token', async (req: Request, res: Response) => {
       data: result,
     });
   } catch (error: any) {
-    res.status(401).json({ error: error.message });
+    if (error?.code === 'ACCOUNT_PAUSED') {
+      res.status(403).json({ success: false, error: 'Account paused', code: 'ACCOUNT_PAUSED' });
+      return;
+    }
+    res.status(401).json({ error: 'Invalid refresh token' });
   }
 });
 
@@ -146,15 +199,12 @@ router.get('/me', authenticate, async (req: any, res: Response) => {
       return;
     }
     
-    // Remove password from response
-    const { password, ...safeUser } = user;
-    
     res.json({
       success: true,
-      data: safeUser,
+      data: authService.sanitizeUser(user),
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to fetch user' });
   }
 });
 
@@ -163,7 +213,12 @@ router.put('/interests', authenticate, async (req: any, res: Response) => {
   try {
     const { interests } = req.body;
     
-    if (!interests || !Array.isArray(interests) || interests.length < 3) {
+    if (
+      !Array.isArray(interests)
+      || interests.length < 3
+      || interests.length > 50
+      || !interests.every((i: unknown) => typeof i === 'string' && i.length <= 100)
+    ) {
       res.status(400).json({ error: 'At least 3 interests are required' });
       return;
     }
@@ -177,15 +232,12 @@ router.put('/interests', authenticate, async (req: any, res: Response) => {
       },
     });
     
-    // Remove password
-    const { password, ...safeUser } = user;
-    
     res.json({
       success: true,
-      data: safeUser,
+      data: authService.sanitizeUser(user),
     });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: 'Failed to update interests' });
   }
 });
 
@@ -193,14 +245,17 @@ router.put('/interests', authenticate, async (req: any, res: Response) => {
 router.post('/logout', authenticate, async (req: any, res: Response) => {
   try {
     const { refreshToken } = req.body;
-    await authService.logout(req.userId, refreshToken);
+    await authService.logout(
+      req.userId,
+      typeof refreshToken === 'string' ? refreshToken : undefined,
+    );
     
     res.json({
       success: true,
       message: 'Logged out successfully',
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Logout failed' });
   }
 });
 

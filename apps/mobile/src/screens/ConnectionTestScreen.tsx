@@ -1,3 +1,4 @@
+import { colors } from '../theme';
 // src/screens/ConnectionTestScreen.tsx
 import React, { useState, useEffect } from 'react';
 import {
@@ -34,9 +35,9 @@ const ConnectionTestScreen = () => {
 
   const getStatusColor = () => {
     switch (connectionStatus) {
-      case 'success': return '#10b981';
-      case 'error': return '#ef4444';
-      default: return '#f59e0b';
+      case 'success': return colors.success;
+      case 'error': return colors.danger;
+      default: return colors.warning;
     }
   };
 
@@ -52,7 +53,7 @@ const ConnectionTestScreen = () => {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <Ionicons name="wifi" size={48} color="#3b82f6" />
+          <Ionicons name="wifi" size={48} color={colors.primary} />
           <Text style={styles.title}>Backend Connection Test</Text>
           <Text style={styles.subtitle}>Testing connection to your backend server</Text>
         </View>
@@ -150,7 +151,7 @@ const ConnectionTestScreen = () => {
         </View>
 
         <TouchableOpacity style={styles.testButton} onPress={testConnection}>
-          <Ionicons name="refresh" size={20} color="#fff" />
+          <Ionicons name="refresh" size={20} color={colors.textInverse} />
           <Text style={styles.testButtonText}>Test Connection Again</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -161,7 +162,7 @@ const ConnectionTestScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
   },
   content: {
     padding: 20,
@@ -173,17 +174,17 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: colors.text,
     marginTop: 16,
   },
   subtitle: {
     fontSize: 16,
-    color: '#6b7280',
+    color: colors.textMuted,
     marginTop: 8,
     textAlign: 'center',
   },
   statusCard: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.bg,
     borderRadius: 12,
     padding: 20,
     borderWidth: 2,
@@ -209,29 +210,29 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.textMuted,
     fontWeight: '600',
   },
   detailValue: {
     fontSize: 14,
-    color: '#374151',
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   errorBox: {
-    backgroundColor: '#fee2e2',
+    backgroundColor: colors.dangerSoft,
     padding: 12,
     borderRadius: 8,
     marginTop: 8,
   },
   errorTitle: {
     fontSize: 14,
-    color: '#991b1b',
+    color: colors.danger,
     fontWeight: 'bold',
     marginBottom: 4,
   },
   errorText: {
     fontSize: 12,
-    color: '#991b1b',
+    color: colors.danger,
   },
   troubleshooting: {
     marginBottom: 32,
@@ -239,7 +240,7 @@ const styles = StyleSheet.create({
   troubleshootingTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: colors.text,
     marginBottom: 16,
   },
   step: {
@@ -250,13 +251,13 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   stepNumberText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontWeight: 'bold',
     fontSize: 14,
   },
@@ -266,16 +267,16 @@ const styles = StyleSheet.create({
   stepTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
+    color: colors.text,
     marginBottom: 4,
   },
   stepDescription: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.textMuted,
     lineHeight: 20,
   },
   testButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -284,7 +285,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   testButtonText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 16,
     fontWeight: 'bold',
   },

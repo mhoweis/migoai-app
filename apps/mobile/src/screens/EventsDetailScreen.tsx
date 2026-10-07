@@ -1,3 +1,4 @@
+import { colors } from '../theme';
 // src/screens/EventDetailScreen.tsx
 import React, { useState, useEffect } from 'react';
 import {
@@ -9,11 +10,12 @@ import {
   Image,
   Share,
   Alert,
-  Dimensions,
   ActivityIndicator,
   Linking,
+  Modal,
+  Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import EventMap from '../components/EventMap';
 import { api } from '../services/api';
@@ -21,8 +23,23 @@ import { Event } from '@migo/shared';
 import { useUserStore } from '../store/userStore';
 import { useSavedEventsStore } from '../store/savedEventsStore';
 import { getBookingUrl, supplierLabel } from '../config/affiliates';
-
-const { width } = Dimensions.get('window');
+import { ticketsService } from '../services/tickets.service';
+import { navigateToTab } from '../navigation/navigationRef';
+import { socialService, EventSocial, InviteLinks } from '../services/social.service';
+import { inviteRef } from '../utils/inviteRef';
+import { categoryLabel, formatEventWhen, formatPrice, useLocale } from '../i18n';
+import { sourceBadge } from '../utils/trust';
+import { LinearGradient } from 'expo-linear-gradient';
+import GradientButton from '../components/GradientButton';
+import { gradients, radius, shadow, spacing, type } from '../theme';
+import { DetailSkeleton } from '../components/Skeleton';
+import { trackSignal } from '../services/signals.service';
+import { useBreakpoint } from '../hooks/useBreakpoint';
+import DateBadge from '../components/DateBadge';
+import Container from '../components/Container';
+import ReviewCards from '../components/ReviewCards';
+import ReviewComposerModal, { ReviewDraft } from '../components/ReviewComposerModal';
+import { profileService, ReviewSummary } from '../services/profile.service';
 
 interface Props {
   route: any;
@@ -34,13 +51,61 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [ticketCount, setTicketCount] = useState(1);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [social, setSocial] = useState<EventSocial | null>(null);
+  const [eventReviews, setEventReviews] = useState<ReviewSummary[]>([]);
+  const [reviewCount, setReviewCount] = useState(0);
+  const [reviewsExpanded, setReviewsExpanded] = useState(false);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewComposerOpen, setReviewComposerOpen] = useState(false);
+  const [reviewSaving, setReviewSaving] = useState(false);
+  const [inviteLinks, setInviteLinks] = useState<InviteLinks | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const { user } = useUserStore();
+  const { t, locale } = useLocale();
+  const { isWebDesktop } = useBreakpoint();
   const { savedIds, toggleSaved, loadSavedEvents } = useSavedEventsStore();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     fetchEvent();
+    void socialService.social(eventId).then(setSocial).catch(() => setSocial(null));
+    void loadReviews();
     loadSavedEvents();
   }, [eventId]);
+
+  const loadReviews = async (pageSize = 5) => {
+    setReviewLoading(true);
+    try {
+      const response = await profileService.eventReviews(eventId, pageSize);
+      setEventReviews(response.items);
+      setReviewCount(response.total);
+    } catch {
+      setEventReviews([]);
+      setReviewCount(0);
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+
+  const submitReview = async (draft: ReviewDraft) => {
+    setReviewSaving(true);
+    try {
+      await profileService.submitReview(eventId, draft);
+      setReviewComposerOpen(false);
+      await Promise.all([fetchEvent(), loadReviews(reviewsExpanded ? 50 : 5)]);
+    } catch (submitError: any) {
+      const response = submitError?.response?.data;
+      Alert.alert(
+        response?.code === 'REVIEW_NOT_ALLOWED' ? t('review_not_allowed_title') : t('error'),
+        response?.error || t('please_try_again'),
+      );
+    } finally {
+      setReviewSaving(false);
+    }
+  };
 
   const fetchEvent = async () => {
     try {
@@ -50,12 +115,13 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
       if (response.data.success) {
         setEvent(response.data.data);
+        void trackSignal('view', { eventId });
       } else {
-        setError('Event not found');
+        setError(t('no_events_found'));
       }
     } catch (err) {
       console.error('Error fetching event:', err);
-      setError('Failed to load event details');
+      setError(t('please_try_again'));
     } finally {
       setLoading(false);
     }
@@ -67,17 +133,51 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const handleShare = async () => {
     if (!event) return;
+    setShareOpen(true);
+  };
 
-    const eventDate = new Date(event.startDate);
-    const dateStr = eventDate.toLocaleDateString();
-    const timeStr = eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const ensureInvite = async () => {
+    if (inviteLinks) return inviteLinks;
+    const returnUrl = Platform.OS === 'web' && typeof window !== 'undefined'
+      ? window.location.origin
+      : undefined;
+    const links = await socialService.invite(event!.id, returnUrl);
+    setInviteLinks(links);
+    return links;
+  };
 
+  const shareWhatsApp = async () => {
     try {
-      await Share.share({
-        message: `Check out this event: ${event.title}\n\n${event.description || 'No description'}\n\nDate: ${dateStr} at ${timeStr}\nLocation: ${event.venueName || event.city || 'TBA'}`,
-      });
-    } catch (error) {
-      Alert.alert('Error', 'Unable to share event');
+      const links = await ensureInvite();
+      await Linking.openURL(links.whatsappUrl);
+      setShareOpen(false);
+    } catch {
+      Alert.alert(t('unable_to_share'), t('please_try_again'));
+    }
+  };
+
+  const copyShareLink = async () => {
+    try {
+      const links = await ensureInvite();
+      if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(links.shareUrl);
+        Alert.alert(t('link_copied'), t('link_ready'));
+      } else {
+        Alert.alert(t('copy_link'), links.shareUrl);
+      }
+      setShareOpen(false);
+    } catch {
+      Alert.alert(t('unable_to_share'), t('please_try_again'));
+    }
+  };
+
+  const shareMore = async () => {
+    try {
+      const links = await ensureInvite();
+      await Share.share({ message: `${event!.title} — Join me on Migo: ${links.shareUrl}`, url: links.shareUrl });
+      setShareOpen(false);
+    } catch {
+      Alert.alert(t('unable_to_share'), t('please_try_again'));
     }
   };
 
@@ -86,17 +186,81 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     // Server-side redirect: resolves the supplier, wraps once, logs the click.
     const bookingUrl = getBookingUrl(event.id, 'detail');
     Linking.openURL(bookingUrl).catch(() =>
-      Alert.alert('Error', 'Unable to open booking page. Please try again.')
+      Alert.alert(t('error'), t('unable_booking'))
     );
+  };
+
+  const hasEnded = Boolean(event?.hasEnded);
+  const handleRsvp = async () => {
+    if (!event) return;
+    try {
+      await ticketsService.rsvp(event.id, 1, inviteRef.consume());
+      await fetchEvent();
+      Alert.alert(t('youre_in'), t('ticket_ready'), [
+        { text: t('view_ticket'), onPress: () => navigateToTab('Wallet') },
+        { text: t('invite_friends'), onPress: () => { void shareWhatsApp(); } },
+      ]);
+    } catch (error) {
+      const responseError = error as {
+        response?: { status?: number; data?: { code?: string; error?: { code?: string } } };
+      };
+      const code = responseError.response?.data?.code || responseError.response?.data?.error?.code;
+      if (responseError.response?.status === 409 && code === 'ALREADY_BOOKED') {
+        navigateToTab('Wallet');
+      } else if (responseError.response?.status === 409 && code === 'SOLD_OUT') {
+        Alert.alert(t('sold_out'), t('sold_out_help'));
+      } else {
+        Alert.alert(t('unable_rsvp'), t('please_try_again'));
+      }
+    }
+  };
+
+  const handleBookingAction = () => {
+    if (hasEnded && !event?.myBookingId) return;
+    if (event?.myBookingId) navigateToTab('Wallet');
+    else if (event?.canRsvp) void handleRsvp();
+    else if (event?.canBuy) setCheckoutOpen(true);
+    else handleBookTicket();
+  };
+
+  const bookingActionLabel = event?.myBookingId
+    ? t('view_ticket')
+    : hasEnded
+      ? t('event_ended')
+      : event?.canRsvp
+      ? t('get_free_ticket')
+      : event?.canBuy
+        ? `${t('buy_ticket')} · ${formatPrice(Number(event.priceFrom || 0), event.currency || 'AED')}`
+        : event?.externalUrl
+          ? t('book_on', { supplier: supplierLabel(event) })
+          : t('book_now');
+
+  const handleCheckout = async () => {
+    if (!event) return;
+    setCheckoutLoading(true);
+    try {
+      const returnUrl = Platform.OS === 'web' && typeof window !== 'undefined'
+        ? window.location.origin
+        : 'migo://checkout';
+      const result = await ticketsService.checkout(event.id, ticketCount, returnUrl, inviteRef.consume());
+      setCheckoutOpen(false);
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.location.assign(result.checkoutUrl);
+      } else {
+        await Linking.openURL(result.checkoutUrl);
+      }
+    } catch (checkoutError) {
+      console.error('Checkout failed:', checkoutError);
+      Alert.alert(t('unable_checkout'), t('please_try_again'));
+    } finally {
+      setCheckoutLoading(false);
+    }
   };
 
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3b82f6" />
-          <Text style={styles.loadingText}>Loading event...</Text>
-        </View>
+        <DetailSkeleton />
       </SafeAreaView>
     );
   }
@@ -105,13 +269,13 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Ionicons name="alert-circle-outline" size={64} color="#ef4444" />
-          <Text style={styles.errorText}>{error || 'Event not found'}</Text>
+          <Ionicons name="alert-circle-outline" size={64} color={colors.danger} />
+          <Text style={styles.errorText}>{error || t('no_events_found')}</Text>
           <TouchableOpacity
             style={styles.retryButton}
             onPress={fetchEvent}
           >
-            <Text style={styles.retryButtonText}>Try Again</Text>
+            <Text style={styles.retryButtonText}>{t('please_try_again')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -121,51 +285,115 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView>
+        {isWebDesktop ? (
+          <Container style={styles.desktopBackContainer}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('back')} onPress={() => navigation.goBack()} style={styles.desktopBack}>
+              <Ionicons name="arrow-back" size={18} color={colors.primary} />
+              <Text style={styles.desktopBackText}>{t('back')}</Text>
+            </TouchableOpacity>
+          </Container>
+        ) : null}
         {/* Event Image */}
-        <View style={styles.imageContainer}>
+        <Container style={[styles.imageWrapper, !isWebDesktop && styles.mobileImageWrapper]}>
+        <View style={[styles.imageContainer, isWebDesktop && styles.desktopImageContainer]}>
           {event.coverImage ? (
-            <Image source={{ uri: event.coverImage }} style={styles.eventImage} />
+            <Image source={{ uri: event.coverImage }} style={[styles.eventImage, isWebDesktop && styles.desktopCoverFill]} resizeMode="cover" />
           ) : (
-            <View style={[styles.eventImage, styles.placeholderImage]}>
-              <Ionicons name="image-outline" size={64} color="#d1d5db" />
+            <View style={[styles.eventImage, styles.placeholderImage, isWebDesktop && styles.desktopCoverFill]}>
+              <Ionicons name="image-outline" size={64} color={colors.border} />
             </View>
           )}
-          <View style={styles.imageOverlay}>
+          <LinearGradient colors={gradients.dark} style={styles.imageOverlay}>
+            {!isWebDesktop ? (
+              <TouchableOpacity
+                style={[styles.actionButton, styles.backButton, { top: insets.top + spacing.md }]}
+                onPress={() => navigation.goBack()}
+                accessibilityRole="button"
+                accessibilityLabel={t('back')}
+              >
+                <Ionicons name="arrow-back" size={24} color={colors.textInverse} />
+              </TouchableOpacity>
+            ) : null}
+            <View style={[
+              styles.dateBadgePosition,
+              isWebDesktop ? styles.desktopDateBadge : [styles.phoneDateBadge, { top: insets.top + spacing.md }],
+            ]}>
+              <DateBadge date={event.startDate} />
+            </View>
+              <View style={styles.heroTitleRow}>
+                <View style={styles.heroTitleContent}>
+                  <Text style={styles.heroCategory}>{categoryLabel(event.category)}</Text>
+                  <Text style={[styles.imageTitle, isWebDesktop && styles.desktopImageTitle]} numberOfLines={3}>{event.title}</Text>
+                </View>
+              </View>
             <View style={styles.imageActions}>
               <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={savedIds.has(event.id) ? t('remove_saved_event') : t('save_event')}
                 style={styles.actionButton}
                 onPress={handleBookmark}
               >
                 <Ionicons
                   name={event && savedIds.has(event.id) ? 'bookmark' : 'bookmark-outline'}
                   size={24}
-                  color="#fff"
+                  color={colors.textInverse}
                 />
               </TouchableOpacity>
               <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={t('share')}
                 style={styles.actionButton}
                 onPress={handleShare}
               >
-                <Ionicons name="share-outline" size={24} color="#fff" />
+                <Ionicons name="share-outline" size={24} color={colors.textInverse} />
               </TouchableOpacity>
             </View>
-          </View>
+          </LinearGradient>
         </View>
+        </Container>
 
-        {/* Event Content */}
-        <View style={styles.content}>
+          {/* Event Content */}
+          <Container style={[
+            styles.detailContainer,
+            !isWebDesktop && styles.mobileDetailContainer,
+            isWebDesktop && styles.desktopBody,
+          ]}>
+          <View style={[styles.content, isWebDesktop && styles.desktopMain]}>
           {/* Event Header */}
           <View style={styles.eventHeader}>
-            <View style={styles.eventCategoryContainer}>
-              <Text style={styles.eventCategory}>{event.category || 'Event'}</Text>
-              {event.locationType === 'ONLINE' && (
+            {event.locationType === 'ONLINE' ? (
+              <View style={styles.eventCategoryContainer}>
                 <View style={styles.featuredBadge}>
-                  <Text style={styles.featuredBadgeText}>ONLINE</Text>
+                  <Text style={styles.featuredBadgeText}>{t('online')}</Text>
                 </View>
-              )}
-            </View>
-            <Text style={styles.eventTitle}>{event.title}</Text>
-            {event.organizer && (
+              </View>
+            ) : null}
+            {sourceBadge(event.trust, locale) && (
+              <TouchableOpacity
+                disabled={!(event as any).supplierSlug}
+                accessibilityRole={(event as any).supplierSlug ? 'button' : undefined}
+                onPress={() => (event as any).supplierSlug && navigateToTab('Profile', 'SupplierPage', { slug: (event as any).supplierSlug })}
+                style={[styles.sourceChip, { backgroundColor: sourceBadge(event.trust, locale)?.backgroundColor }]}
+              >
+                <Ionicons name="shield-checkmark" size={15} color={sourceBadge(event.trust, locale)?.color} />
+                <Text style={[styles.sourceChipText, { color: sourceBadge(event.trust, locale)?.color }]}>
+                  {sourceBadge(event.trust, locale)?.text}
+                </Text>
+              </TouchableOpacity>
+            )}
+            {(event as any).trust?.organizer && ((event as any).trust.organizer.name || (event as any).trust.organizer.displayName) && (
+              <View style={styles.trustOrganizer}>
+                {(event as any).trust.organizer.avatar ? (
+                  <Image source={{ uri: (event as any).trust.organizer.avatar }} style={styles.organizerAvatar} />
+                ) : <Ionicons name="person-circle-outline" size={32} color={colors.textMuted} />}
+                <Text style={styles.organizerName}>{(event as any).trust.organizer.displayName || (event as any).trust.organizer.name}</Text>
+                {(event as any).trust.organizer.isVerified && <Ionicons name="checkmark-circle" size={18} color={colors.primary} />}
+                {((event as any).trust.organizer.eventsHosted ?? 0) > 0 ? (
+                  <Text style={styles.hostedCount}>{(event as any).trust.organizer.eventsHosted} {t('events_hosted')}</Text>
+                ) : null}
+              </View>
+            )}
+            {event.organizer && (event.organizer.displayName || event.organizer.name) && (
               <View style={styles.eventOrganizer}>
                 {event.organizer.avatarUrl ? (
                   <Image
@@ -174,7 +402,7 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   />
                 ) : (
                   <View style={styles.organizerAvatar}>
-                    <Ionicons name="person-circle-outline" size={32} color="#9ca3af" />
+                    <Ionicons name="person-circle-outline" size={32} color={colors.textMuted} />
                   </View>
                 )}
                 <Text style={styles.organizerName}>
@@ -186,33 +414,26 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
           {/* Event Details */}
           <View style={styles.detailsSection}>
-            <Text style={styles.sectionTitle}>Event Details</Text>
+            <Text style={styles.sectionTitle}>{t('about')}</Text>
             <Text style={styles.description}>
-              {event.description || event.shortDescription || 'No description available'}
+              {event.description || event.shortDescription || t('no_events_help')}
             </Text>
 
-            <View style={styles.detailsGrid}>
+            <View style={[styles.detailsGrid, styles.infoCard]}>
               <View style={styles.detailItem}>
-                <Ionicons name="calendar-outline" size={20} color="#3b82f6" />
+                <Ionicons name="calendar-outline" size={20} color={colors.primary} />
                 <View style={styles.detailText}>
-                  <Text style={styles.detailLabel}>Date & Time</Text>
-                  <Text style={styles.detailValue}>
-                    {new Date(event.startDate).toLocaleDateString()} • {new Date(event.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </Text>
-                  {event.endDate && (
-                    <Text style={styles.detailValueSecondary}>
-                      Until: {new Date(event.endDate).toLocaleDateString()}
-                    </Text>
-                  )}
+                    <Text style={styles.detailLabel}>{t('date_time')}</Text>
+                  <Text style={styles.detailValue}>{formatEventWhen(event, locale)}</Text>
                 </View>
               </View>
 
               <View style={styles.detailItem}>
-                <Ionicons name="location-outline" size={20} color="#3b82f6" />
+                <Ionicons name="location-outline" size={20} color={colors.primary} />
                 <View style={styles.detailText}>
-                  <Text style={styles.detailLabel}>Location</Text>
+                    <Text style={styles.detailLabel}>{t('venue')}</Text>
                   <Text style={styles.detailValue}>
-                    {event.venueName || 'Venue TBA'}
+                    {event.venueName || t('location_tba')}
                   </Text>
                   {event.city && event.country && (
                     <Text style={styles.detailValueSecondary}>
@@ -222,97 +443,288 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </View>
               </View>
 
-              {event.capacity && (
+              {event.capacity ? (
                 <View style={styles.detailItem}>
-                  <Ionicons name="people-outline" size={20} color="#3b82f6" />
+                  <Ionicons name="people-outline" size={20} color={colors.primary} />
                   <View style={styles.detailText}>
-                    <Text style={styles.detailLabel}>Capacity</Text>
+                    <Text style={styles.detailLabel}>{t('capacity')}</Text>
                     <Text style={styles.detailValue}>
-                      {event.capacity} people
+                      {event.capacity} {t('capacity')}
                     </Text>
                   </View>
                 </View>
-              )}
+              ) : null}
 
               <View style={styles.detailItem}>
-                <Ionicons name="cash-outline" size={20} color="#3b82f6" />
+                <Ionicons name="cash-outline" size={20} color={colors.primary} />
                 <View style={styles.detailText}>
-                  <Text style={styles.detailLabel}>Price</Text>
+                    <Text style={styles.detailLabel}>{t('sort_price')}</Text>
                   <Text style={[styles.detailValue, styles.price]}>
                     {event.isFree || !event.priceFrom
-                      ? 'FREE'
-                      : `${event.currency || 'AED'} ${Number(event.priceFrom).toFixed(2)}`}
+                      ? t('free')
+                      : formatPrice(Number(event.priceFrom), event.currency || 'AED')}
                   </Text>
-                  {event.priceTo && event.priceFrom !== event.priceTo && (
-                    <Text style={styles.detailValueSecondary}>
-                      Up to {event.currency || 'AED'} {Number(event.priceTo).toFixed(2)}
-                    </Text>
-                  )}
+                  {event.priceTo ? (
+                    event.priceFrom !== event.priceTo ? (
+                      <Text style={styles.detailValueSecondary}>
+                        {formatPrice(Number(event.priceTo), event.currency || 'AED')}
+                      </Text>
+                    ) : null
+                  ) : null}
                 </View>
               </View>
+            </View>
+            {event.schedule && event.schedule.length > 1 ? (
+              <View style={styles.metadataCard}>
+                <Text style={styles.sectionTitle}>{t('schedule')}</Text>
+                {event.schedule.map(day => (
+                  <View key={day.date} style={styles.scheduleRow}>
+                    <Text style={styles.scheduleDate}>{day.date}</Text>
+                    <Text style={styles.detailValue}>{day.startTime}{day.endTime ? ` – ${day.endTime}` : ''}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+            {event.dressCode ? <Text style={styles.metadataText}>{t('dress_code')}: {t(`dress_${event.dressCode}` as any)}</Text> : null}
+            {event.notes ? (
+              <View style={styles.notesCard}>
+                <Text style={styles.sectionTitle}>{t('notes_from_organizer')}</Text>
+                <Text style={styles.description}>{event.notes}</Text>
+              </View>
+            ) : null}
+            {social && social.goingCount > 0 && (
+              <View style={styles.socialRow}>
+                <View style={styles.socialAvatars}>
+                  {social.attendeesPreview.slice(0, 4).map((person, index) => (
+                    <TouchableOpacity key={person.id} accessibilityRole="button" accessibilityLabel={person.name || t('profile_user')} onPress={() => navigateToTab('Profile', 'UserProfile', { userId: person.id })}>
+                      {person.avatar
+                        ? <Image source={{ uri: person.avatar }} style={[styles.socialAvatar, { marginLeft: index ? -8 : 0 }]} />
+                        : <View style={[styles.socialAvatar, styles.socialAvatarFallback, { marginLeft: index ? -8 : 0 }]}><Text style={styles.socialInitial}>{(person.name || '?')[0]}</Text></View>}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                {social.friendsGoing[0] ? (
+                  <TouchableOpacity accessibilityRole="button" onPress={() => navigateToTab('Profile', 'UserProfile', { userId: social.friendsGoing[0].id })}>
+                    <Text style={styles.socialText}>
+                      {t('going_count', { count: social.goingCount })}{social.friendsGoing.length ? ` · ${t('friends_going', { name: social.friendsGoing[0].name || t('event'), count: Math.max(1, social.friendsGoing.length - 1) })}` : ''}
+                    </Text>
+                  </TouchableOpacity>
+                ) : <Text style={styles.socialText}>{t('going_count', { count: social.goingCount })}</Text>}
+              </View>
+            )}
+            <View style={styles.reviewsSection}>
+              <View style={styles.reviewSectionHeading}>
+                <Text style={styles.sectionTitle}>{t('event_reviews')} · {reviewCount}</Text>
+                <View style={styles.reviewActions}>
+                  {reviewCount > eventReviews.length && !reviewsExpanded ? (
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      onPress={() => {
+                        setReviewsExpanded(true);
+                        void loadReviews(50);
+                      }}
+                    >
+                      <Text style={styles.seeAllReviews}>{t('see_all')}</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  {(event as any).canReview ? (
+                    <TouchableOpacity accessibilityRole="button" onPress={() => setReviewComposerOpen(true)} style={styles.writeReviewButton}>
+                      <Ionicons name="star-outline" size={16} color={colors.textInverse} />
+                      <Text style={styles.writeReviewText}>{(event as any).myReview ? t('edit_review') : t('write_review')}</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              </View>
+              {reviewLoading ? <ActivityIndicator color={colors.primary} style={styles.reviewLoader} /> : (
+                eventReviews.length ? (
+                  <ReviewCards items={eventReviews} onAuthorPress={id => navigateToTab('Profile', 'UserProfile', { userId: id })} />
+                ) : <Text style={styles.noReviews}>{t('event_no_reviews')}</Text>
+              )}
             </View>
           </View>
 
           {/* Map */}
-          {event.latitude && event.longitude && (
+          {(event.latitude && event.longitude) || event.venueName || event.address ? (
             <View style={styles.mapSection}>
-              <Text style={styles.sectionTitle}>Location on Map</Text>
+              <Text style={styles.sectionTitle}>{t('location_on_map')}</Text>
               <EventMap
-                latitude={event.latitude}
-                longitude={event.longitude}
+                latitude={event.latitude ?? undefined}
+                longitude={event.longitude ?? undefined}
                 title={event.venueName || event.title}
-                description={event.address}
+                description={event.address || undefined}
+                query={[event.venueName, event.address, event.city, event.country].filter(Boolean).join(', ')}
+                city={event.city || undefined}
               />
             </View>
-          )}
+          ) : null}
 
           {/* Address */}
           {event.address && (
             <View style={styles.addressSection}>
-              <Text style={styles.sectionTitle}>Address</Text>
+              <Text style={styles.sectionTitle}>{t('address')}</Text>
               <Text style={styles.addressText}>{event.address}</Text>
             </View>
           )}
 
           {/* External Link */}
-          {event.externalUrl && (
+          {event.externalUrl && !hasEnded && (
             <TouchableOpacity
               style={styles.externalLinkButton}
               onPress={() => Linking.openURL(getBookingUrl(event.id, 'detail_link')).catch(() =>
-                Alert.alert('Error', 'Unable to open link.')
+                Alert.alert(t('error'), t('please_try_again'))
               )}
             >
-              <Ionicons name="link-outline" size={20} color="#3b82f6" />
+              <Ionicons name="link-outline" size={20} color={colors.primary} />
               <Text style={styles.externalLinkText}>
-                View on {supplierLabel(event)}
+                {t('book_on', { supplier: supplierLabel(event) })}
               </Text>
-              <Ionicons name="chevron-forward" size={20} color="#3b82f6" />
+              <Ionicons name="chevron-forward" size={20} color={colors.primary} />
             </TouchableOpacity>
           )}
-        </View>
+          </View>
+          {isWebDesktop ? (
+            <View style={[styles.bookingCard, styles.stickyBookingCard]}>
+              <Text style={styles.bookingPrice}>
+                {event.isFree || !event.priceFrom ? t('free') : formatPrice(Number(event.priceFrom), event.currency || 'AED')}
+              </Text>
+              <Text style={styles.bookingInfo}>{formatEventWhen(event, locale)}</Text>
+              <Text style={styles.bookingInfo}>{event.venueName || t('location_tba')}{event.city ? ` · ${event.city}` : ''}</Text>
+              {event.capacity ? <Text style={styles.bookingInfo}>{t('capacity')}: {event.capacity}</Text> : null}
+              <Text style={styles.bookingRefund}>{t(`refund_${(event as any).trust?.refundKey || 'per_provider'}` as any)}</Text>
+              <GradientButton style={styles.bookingButton} label={bookingActionLabel} onPress={handleBookingAction} disabled={hasEnded && !event.myBookingId} />
+              <View style={styles.bookingActions}>
+                <TouchableOpacity accessibilityRole="button" accessibilityLabel={savedIds.has(event.id) ? t('remove_saved_event') : t('save_event')} style={styles.bookingAction} onPress={handleBookmark}>
+                  <Ionicons name={savedIds.has(event.id) ? 'bookmark' : 'bookmark-outline'} size={18} color={colors.primary} />
+                  <Text style={styles.bookingActionText}>{t('save_event')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('share')} style={styles.bookingAction} onPress={handleShare}>
+                  <Ionicons name="share-outline" size={18} color={colors.primary} />
+                  <Text style={styles.bookingActionText}>{t('share')}</Text>
+                </TouchableOpacity>
+              </View>
+              {sourceBadge(event.trust, locale)?.text ? (
+                <TouchableOpacity
+                  style={styles.bookingSourceChip}
+                  disabled={!(event as any).supplierSlug}
+                  accessibilityRole={(event as any).supplierSlug ? 'button' : undefined}
+                  onPress={() => (event as any).supplierSlug && navigateToTab('Profile', 'SupplierPage', { slug: (event as any).supplierSlug })}
+                >
+                  <Text style={styles.bookingSource}>{sourceBadge(event.trust, locale)?.text}</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          ) : null}
+          </Container>
       </ScrollView>
 
       {/* Bottom Action Bar */}
-      <View style={styles.bottomBar}>
-        <View>
+      {!isWebDesktop ? <View style={styles.bottomBar}>
+        <View style={styles.bottomBarInfo}>
+          <Text style={styles.refundNote}>{t(`refund_${(event as any).trust?.refundKey || 'per_provider'}` as any)}</Text>
           <Text style={styles.bottomBarPrice}>
             {event.isFree || !event.priceFrom
-              ? 'FREE'
-              : `${event.currency || 'AED'} ${Number(event.priceFrom).toFixed(2)}`}
+              ? t('free')
+              : formatPrice(Number(event.priceFrom), event.currency || 'AED')}
           </Text>
-          {event.capacity && (
-            <Text style={styles.bottomBarTickets}>Capacity: {event.capacity}</Text>
-          )}
+          {event.capacity ? (
+            <Text style={styles.bottomBarTickets}>{t('capacity')}: {event.capacity}</Text>
+          ) : null}
         </View>
-        <TouchableOpacity
-          style={styles.bookButton}
-          onPress={handleBookTicket}
-        >
-          <Text style={styles.bookButtonText}>
-            {event.externalUrl ? `Book on ${supplierLabel(event)}` : 'Book Now'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+        <GradientButton
+          style={styles.bottomBarButton}
+          label={bookingActionLabel}
+          onPress={handleBookingAction}
+          disabled={hasEnded && !event.myBookingId}
+        />
+      </View> : null}
+      <Modal
+        visible={shareOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShareOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.checkoutSheet}>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>{t('share')}</Text>
+              <TouchableOpacity onPress={() => setShareOpen(false)}><Ionicons name="close" size={24} color={colors.textMuted} /></TouchableOpacity>
+            </View>
+            <TouchableOpacity style={styles.shareAction} onPress={shareWhatsApp}><Ionicons name="logo-whatsapp" size={22} color={colors.success} /><Text style={styles.shareActionText}>{t('share_on_whatsapp')}</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.shareAction} onPress={copyShareLink}><Ionicons name="copy-outline" size={22} color={colors.primary} /><Text style={styles.shareActionText}>{t('copy_link')}</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.shareAction} onPress={shareMore}><Ionicons name="share-social-outline" size={22} color={colors.textMuted} /><Text style={styles.shareActionText}>{t('more')}</Text></TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      <Modal
+        visible={checkoutOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setCheckoutOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.checkoutSheet}>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>{t('buy_tickets')}</Text>
+              <TouchableOpacity onPress={() => setCheckoutOpen(false)} disabled={checkoutLoading}>
+                <Ionicons name="close" size={24} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.sheetEventTitle}>{event.title}</Text>
+            <View style={styles.quantityRow}>
+              <Text style={styles.quantityLabel}>{t('quantity')}</Text>
+              <View style={styles.stepper}>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel={t('decrease_quantity')}
+                  style={styles.stepperButton}
+                  onPress={() => setTicketCount(value => Math.max(1, value - 1))}
+                  disabled={checkoutLoading || ticketCount === 1}
+                >
+                  <Ionicons name="remove" size={20} color={colors.primary} />
+                </TouchableOpacity>
+                <Text style={styles.stepperValue}>{ticketCount}</Text>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel={t('increase_quantity')}
+                  style={styles.stepperButton}
+                  onPress={() => setTicketCount(value => Math.min(4, value + 1))}
+                  disabled={checkoutLoading || ticketCount === 4}
+                >
+                  <Ionicons name="add" size={20} color={colors.primary} />
+                </TouchableOpacity>
+              </View>
+            </View>
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>{t('total')}</Text>
+              <Text style={styles.totalValue}>
+                {event.currency || 'AED'} {(Number(event.priceFrom || 0) * ticketCount).toFixed(2)}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.payButton}
+              onPress={handleCheckout}
+              disabled={checkoutLoading}
+            >
+              {checkoutLoading ? (
+                <ActivityIndicator color={colors.textInverse} />
+              ) : (
+                <Text style={styles.payButtonText}>{t('pay')}</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      <ReviewComposerModal
+        visible={reviewComposerOpen}
+        initial={(event as any)?.myReview ? {
+          rating: (event as any).myReview.rating ?? (event as any).myReview.overallRating,
+          title: (event as any).myReview.title || '',
+          comment: (event as any).myReview.comment || '',
+        } : null}
+        saving={reviewSaving}
+        onClose={() => setReviewComposerOpen(false)}
+        onSubmit={draft => void submitReview(draft)}
+      />
     </SafeAreaView>
   );
 };
@@ -320,8 +732,34 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
   },
+  imageWrapper: {},
+  mobileImageWrapper: { paddingHorizontal: 0 },
+  desktopBackContainer: { paddingTop: 16 },
+  desktopBack: { minHeight: 44, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 8 },
+  desktopBackText: { color: colors.primary, fontWeight: '700' },
+  desktopImageContainer: { height: 420, width: '100%', alignSelf: 'center', marginTop: 24, borderRadius: radius.xl, overflow: 'hidden' },
+  heroTitleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 14, flex: 1 },
+  heroTitleContent: { flex: 1, minWidth: 0 },
+  heroCategory: { color: colors.accent, fontSize: 13, fontWeight: '800', textTransform: 'uppercase', marginBottom: 6 },
+  desktopImageTitle: { fontSize: 40, lineHeight: 44, maxWidth: 760 },
+  detailContainer: {},
+  mobileDetailContainer: { paddingHorizontal: 0 },
+  desktopBody: { flexDirection: 'row', alignItems: 'flex-start', gap: 32, alignSelf: 'center' },
+  desktopMain: { flex: 1, minWidth: 0, marginTop: 32, paddingHorizontal: 0 },
+  infoCard: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, padding: 18 },
+  bookingCard: { width: 340, alignSelf: 'flex-start', marginTop: 32, padding: 24, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, ...shadow.card },
+  stickyBookingCard: { position: 'sticky' as any, top: 92, zIndex: 10 },
+  bookingPrice: { ...type.h1, color: colors.primary, fontVariant: ['tabular-nums'] },
+  bookingInfo: { color: colors.textSecondary, fontSize: 14, lineHeight: 21, marginTop: 12 },
+  bookingRefund: { color: colors.textMuted, fontSize: 12, lineHeight: 18, marginTop: 16 },
+  bookingButton: { width: '100%', marginTop: 20 },
+  bookingActions: { flexDirection: 'row', gap: 12, marginTop: 14 },
+  bookingAction: { flex: 1, minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md },
+  bookingActionText: { color: colors.textSecondary, fontSize: 13, fontWeight: '700' },
+  bookingSourceChip: { alignSelf: 'flex-start', marginTop: 18, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.sm, backgroundColor: colors.infoSoft },
+  bookingSource: { color: colors.info, fontSize: 12, fontWeight: '700' },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -331,23 +769,23 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#6b7280',
+    color: colors.textMuted,
   },
   errorText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#ef4444',
+    color: colors.danger,
     textAlign: 'center',
   },
   retryButton: {
     marginTop: 16,
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
   },
   retryButtonText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -358,17 +796,30 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 380,
   },
+  desktopCoverFill: { ...StyleSheet.absoluteFill, width: '100%', height: '100%' },
   placeholderImage: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceAlt,
     justifyContent: 'center',
     alignItems: 'center',
   },
   imageOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    flexDirection: 'row',
+    ...StyleSheet.absoluteFill,
     justifyContent: 'flex-end',
-    alignItems: 'flex-start',
-    padding: 20,
+    padding: spacing.lg,
+    paddingBottom: spacing.lg + 24,
+  },
+  dateBadgePosition: { position: 'absolute', zIndex: 2 },
+  phoneDateBadge: { top: spacing.lg, end: spacing.lg },
+  desktopDateBadge: { top: spacing.lg, start: spacing.lg },
+  backButton: {
+    position: 'absolute',
+    left: spacing.lg,
+  },
+  imageTitle: {
+    ...type.h1,
+    color: colors.textInverse,
+    marginBottom: spacing.lg,
+    paddingRight: 72,
   },
   imageActions: {
     flexDirection: 'row',
@@ -383,7 +834,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   content: {
-    padding: 20,
+    padding: spacing.lg,
+    marginTop: -24,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    backgroundColor: colors.surface,
+    zIndex: 1,
   },
   eventHeader: {
     marginBottom: 24,
@@ -395,28 +851,30 @@ const styles = StyleSheet.create({
   },
   eventCategory: {
     fontSize: 14,
-    color: '#3b82f6',
+    color: colors.primary,
     fontWeight: '600',
     textTransform: 'uppercase',
   },
   featuredBadge: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
     marginLeft: 8,
   },
   featuredBadgeText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 10,
     fontWeight: 'bold',
   },
   eventTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1f2937',
+    ...type.h1,
     marginBottom: 16,
   },
+  sourceChip: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, marginBottom: 12 },
+  sourceChipText: { fontSize: 13, fontWeight: '700' },
+  trustOrganizer: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  hostedCount: { color: colors.textMuted, fontSize: 12 },
   eventOrganizer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -429,7 +887,7 @@ const styles = StyleSheet.create({
   },
   organizerName: {
     fontSize: 16,
-    color: '#6b7280',
+    color: colors.textMuted,
   },
   detailsSection: {
     marginBottom: 32,
@@ -437,18 +895,48 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: colors.text,
     marginBottom: 16,
   },
   description: {
     fontSize: 16,
-    color: '#4b5563',
+    color: colors.textSecondary,
     lineHeight: 24,
     marginBottom: 24,
   },
   detailsGrid: {
     gap: 16,
   },
+  metadataCard: {
+    marginTop: 22,
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: colors.surfaceAlt,
+  },
+  scheduleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 7,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  scheduleDate: { color: colors.textSecondary, fontSize: 13 },
+  metadataText: { marginTop: 16, color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
+  notesCard: { marginTop: 18, padding: 14, borderRadius: 14, backgroundColor: colors.surfaceAlt },
+  socialRow: { flexDirection: 'row', alignItems: 'center', marginTop: 18 },
+  socialAvatars: { flexDirection: 'row', alignItems: 'center', minWidth: 48 },
+  socialAvatar: { width: 30, height: 30, borderRadius: 15, borderWidth: 2, borderColor: colors.textInverse },
+  socialAvatarFallback: { backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  socialInitial: { color: colors.primaryDark, fontSize: 12, fontWeight: '700' },
+  socialText: { marginLeft: 10, color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
+  reviewsSection: { marginTop: 28, gap: 12 },
+  reviewSectionHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  reviewActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  seeAllReviews: { color: colors.primary, fontSize: 13, fontWeight: '800' },
+  writeReviewButton: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 9, borderRadius: radius.pill, backgroundColor: colors.primary },
+  writeReviewText: { color: colors.textInverse, fontSize: 12, fontWeight: '800' },
+  reviewLoader: { marginVertical: 16 },
+  noReviews: { color: colors.textMuted, paddingVertical: 10 },
   detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -458,22 +946,22 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textMuted,
     textTransform: 'uppercase',
     marginBottom: 2,
   },
   detailValue: {
     fontSize: 16,
-    color: '#1f2937',
+    color: colors.text,
     fontWeight: '500',
   },
   detailValueSecondary: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.textMuted,
     marginTop: 2,
   },
   price: {
-    color: '#3b82f6',
+    color: colors.primary,
     fontWeight: 'bold',
   },
   mapSection: {
@@ -489,14 +977,14 @@ const styles = StyleSheet.create({
   },
   addressText: {
     fontSize: 16,
-    color: '#4b5563',
+    color: colors.textSecondary,
     lineHeight: 24,
   },
   externalLinkButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#f0f9ff',
+    backgroundColor: colors.primarySoft,
     padding: 16,
     borderRadius: 12,
     marginBottom: 100,
@@ -505,7 +993,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 12,
     fontSize: 16,
-    color: '#3b82f6',
+    color: colors.primary,
     fontWeight: '600',
   },
   tagsSection: {
@@ -517,14 +1005,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tag: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceAlt,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
   },
   tagText: {
     fontSize: 14,
-    color: '#4b5563',
+    color: colors.textSecondary,
   },
   similarEventsSection: {
     marginBottom: 100,
@@ -534,34 +1022,136 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: colors.border,
+    ...shadow.float,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  bottomBarInfo: {
+    flex: 1,
+    minWidth: 0,
+    flexShrink: 1,
+    marginRight: 12,
+  },
+  bottomBarButton: {
+    flex: 1,
+    minWidth: 180,
+    maxWidth: 320,
+  },
   bottomBarPrice: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#3b82f6',
+    color: colors.primary,
   },
+  refundNote: { color: colors.textMuted, fontSize: 11, marginBottom: 4 },
   bottomBarTickets: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textMuted,
   },
   bookButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     paddingHorizontal: 32,
     paddingVertical: 16,
     borderRadius: 12,
   },
   bookButtonText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 16,
     fontWeight: 'bold',
   },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+  },
+  checkoutSheet: {
+    padding: 24,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    backgroundColor: colors.textInverse,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sheetTitle: {
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  sheetEventTitle: {
+    marginTop: 12,
+    color: colors.textSecondary,
+    fontSize: 15,
+  },
+  quantityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 28,
+  },
+  quantityLabel: {
+    color: colors.textSecondary,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  stepperButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 22,
+    backgroundColor: colors.primarySoft,
+  },
+  stepperValue: {
+    minWidth: 18,
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 28,
+    paddingTop: 18,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  totalLabel: {
+    color: colors.textSecondary,
+    fontSize: 16,
+  },
+  totalValue: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  payButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 50,
+    marginTop: 24,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+  },
+  payButtonText: {
+    color: colors.textInverse,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  shareAction: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: colors.surfaceAlt },
+  shareActionText: { fontSize: 16, color: colors.text, fontWeight: '600' },
 });
 
 export default EventDetailScreen;

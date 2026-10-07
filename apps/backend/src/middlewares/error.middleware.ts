@@ -80,6 +80,7 @@ export const errorHandler = (
       status,
       error: {
         message,
+        ...((err as AppError).code && { code: (err as AppError).code }),
         stack: err.stack,
         ...(errors && { errors }),
       },
@@ -97,6 +98,7 @@ export const errorHandler = (
         success: false,
         status,
         error: message,
+        ...((err as AppError).code && { code: (err as AppError).code }),
         ...(errors && { errors }),
       });
     } else {

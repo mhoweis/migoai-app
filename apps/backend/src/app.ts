@@ -6,6 +6,8 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import compression from 'compression';
+import path from 'path';
+import fs from 'fs';
 
 // Load environment variables
 dotenv.config();
@@ -13,14 +15,25 @@ dotenv.config();
 // Import routes
 import { authRouter } from './routes/auth.routes';
 import { eventsRouter } from './routes/events.routes';
+import shareRouter from './routes/share.routes';
 import { usersRouter } from './routes/users.routes';
 import { aiRouter } from './routes/ai.routes';
-import { paymentsRouter } from './routes/payments.routes';
+import { paymentsRouter, publicPaymentsRouter } from './routes/payments.routes';
 import externalEventsRouter from './routes/external-events.routes';
 import wishlistsRouter from './routes/wishlists.routes';
 import goRouter from './routes/go.routes';
 import { adminRouter } from './routes/admin.routes';
 import placesRouter from './routes/places.routes';
+import bookingsRouter from './routes/bookings.routes';
+import digestRouter, { digestHtmlRouter } from './routes/digest.routes';
+import { uploadRouter } from './routes/upload.routes';
+import { accountRouter } from './routes/account.routes';
+import { supplierRouter } from './routes/supplier.routes';
+import { suppliersRouter } from './routes/suppliers.routes';
+import { reviewsRouter } from './routes/reviews.routes';
+import { legalRouter } from './routes/legal.routes';
+import { marketingRouter } from './routes/marketing.routes';
+import config from './config/env';
 
 // Import middleware
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
@@ -66,7 +79,7 @@ const corsOptions = {
     ].filter(Boolean); // Remove undefined values
 
     // Check if the origin is in allowed list or if we're in development
-    const isDevelopment = (process.env.NODE_ENV || 'development') === 'development';
+    const isDevelopment = process.env.NODE_ENV === 'development';
     if (allowedOrigins.indexOf(origin) !== -1 || isDevelopment) {
       callback(null, true);
     } else {
@@ -84,6 +97,10 @@ app.use(cors(corsOptions));
 // Compression middleware
 app.use(compression());
 
+// Payment webhooks and mock checkout pages must receive requests before the
+// global JSON parser and do not require user authentication.
+app.use('/api/payments', publicPaymentsRouter);
+
 // Body parser middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -97,9 +114,8 @@ const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, error: 'Too many requests, please try again later.' },
-  // Health checks and the click-out redirect must not be throttled by a
-  // shared carrier NAT address.
-  skip: (req) => req.path === '/health' || req.path.startsWith('/debug/'),
+  // Health checks must not be throttled by a shared carrier NAT address.
+  skip: (req) => req.path === '/health',
 });
 app.use('/api/', limiter);
 
@@ -117,24 +133,6 @@ app.get('/api/health', (_req, res) => {
       status: 'success',
       message: 'Migo Backend Server is running',
       timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV || 'development',
-      nodeVersion: process.version,
-      corsAllowed: true,
-      platform: process.platform,
-      database: 'connected', // Add database connection check
-    },
-  });
-});
-
-// Debug endpoint for network testing
-app.get('/api/debug/headers', (req, res) => {
-  res.status(200).json({
-    success: true,
-    data: {
-      headers: req.headers,
-      ip: req.ip,
-      hostname: req.hostname,
-      originalUrl: req.originalUrl,
     },
   });
 });
@@ -143,16 +141,29 @@ app.get('/api/debug/headers', (req, res) => {
 
 // Public routes (no authentication required)
 app.use('/api/auth', authRouter);
+app.use('/e', shareRouter);
+app.use('/digest', digestHtmlRouter);
 app.use('/api/events', eventsRouter); // Assuming events are public for browsing
+app.use('/api/suppliers', suppliersRouter);
+app.use('/api/digest', digestRouter);
+app.use('/api/uploads', express.static(config.UPLOADS_DIR, {
+  maxAge: '7d',
+  immutable: true,
+}));
 
 // Protected routes (authentication required)
-app.use('/api/users', authenticate, usersRouter);
+app.use('/api/users', usersRouter);
+app.use('/api/reviews', authenticate, reviewsRouter);
 app.use('/api/payments', authenticate, paymentsRouter);
+app.use('/api/bookings', authenticate, bookingsRouter);
+app.use('/api/account', accountRouter);
+app.use('/api/supplier', supplierRouter);
 app.use('/api/external-events', externalEventsRouter);
 app.use('/api/wishlists', wishlistsRouter);
 
 // Places — Google Maps venue discovery (auth enforced inside the router)
 app.use('/api/places', placesRouter);
+app.use('/api/upload', uploadRouter);
 
 // Admin (authentication + ADMIN role enforced inside the router)
 app.use('/api/admin', adminRouter);
@@ -164,6 +175,22 @@ app.use('/api/ai', aiRouter);
 // Tracked affiliate click-out. Deliberately mounted outside /api so it can be
 // opened directly in a browser, and outside the IP limiter above.
 app.use('/go', goRouter);
+app.use(legalRouter);
+app.use(marketingRouter);
+
+if (config.WEB_DIST_DIR && fs.existsSync(config.WEB_DIST_DIR)) {
+  app.use(express.static(config.WEB_DIST_DIR, { index: false }));
+  app.get(/.*/, (req, res, next) => {
+    const isApiOrGo = req.path === '/api' || req.path.startsWith('/api/')
+      || req.path === '/go' || req.path.startsWith('/go/');
+    const isLegalPage = ['/privacy', '/terms', '/delete-account', '/welcome'].includes(req.path)
+      || req.path.startsWith('/welcome/');
+    if (isApiOrGo || isLegalPage || !req.accepts('html')) return next();
+    res.sendFile(path.join(config.WEB_DIST_DIR, 'index.html'), error => {
+      if (error) next(error);
+    });
+  });
+}
 
 // 404 handler for undefined routes
 app.all(/.*/, (req, res) => {

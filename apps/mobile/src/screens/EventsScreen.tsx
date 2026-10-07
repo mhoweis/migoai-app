@@ -1,5 +1,6 @@
+import { colors } from '../theme';
 // migo-mobile/src/screens/EventsScreen.tsx
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import DateRangePickerModal from '../components/DateRangePickerModal';
 import {
   View,
@@ -10,7 +11,6 @@ import {
   TextInput,
   RefreshControl,
   ActivityIndicator,
-  Image,
   Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,6 +21,16 @@ import { api } from '../services/api';
 import { Event } from '@migo/shared';
 import { useUserStore } from '../store/userStore';
 import { useSavedEventsStore } from '../store/savedEventsStore';
+import { categoryLabel, formatEventDate, useLocale } from '../i18n';
+import { radius, shadow, spacing, type } from '../theme';
+import Chip from '../components/Chip';
+import { EventListSkeleton } from '../components/Skeleton';
+import { trackSearch } from '../services/signals.service';
+import { fetchAllEvents } from '../utils/fetchAllEvents';
+import { matchesEventDateRange } from '../utils/eventDateRange';
+import EventCard from '../components/EventCard';
+import Container from '../components/Container';
+import { useBreakpoint } from '../hooks/useBreakpoint';
 
 // Event categories for filtering
 const EVENT_CATEGORIES = [
@@ -41,8 +51,12 @@ const EventsScreen = () => {
   const navigation = useNavigation();
   const route = useRoute<any>();
   const { userLocation } = useUserStore();
+  const { t } = useLocale();
+  const { width, isWebDesktop } = useBreakpoint();
+  const columnCount = width < 600 ? 1 : width < 1024 ? 2 : width < 1400 ? 3 : 4;
   const { savedIds, toggleSaved, loadSavedEvents } = useSavedEventsStore();
   const [events, setEvents] = useState<Event[]>([]);
+  const [endedInRange, setEndedInRange] = useState<Event[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -55,21 +69,69 @@ const EventsScreen = () => {
   const [availableCities, setAvailableCities] = useState<Array<{ name: string; count: number }>>([]);
   const [availableVenues, setAvailableVenues] = useState<Array<{ name: string; count: number }>>([]);
   const [filtersVisible, setFiltersVisible] = useState(false);
+  const listOffsetRef = useRef(0);
+  const filtersOpenedAtOffsetRef = useRef(0);
+  const filtersVisibleRef = useRef(false);
+
+  useEffect(() => {
+    filtersVisibleRef.current = filtersVisible;
+    if (filtersVisible) filtersOpenedAtOffsetRef.current = listOffsetRef.current;
+  }, [filtersVisible]);
+
+  const closeFiltersOnScroll = (offsetY: number) => {
+    listOffsetRef.current = offsetY;
+    if (filtersVisibleRef.current && Math.abs(offsetY - filtersOpenedAtOffsetRef.current) > 12) {
+      setFiltersVisible(false);
+    }
+  };
   // Dynamic filter options based on current selection
   const [dynamicCities, setDynamicCities] = useState<Array<{ name: string; count: number }>>([]);
   const [dynamicVenues, setDynamicVenues] = useState<Array<{ name: string; count: number }>>([]);
   const [dynamicCategories, setDynamicCategories] = useState<Array<{ name: string; count: number }>>([]);
+  const [dynamicSources, setDynamicSources] = useState<Array<{ id: string; label: string; count: number }>>([]);
   // venueFilter: set when navigating from Home's Top Venues section
   const [venueFilter, setVenueFilter] = useState<string>(route.params?.venueFilter || '');
+  const [sourceFilter, setSourceFilter] = useState<string>('');
   // dateFilter: set when navigating from AI Chat or via quick presets
   const [dateFrom, setDateFrom] = useState<string>(route.params?.dateFrom || '');
   const [dateTo, setDateTo] = useState<string>(route.params?.dateTo || '');
   const [datePickerVisible, setDatePickerVisible] = useState(false);
 
+  const isPresetActive = (preset: 'today' | 'tomorrow' | 'weekend'): boolean => {
+    if (!dateFrom) return false;
+    const from = new Date(dateFrom);
+    const to = dateTo ? new Date(dateTo) : null;
+    const today = new Date();
+    const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+    if (preset === 'today') {
+      return from.toDateString() === today.toDateString() &&
+        (!to || to.toDateString() === today.toDateString());
+    }
+    if (preset === 'tomorrow') {
+      return from.toDateString() === tomorrow.toDateString() &&
+        (!to || to.toDateString() === tomorrow.toDateString());
+    }
+    if (preset === 'weekend') {
+      return from.getDay() === 5;
+    }
+    return false;
+  };
+
+  const isCustomRange = !!(dateFrom || dateTo) &&
+    !isPresetActive('today') && !isPresetActive('tomorrow') && !isPresetActive('weekend');
+  const listEvents = useMemo(() => {
+    const ids = new Set<string>();
+    return [...events, ...endedInRange].filter(event => {
+      if (ids.has(event.id)) return false;
+      ids.add(event.id);
+      return true;
+    });
+  }, [events, endedInRange]);
+
   const handleShare = async (item: Event) => {
     try {
       await Share.share({
-        message: `Check out "${item.title}" on Migo!\n${item.venueName || item.city || ''} — ${new Date(item.startDate).toLocaleDateString()}`,
+        message: `Check out "${item.title}" on Migo!\n${item.venueName || item.city || ''} — ${formatEventDate(item.startDate)}`,
       });
     } catch {}
   };
@@ -83,10 +145,38 @@ const EventsScreen = () => {
       .replace(/\s+/g, ' '); // Replace multiple spaces with single space
   };
 
-  // Fetch events when selected city changes
+  const getEventSource = (event: Event): { id?: string; label?: string } => {
+    const eventAny = event as any;
+    return eventAny.source || eventAny.trust?.source || {
+      id: eventAny.externalSource,
+      label: eventAny.externalSource,
+    };
+  };
+
+  const matchesSearch = (event: Event, query: string): boolean => {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) return true;
+
+    const eventAny = event as any;
+    const tags = Array.isArray(eventAny.tags) ? eventAny.tags : [];
+    return [
+      event.title,
+      event.description,
+      event.venueName,
+      event.city,
+      getEventSource(event).label,
+      eventAny.trust?.source?.labelAr,
+      ...tags,
+    ].some(value => typeof value === 'string' && value.toLowerCase().includes(normalizedQuery));
+  };
+
   useEffect(() => {
     fetchEvents();
-  }, [selectedCity]);
+  }, []);
+
+  useEffect(() => {
+    trackSearch(searchQuery);
+  }, [searchQuery]);
 
   // Load available cities, venues, and saved events once on mount
   useEffect(() => {
@@ -201,58 +291,28 @@ const EventsScreen = () => {
   // Apply filters when any filter changes
   useEffect(() => {
     applyFilters();
-  }, [events, searchQuery, selectedCategory, sortBy, venueFilter, dateFrom, dateTo]);
+  }, [listEvents, searchQuery, selectedCity, selectedCategory, sortBy, venueFilter, sourceFilter, dateFrom, dateTo]);
 
   // Update dynamic filter options based on current filters
   useEffect(() => {
     updateDynamicFilters();
-  }, [events, dateFrom, dateTo, selectedCity, selectedCategory, venueFilter, searchQuery]);
+  }, [listEvents, dateFrom, dateTo, selectedCity, selectedCategory, venueFilter, sourceFilter, searchQuery]);
 
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      // Fetch events filtered by selected city (or all cities)
-      const params: any = {
-        limit: 200,
-      };
+      const allEvents = await fetchAllEvents({ limit: 200 });
 
-      // Only add city filter if a specific city is selected (not "All Cities")
-      if (selectedCity && selectedCity !== 'All Cities') {
-        params.city = selectedCity;
-      }
-
-      const response = await api.get('/events', {
-        params,
+      // Keep events that have not finished yet: ongoing events until their end
+      // time, and events without an end time for the whole of their start day.
+      const now = new Date();
+      const todayStart = new Date(now);
+      todayStart.setHours(0, 0, 0, 0);
+      const currentEvents = allEvents.filter((event: any) => {
+        if (event.endDate) return new Date(event.endDate) >= now;
+        return new Date(event.startDate) >= todayStart;
       });
-
-      console.log('Events API response:', response.data);
-
-      if (response.data.success) {
-        // Backend returns: { success: true, data: { events: [...], pagination: {...} } }
-        const eventsData = response.data.data?.events || response.data.data;
-
-        // Ensure we have an array
-        if (Array.isArray(eventsData)) {
-          // Filter out fully-past events: keep events that start today or later,
-          // or events that have already started but still have a future end date.
-          const todayStart = new Date();
-          todayStart.setHours(0, 0, 0, 0);
-          const currentEvents = eventsData.filter((event: any) => {
-            const start = new Date(event.startDate);
-            const end = event.endDate ? new Date(event.endDate) : null;
-            if (start >= todayStart) return true;
-            if (end && end >= todayStart) return true;
-            return false;
-          });
-          setEvents(currentEvents);
-        } else {
-          console.error('Events data is not an array:', eventsData);
-          setEvents([]);
-        }
-      } else {
-        console.error('API returned success: false');
-        setEvents([]);
-      }
+      setEvents(currentEvents);
     } catch (error) {
       console.error('Failed to fetch events:', error);
       setEvents([]);
@@ -261,42 +321,73 @@ const EventsScreen = () => {
     }
   };
 
+  const fetchEndedEvents = async (isCancelled: () => boolean = () => false) => {
+    if (!isCustomRange) {
+      if (!isCancelled()) setEndedInRange([]);
+      return;
+    }
+    try {
+      const endedEvents = await fetchAllEvents({
+        includeEnded: 'true',
+        ...(dateFrom ? { dateFrom } : {}),
+        ...(dateTo ? { dateTo } : {}),
+      });
+      if (!isCancelled()) {
+        setEndedInRange(endedEvents.filter(event => event.hasEnded));
+      }
+    } catch (error) {
+      if (!isCancelled()) {
+        console.error('Failed to fetch ended events:', error);
+        setEndedInRange([]);
+      }
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchEndedEvents(() => cancelled);
+    return () => {
+      cancelled = true;
+    };
+  }, [dateFrom, dateTo, isCustomRange]);
+
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchEvents();
+    await Promise.all([fetchEvents(), fetchEndedEvents()]);
     setRefreshing(false);
   };
 
   const updateDynamicFilters = () => {
-    if (!Array.isArray(events)) return;
+    if (!Array.isArray(listEvents)) return;
 
-    let filtered = [...events];
+    let filtered = [...listEvents];
 
     // Apply date range filter
     if (dateFrom || dateTo) {
-      const from = dateFrom ? new Date(dateFrom).getTime() : null;
-      const to = dateTo ? new Date(dateTo).getTime() : null;
-      filtered = filtered.filter(event => {
-        const eventTime = new Date(event.startDate).getTime();
-        if (from && to) return eventTime >= from && eventTime <= to;
-        if (from) return eventTime >= from;
-        if (to) return eventTime <= to;
-        return true;
-      });
+      filtered = filtered.filter(event => matchesEventDateRange(event, dateFrom, dateTo));
     }
 
     // Apply search filter
-    if (searchQuery.trim()) {
-      filtered = filtered.filter(event =>
-        event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (event.description && event.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (event.venueName && event.venueName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (event.city && event.city.toLowerCase().includes(searchQuery.toLowerCase()))
-      );
+    const query = searchQuery.trim();
+    if (query) {
+      filtered = filtered.filter(event => matchesSearch(event, query));
     }
 
+    const cityOptions = filtered.filter(event => {
+      if (venueFilter.trim() && normalizeVenueName(event.venueName) !== normalizeVenueName(venueFilter)) {
+        return false;
+      }
+      if (selectedCategory !== 'All' && event.category !== selectedCategory) {
+        return false;
+      }
+      if (sourceFilter && getEventSource(event).id !== sourceFilter) {
+        return false;
+      }
+      return true;
+    });
+
     // Apply city filter (for calculating dynamic venues and categories)
-    if (selectedCity && selectedCity !== 'All Cities') {
+    if (!query && selectedCity && selectedCity !== 'All Cities') {
       filtered = filtered.filter(event => event.city === selectedCity);
     }
 
@@ -313,9 +404,13 @@ const EventsScreen = () => {
       filtered = filtered.filter(event => event.category === selectedCategory);
     }
 
+    if (sourceFilter) {
+      filtered = filtered.filter(event => getEventSource(event).id === sourceFilter);
+    }
+
     // Calculate available cities from filtered events (excluding the currently selected city)
     const cityMap = new Map<string, number>();
-    filtered.forEach(event => {
+    cityOptions.forEach(event => {
       if (event.city && event.city !== selectedCity) {
         cityMap.set(event.city, (cityMap.get(event.city) || 0) + 1);
       }
@@ -349,26 +444,41 @@ const EventsScreen = () => {
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count);
     setDynamicCategories(categories);
+
+    const sourceMap = new Map<string, { label: string; count: number }>();
+    filtered.forEach(event => {
+      const source = getEventSource(event);
+      if (source.id && source.label) {
+        const current = sourceMap.get(source.id);
+        sourceMap.set(source.id, {
+          label: source.label,
+          count: (current?.count || 0) + 1,
+        });
+      }
+    });
+    setDynamicSources(
+      Array.from(sourceMap.entries())
+        .map(([id, value]) => ({ id, ...value }))
+        .sort((a, b) => b.count - a.count)
+    );
   };
 
   const applyFilters = () => {
-    // Ensure events is an array before spreading
-    if (!Array.isArray(events)) {
-      console.error('Events is not an array:', events);
+    if (!Array.isArray(listEvents)) {
+      console.error('Events is not an array:', listEvents);
       setFilteredEvents([]);
       return;
     }
 
-    let filtered = [...events];
+    let filtered = [...listEvents];
 
-    // Apply search filter
-    if (searchQuery.trim()) {
-      filtered = filtered.filter(event =>
-        event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (event.description && event.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (event.venueName && event.venueName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (event.city && event.city.toLowerCase().includes(searchQuery.toLowerCase()))
-      );
+    const query = searchQuery.trim();
+    if (query) {
+      filtered = filtered.filter(event => matchesSearch(event, query));
+    }
+
+    if (!query && selectedCity && selectedCity !== 'All Cities') {
+      filtered = filtered.filter(event => event.city === selectedCity);
     }
 
     // Apply venue filter (set when navigating from Top Venues on HomeScreen)
@@ -383,21 +493,13 @@ const EventsScreen = () => {
       console.log('Normalized venue filter:', normalizedVenueFilter);
       console.log('Events after venue filter:', filtered.length);
       if (filtered.length === 0) {
-        console.log('Available venues in events:', events.map(e => e.venueName).filter(Boolean));
+        console.log('Available venues in events:', listEvents.map(e => e.venueName).filter(Boolean));
       }
     }
 
     // Apply date range filter
     if (dateFrom || dateTo) {
-      const from = dateFrom ? new Date(dateFrom).getTime() : null;
-      const to = dateTo ? new Date(dateTo).getTime() : null;
-      filtered = filtered.filter(event => {
-        const eventTime = new Date(event.startDate).getTime();
-        if (from && to) return eventTime >= from && eventTime <= to;
-        if (from) return eventTime >= from;
-        if (to) return eventTime <= to;
-        return true;
-      });
+      filtered = filtered.filter(event => matchesEventDateRange(event, dateFrom, dateTo));
     }
 
     // Apply category filter
@@ -405,6 +507,10 @@ const EventsScreen = () => {
       filtered = filtered.filter(event =>
         event.category === selectedCategory
       );
+    }
+
+    if (sourceFilter) {
+      filtered = filtered.filter(event => getEventSource(event).id === sourceFilter);
     }
 
     // Apply sorting
@@ -465,143 +571,32 @@ const EventsScreen = () => {
     }
   };
 
-  const isPresetActive = (preset: 'today' | 'tomorrow' | 'weekend'): boolean => {
-    if (!dateFrom) return false;
-    const from = new Date(dateFrom);
-    const to = dateTo ? new Date(dateTo) : null;
-    const today = new Date();
-    const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
-    if (preset === 'today') {
-      return from.toDateString() === today.toDateString() &&
-        (!to || to.toDateString() === today.toDateString());
-    }
-    if (preset === 'tomorrow') {
-      return from.toDateString() === tomorrow.toDateString() &&
-        (!to || to.toDateString() === tomorrow.toDateString());
-    }
-    if (preset === 'weekend') {
-      // Active when dateFrom is a Friday
-      return from.getDay() === 5;
-    }
-    return false;
-  };
-
   const getActiveDateLabel = (): string => {
     if (!dateFrom && !dateTo) return '';
-    const fmt = (d: string) => new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    const fmt = (d: string) => formatEventDate(d);
     if (dateFrom && dateTo) return `${fmt(dateFrom)} – ${fmt(dateTo)}`;
     if (dateFrom) return `From ${fmt(dateFrom)}`;
     return `Until ${fmt(dateTo)}`;
   };
 
-  const renderEventItem = ({ item }: { item: Event }) => {
-    const priceDisplay = item.isFree || !item.priceFrom ? (
-      <Text style={styles.eventPrice}>FREE</Text>
-    ) : (
-      <View style={styles.priceContainerList}>
-        <Text style={styles.priceStartingList}>Starting </Text>
-        <Text style={styles.eventPrice}>
-          {item.currency || 'AED'} {Number(item.priceFrom).toFixed(0)}
-        </Text>
-      </View>
-    );
-
-    return (
-      <TouchableOpacity
-        style={styles.eventCard}
-        onPress={() => navigation.navigate('EventDetail', { eventId: item.id })}
-      >
-        {/* Event Image with overlay buttons */}
-        <View style={styles.eventCardImageContainer}>
-          {item.coverImage || item.thumbnail ? (
-            <Image
-              source={{ uri: item.coverImage || item.thumbnail }}
-              style={styles.eventCardImage}
-              resizeMode="cover"
-            />
-          ) : (
-            <View style={[styles.eventCardImage, styles.placeholderImageList]}>
-              <Ionicons name="image-outline" size={48} color="#d1d5db" />
-            </View>
-          )}
-          {/* Save & Share overlay */}
-          <View style={styles.imageOverlayButtons}>
-            <TouchableOpacity
-              style={styles.imageActionBtn}
-              onPress={() => toggleSaved(item)}
-            >
-              <Ionicons
-                name={savedIds.has(item.id) ? 'bookmark' : 'bookmark-outline'}
-                size={20}
-                color="#fff"
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.imageActionBtn}
-              onPress={() => handleShare(item)}
-            >
-              <Ionicons name="share-social-outline" size={20} color="#fff" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.eventCardContent}>
-          <View style={styles.eventHeader}>
-            <View style={styles.categoryBadge}>
-              <Ionicons name={getCategoryIcon(item.category || '')} size={14} color="#3b82f6" />
-              <Text style={styles.categoryText}>{item.category || 'Event'}</Text>
-            </View>
-            {item.locationType === 'ONLINE' && (
-              <View style={styles.onlineBadge}>
-                <Text style={styles.onlineText}>Online</Text>
-              </View>
-            )}
-          </View>
-
-          <Text style={styles.eventTitle}>{item.title}</Text>
-          <Text style={styles.eventDescription} numberOfLines={2}>
-            {item.description || item.shortDescription || 'No description available'}
-          </Text>
-
-          <View style={styles.eventDetails}>
-            <View style={styles.detailItem}>
-              <Ionicons name="calendar-outline" size={16} color="#6b7280" />
-              <Text style={styles.detailText}>
-                {new Date(item.startDate).toLocaleDateString()} • {new Date(item.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </Text>
-            </View>
-
-            <View style={styles.detailItem}>
-              <Ionicons name="location-outline" size={16} color="#6b7280" />
-              <Text style={styles.detailText}>{item.city || item.venueName || 'Location TBA'}</Text>
-            </View>
-
-            <View style={styles.detailItem}>
-              <Ionicons name="people-outline" size={16} color="#6b7280" />
-              <Text style={styles.detailText}>{item.capacity ? `${item.capacity} capacity` : 'Venue'}</Text>
-            </View>
-          </View>
-
-          <View style={styles.eventFooter}>
-            {priceDisplay}
-            <TouchableOpacity
-              style={styles.rsvpButton}
-              onPress={() => (navigation as any).navigate('EventDetail', { eventId: item.id })}
-            >
-              <Text style={styles.rsvpButtonText}>View Details</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  };
+  const renderEventItem = ({ item }: { item: Event }) => (
+    <View style={styles.eventCell}>
+      <EventCard
+        event={item}
+        onPress={() => (navigation as any).navigate('EventDetail', { eventId: item.id })}
+        onSave={() => toggleSaved(item)}
+        onShare={() => void handleShare(item)}
+        saved={savedIds.has(item.id)}
+      />
+    </View>
+  );
 
   const renderCityFilter = () => {
     // Get count for each city from dynamic filters
     const getCityCount = (cityName: string) => {
       if (cityName === 'All Cities') return 0;
       const city = dynamicCities.find(c => c.name === cityName);
-      return city ? city.count : 0;
+      return city?.count ?? availableCities.find(c => c.name === cityName)?.count ?? 0;
     };
 
     return (
@@ -617,28 +612,12 @@ const EventsScreen = () => {
             const isDisabled = count === 0 && item.name !== 'All Cities' && item.name !== selectedCity;
 
             return (
-              <TouchableOpacity
-                style={[
-                  styles.cityChip,
-                  selectedCity === item.name && styles.cityChipSelected,
-                  isDisabled && styles.cityChipDisabled
-                ]}
-                onPress={() => !isDisabled && setSelectedCity(item.name)}
+              <Chip
+                label={`${item.name}${count > 0 ? ` (${count})` : ''}`}
+                selected={selectedCity === item.name}
                 disabled={isDisabled}
-              >
-                <Text
-                  style={[
-                    styles.cityChipText,
-                    selectedCity === item.name && styles.cityChipTextSelected,
-                    isDisabled && styles.cityChipTextDisabled
-                  ]}
-                >
-                  {item.name}
-                  {count > 0 && (
-                    <Text style={styles.cityChipCount}> ({count})</Text>
-                  )}
-                </Text>
-              </TouchableOpacity>
+                onPress={() => !isDisabled && setSelectedCity(item.name)}
+              />
             );
           }}
         />
@@ -668,28 +647,12 @@ const EventsScreen = () => {
             const isDisabled = count === 0 && item.name !== 'All Venues' && item.name !== venueFilter;
 
             return (
-              <TouchableOpacity
-                style={[
-                  styles.venueChip,
-                  isSelected && styles.venueChipSelected,
-                  isDisabled && styles.venueChipDisabled
-                ]}
-                onPress={() => !isDisabled && setVenueFilter(item.name === 'All Venues' ? '' : item.name)}
+              <Chip
+                label={`${item.name}${count > 0 ? ` (${count})` : ''}`}
+                selected={isSelected}
                 disabled={isDisabled}
-              >
-                <Text
-                  style={[
-                    styles.venueChipText,
-                    isSelected && styles.venueChipTextSelected,
-                    isDisabled && styles.venueChipTextDisabled
-                  ]}
-                >
-                  {item.name}
-                  {count > 0 && (
-                    <Text style={styles.venueChipCount}> ({count})</Text>
-                  )}
-                </Text>
-              </TouchableOpacity>
+                onPress={() => !isDisabled && setVenueFilter(item.name === 'All Venues' ? '' : item.name)}
+              />
             );
           }}
         />
@@ -719,46 +682,44 @@ const EventsScreen = () => {
           const isDisabled = count === 0 && item !== 'All' && item !== selectedCategory;
 
           return (
-            <TouchableOpacity
-              style={[
-                styles.categoryChip,
-                isSelected && styles.categoryChipSelected,
-                isDisabled && styles.categoryChipDisabled
-              ]}
-              onPress={() => !isDisabled && setSelectedCategory(item)}
+            <Chip
+              label={`${categoryLabel(item)}${count > 0 ? ` (${count})` : ''}`}
+              selected={isSelected}
               disabled={isDisabled}
-            >
-              <Ionicons
-                name={getCategoryIcon(item)}
-                size={14}
-                color={isSelected ? '#fff' : isDisabled ? '#d1d5db' : '#3b82f6'}
-              />
-              <Text
-                style={[
-                  styles.categoryChipText,
-                  isSelected && styles.categoryChipTextSelected,
-                  isDisabled && styles.categoryChipTextDisabled
-                ]}
-              >
-                {item}
-                {count > 0 && <Text style={styles.categoryChipCount}> ({count})</Text>}
-              </Text>
-            </TouchableOpacity>
+              onPress={() => !isDisabled && setSelectedCategory(item)}
+            />
           );
         }}
       />
     );
   };
 
-  const renderDateFilter = () => {
-    const isCustomActive = !!(dateFrom || dateTo) &&
-      !isPresetActive('today') && !isPresetActive('tomorrow') && !isPresetActive('weekend');
+  const renderSourceFilter = () => (
+    <View style={styles.sourceFilterContainer}>
+      <Text style={styles.filterLabel}>{t('source')}</Text>
+      <FlatList
+        horizontal
+        data={dynamicSources}
+        keyExtractor={(item) => item.id}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.sourceChipsContainer}
+        renderItem={({ item }) => (
+          <Chip
+            label={`${item.label}${item.count > 0 ? ` (${item.count})` : ''}`}
+            selected={sourceFilter === item.id}
+            onPress={() => setSourceFilter(sourceFilter === item.id ? '' : item.id)}
+          />
+        )}
+      />
+    </View>
+  );
 
+  const renderDateFilter = () => {
     const dateOptions = [
-      { key: 'today', label: 'Today', preset: 'today' as const },
-      { key: 'tomorrow', label: 'Tomorrow', preset: 'tomorrow' as const },
-      { key: 'weekend', label: 'This Weekend', preset: 'weekend' as const },
-      { key: 'custom', label: 'Custom', preset: null },
+      { key: 'today', label: t('today'), preset: 'today' as const },
+      { key: 'tomorrow', label: t('tomorrow'), preset: 'tomorrow' as const },
+      { key: 'weekend', label: t('this_weekend'), preset: 'weekend' as const },
+      { key: 'custom', label: t('custom'), preset: null },
     ];
 
     return (
@@ -770,28 +731,20 @@ const EventsScreen = () => {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.dateChipsContainer}
           renderItem={({ item }) => {
-            const active = item.preset ? isPresetActive(item.preset) : isCustomActive;
+            const active = item.preset ? isPresetActive(item.preset) : isCustomRange;
             return (
-              <TouchableOpacity
-                style={[styles.dateChip, active && styles.dateChipActive]}
+              <Chip
+                label={item.label}
+                selected={active}
                 onPress={() => item.preset ? applyDatePreset(active ? 'clear' : item.preset) : setDatePickerVisible(true)}
-              >
-                <Ionicons
-                  name={item.key === 'custom' ? 'options-outline' : 'calendar-outline'}
-                  size={13}
-                  color={active ? '#fff' : '#6b7280'}
-                />
-                <Text style={[styles.dateChipText, active && styles.dateChipTextActive]}>
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
+              />
             );
           }}
         />
-        {(dateFrom || dateTo) && (
+        {!!(dateFrom || dateTo) && (
           <TouchableOpacity style={styles.dateChipClear} onPress={() => applyDatePreset('clear')}>
-            <Ionicons name="close-circle" size={15} color="#ef4444" />
-            <Text style={styles.dateChipClearText}>Clear</Text>
+            <Ionicons name="close-circle" size={15} color={colors.danger} />
+            <Text style={styles.dateChipClearText}>{t('clear')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -800,7 +753,7 @@ const EventsScreen = () => {
 
   const renderSortOptions = () => (
     <View style={styles.sortContainer}>
-      <Text style={styles.sortLabel}>Sort by:</Text>
+      <Text style={styles.sortLabel}>{t('sort_by')}</Text>
       <TouchableOpacity
         style={[
           styles.sortButton,
@@ -814,7 +767,7 @@ const EventsScreen = () => {
             sortBy === 'date' && styles.sortButtonTextActive
           ]}
         >
-          Date
+          {t('sort_date')}
         </Text>
       </TouchableOpacity>
       <TouchableOpacity
@@ -830,7 +783,7 @@ const EventsScreen = () => {
             sortBy === 'price' && styles.sortButtonTextActive
           ]}
         >
-          Price
+          {t('sort_price')}
         </Text>
       </TouchableOpacity>
     </View>
@@ -839,49 +792,28 @@ const EventsScreen = () => {
   if (loading && !refreshing) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3b82f6" />
-          <Text style={styles.loadingText}>Loading events...</Text>
-        </View>
+        <EventListSkeleton count={5} />
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.container}>
+      <Container style={styles.screenContent}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Discover Events</Text>
-        <TouchableOpacity
-          style={styles.filterButton}
-          onPress={() => setFiltersVisible(!filtersVisible)}
-        >
-          <Ionicons
-            name={
-              selectedCategory !== 'All' ||
-              venueFilter ||
-              dateFrom ||
-              dateTo ||
-              searchQuery ||
-              selectedCity !== 'All Cities'
-                ? "options"
-                : "options-outline"
-            }
-            size={24}
-            color="#3b82f6"
-          />
-        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{t('discover')}</Text>
       </View>
 
       {/* Venue filter banner — shown when navigated from Top Venues */}
       {!!venueFilter && (
         <View style={styles.venueBanner}>
-          <Ionicons name="location" size={16} color="#1d4ed8" />
+          <Ionicons name="location" size={16} color={colors.primaryDark} />
           <Text style={styles.venueBannerText} numberOfLines={1}>
-            Showing events at <Text style={styles.venueBannerName}>{venueFilter}</Text>
+            {t('showing_events_at', { venue: venueFilter })}
           </Text>
-          <TouchableOpacity onPress={() => setVenueFilter('')}>
-            <Ionicons name="close-circle" size={18} color="#1d4ed8" />
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('clear')} onPress={() => setVenueFilter('')}>
+            <Ionicons name="close-circle" size={18} color={colors.primaryDark} />
           </TouchableOpacity>
         </View>
       )}
@@ -889,35 +821,41 @@ const EventsScreen = () => {
       {/* Date filter banner — shown when a date/range filter is active */}
       {!!(dateFrom || dateTo) && (
         <View style={styles.dateBanner}>
-          <Ionicons name="calendar" size={16} color="#7c3aed" />
+          <Ionicons name="calendar" size={16} color={colors.primary} />
           <Text style={styles.dateBannerText} numberOfLines={1}>
-            Events: <Text style={styles.dateBannerRange}>{getActiveDateLabel()}</Text>
+            {t('events_range', { range: getActiveDateLabel() })}
           </Text>
-          <TouchableOpacity onPress={() => { setDateFrom(''); setDateTo(''); }}>
-            <Ionicons name="close-circle" size={18} color="#7c3aed" />
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('clear')} onPress={() => { setDateFrom(''); setDateTo(''); }}>
+            <Ionicons name="close-circle" size={18} color={colors.primary} />
           </TouchableOpacity>
         </View>
       )}
 
       {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#9ca3af" style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search events, locations, categories..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          autoCapitalize="none"
-          autoCorrect={false}
-          returnKeyType="search"
-          textContentType="none"
-          editable={true}
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <Ionicons name="close-circle" size={20} color="#9ca3af" />
-          </TouchableOpacity>
-        )}
+      <View style={styles.searchRow}>
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={20} color={colors.textMuted} style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            accessibilityLabel={t('search_events')}
+            placeholder={t('search_events')}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+            textContentType="none"
+            editable={true}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('clear')} onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
+          )}
+        </View>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel={filtersVisible ? t('hide_filters') : t('show_filters')} accessibilityState={{ expanded: filtersVisible }} style={styles.filterButton} onPress={() => setFiltersVisible(!filtersVisible)}>
+          <Ionicons name={filtersVisible ? 'options' : 'options-outline'} size={22} color={colors.primary} />
+        </TouchableOpacity>
       </View>
 
       {/* Sort Options - Outside filters */}
@@ -935,6 +873,9 @@ const EventsScreen = () => {
           {/* Venue Filter */}
           {renderVenueFilter()}
 
+          {/* Source Filter */}
+          {renderSourceFilter()}
+
           {/* Category Filters */}
           {renderCategoryFilter()}
         </View>
@@ -942,32 +883,52 @@ const EventsScreen = () => {
 
       {/* Events List */}
       <FlatList
+        key={`events-${columnCount}`}
         data={filteredEvents}
         renderItem={renderEventItem}
         keyExtractor={(item) => item.id}
+        numColumns={columnCount}
+        columnWrapperStyle={columnCount > 1 ? styles.eventRow : undefined}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.eventsList}
+        style={styles.list}
+        onScroll={(e) => closeFiltersOnScroll(e.nativeEvent.contentOffset.y)}
+        onScrollBeginDrag={() => filtersVisibleRef.current && setFiltersVisible(false)}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#3b82f6']}
+            colors={[colors.primary]}
           />
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="calendar-outline" size={64} color="#d1d5db" />
-            <Text style={styles.emptyTitle}>No events found</Text>
+            <Ionicons name="calendar-outline" size={64} color={colors.border} />
+            <Text style={styles.emptyTitle}>{t('no_events_found')}</Text>
             <Text style={styles.emptyText}>
               {(dateFrom || dateTo)
-                ? 'No events in this date range. Try a different range.'
+                ? t('no_events_help')
                 : searchQuery
-                ? 'Try a different search'
-                : 'Check back later for new events!'}
+                ? t('no_events_help')
+                : t('no_events_help')}
             </Text>
+            {venueFilter || sourceFilter || selectedCategory !== 'All' || dateFrom || dateTo || searchQuery ? (
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('clear_filters')} style={styles.clearFilters} onPress={() => {
+                setVenueFilter('');
+                setSourceFilter('');
+                setSelectedCategory('All');
+                setDateFrom('');
+                setDateTo('');
+                setSearchQuery('');
+              }}>
+                <Text style={styles.clearFiltersText}>{t('clear_filters')}</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         }
       />
+      </Container>
 
       {/* Custom date range calendar picker */}
       <DateRangePickerModal
@@ -988,8 +949,14 @@ const EventsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.bg,
   },
+  screenContent: { flex: 1 },
+  list: { flex: 1 },
+  eventRow: { gap: 16, paddingHorizontal: 0 },
+  eventCell: { flex: 1, minWidth: 0, marginBottom: 16 },
+  clearFilters: { marginTop: 18, paddingHorizontal: 18, paddingVertical: 10, borderRadius: radius.pill, backgroundColor: colors.primarySoft },
+  clearFiltersText: { color: colors.primaryDark, fontWeight: '700' },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -998,25 +965,25 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#6b7280',
+    color: colors.textMuted,
   },
   venueBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginHorizontal: 20,
+    marginHorizontal: 0,
     marginTop: 8,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primarySoft,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#bfdbfe',
+    borderColor: colors.primarySoft,
   },
   venueBannerText: {
     flex: 1,
     fontSize: 13,
-    color: '#1d4ed8',
+    color: colors.primaryDark,
   },
   venueBannerName: {
     fontWeight: '700',
@@ -1025,38 +992,52 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 0,
     paddingTop: 20,
     paddingBottom: 10,
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1f2937',
+    ...type.h1,
   },
   filterButton: {
-    padding: 8,
+    width: 52,
+    height: 52,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shadow.card,
   },
   filtersSection: {
-    backgroundColor: '#fff',
-    marginHorizontal: 20,
+    backgroundColor: colors.surface,
+    marginHorizontal: 0,
     marginBottom: 12,
     paddingVertical: 12,
     paddingHorizontal: 12,
-    borderRadius: 12,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
+    ...shadow.card,
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginHorizontal: 0,
+    marginBottom: 16,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    marginHorizontal: 20,
-    marginBottom: 16,
+    backgroundColor: colors.textInverse,
+    flex: 1,
+    marginBottom: 0,
     paddingHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
   },
   searchIcon: {
     marginRight: 12,
@@ -1079,7 +1060,7 @@ const styles = StyleSheet.create({
   cityFilterLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: colors.textSecondary,
     marginLeft: 6,
   },
   cityChipsContainer: {
@@ -1088,23 +1069,23 @@ const styles = StyleSheet.create({
   cityChip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#e0f2fe',
+    backgroundColor: colors.primarySoft,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#0ea5e9',
+    borderColor: colors.primary,
     marginRight: 8,
   },
   cityChipSelected: {
-    backgroundColor: '#0ea5e9',
-    borderColor: '#0ea5e9',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   cityChipText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#0369a1',
+    color: colors.primaryDark,
   },
   cityChipTextSelected: {
-    color: '#fff',
+    color: colors.textInverse,
   },
   cityChipCount: {
     fontSize: 12,
@@ -1113,11 +1094,11 @@ const styles = StyleSheet.create({
   },
   cityChipDisabled: {
     opacity: 0.4,
-    backgroundColor: '#f3f4f6',
-    borderColor: '#e5e7eb',
+    backgroundColor: colors.surfaceAlt,
+    borderColor: colors.border,
   },
   cityChipTextDisabled: {
-    color: '#9ca3af',
+    color: colors.textMuted,
   },
   venueFilterContainer: {
     paddingHorizontal: 8,
@@ -1127,26 +1108,39 @@ const styles = StyleSheet.create({
   venueChipsContainer: {
     paddingVertical: 4,
   },
+  sourceFilterContainer: {
+    paddingHorizontal: 8,
+    paddingBottom: 8,
+  },
+  sourceChipsContainer: {
+    paddingVertical: 4,
+  },
+  filterLabel: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
   venueChip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#fef3c7',
+    backgroundColor: colors.warningSoft,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#f59e0b',
+    borderColor: colors.warning,
     marginRight: 8,
   },
   venueChipSelected: {
-    backgroundColor: '#f59e0b',
-    borderColor: '#f59e0b',
+    backgroundColor: colors.warning,
+    borderColor: colors.warning,
   },
   venueChipText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#b45309',
+    color: colors.warning,
   },
   venueChipTextSelected: {
-    color: '#fff',
+    color: colors.textInverse,
   },
   venueChipCount: {
     fontSize: 12,
@@ -1155,11 +1149,11 @@ const styles = StyleSheet.create({
   },
   venueChipDisabled: {
     opacity: 0.4,
-    backgroundColor: '#fef9e7',
-    borderColor: '#fde68a',
+    backgroundColor: colors.warningSoft,
+    borderColor: colors.warningSoft,
   },
   venueChipTextDisabled: {
-    color: '#d97706',
+    color: colors.warning,
   },
   categoryFilterList: {
     marginBottom: 4,
@@ -1172,34 +1166,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 9,
-    backgroundColor: '#fff',
+    paddingVertical: 10,
+    backgroundColor: colors.textInverse,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     marginRight: 8,
-    height: 36,
+    height: 44,
     gap: 5,
   },
   categoryChipSelected: {
-    backgroundColor: '#3b82f6',
-    borderColor: '#3b82f6',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   categoryChipText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#374151',
+    color: colors.textSecondary,
   },
   categoryChipTextSelected: {
-    color: '#fff',
+    color: colors.textInverse,
   },
   categoryChipDisabled: {
     opacity: 0.4,
-    backgroundColor: '#f9fafb',
-    borderColor: '#e5e7eb',
+    backgroundColor: colors.bg,
+    borderColor: colors.border,
   },
   categoryChipTextDisabled: {
-    color: '#9ca3af',
+    color: colors.textMuted,
   },
   categoryChipCount: {
     fontSize: 11,
@@ -1209,56 +1203,54 @@ const styles = StyleSheet.create({
   sortContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 0,
     paddingBottom: 12,
   },
   sortLabel: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.textMuted,
     marginRight: 12,
   },
   sortButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     marginRight: 8,
   },
   sortButtonActive: {
-    backgroundColor: '#3b82f6',
-    borderColor: '#3b82f6',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   sortButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: colors.textSecondary,
   },
   sortButtonTextActive: {
-    color: '#fff',
+    color: colors.textInverse,
   },
   eventsList: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 0,
     paddingBottom: 20,
   },
   eventCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    ...shadow.card,
     overflow: 'hidden',
   },
   eventCardImageContainer: {
     position: 'relative',
   },
   eventCardImage: {
-    width: '100%',
-    height: 200,
+    width: 96,
+    height: 96,
+    borderRadius: radius.md,
   },
   imageOverlayButtons: {
     position: 'absolute',
@@ -1273,12 +1265,13 @@ const styles = StyleSheet.create({
     padding: 7,
   },
   placeholderImageList: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceAlt,
     justifyContent: 'center',
     alignItems: 'center',
   },
   eventCardContent: {
-    padding: 16,
+    flex: 1,
+    padding: spacing.md,
   },
   eventHeader: {
     flexDirection: 'row',
@@ -1288,7 +1281,7 @@ const styles = StyleSheet.create({
   categoryBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#e0f2fe',
+    backgroundColor: colors.primarySoft,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
@@ -1298,10 +1291,10 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#0369a1',
+    color: colors.primaryDark,
   },
   onlineBadge: {
-    backgroundColor: '#dcfce7',
+    backgroundColor: colors.successSoft,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -1309,17 +1302,16 @@ const styles = StyleSheet.create({
   onlineText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#166534',
+    color: colors.success,
   },
+  trustPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.successSoft, paddingHorizontal: 7, paddingVertical: 4, borderRadius: 10 },
+  trustPillText: { color: colors.success, fontSize: 11, fontWeight: '700' },
   eventTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1f2937',
+    ...type.h3,
     marginBottom: 8,
   },
   eventDescription: {
-    fontSize: 14,
-    color: '#6b7280',
+    ...type.caption,
     marginBottom: 16,
     lineHeight: 20,
   },
@@ -1333,11 +1325,13 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.textMuted,
     marginLeft: 8,
   },
   eventFooter: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
     justifyContent: 'space-between',
     alignItems: 'center',
   },
@@ -1347,22 +1341,23 @@ const styles = StyleSheet.create({
   },
   priceStartingList: {
     fontSize: 11,
-    color: '#6b7280',
+    color: colors.textMuted,
     fontWeight: '400',
   },
   eventPrice: {
+    flexShrink: 1,
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#3b82f6',
+    color: colors.primary,
   },
   rsvpButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
   },
   rsvpButtonText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -1374,12 +1369,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#374151',
+    color: colors.textSecondary,
     marginTop: 16,
   },
   emptyText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.textMuted,
     marginTop: 8,
     textAlign: 'center',
   },
@@ -1388,19 +1383,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginHorizontal: 20,
+    marginHorizontal: 0,
     marginTop: 8,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    backgroundColor: '#f5f3ff',
+    backgroundColor: colors.primarySoft,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#ddd6fe',
+    borderColor: colors.primarySoft,
   },
   dateBannerText: {
     flex: 1,
     fontSize: 13,
-    color: '#7c3aed',
+    color: colors.primary,
   },
   dateBannerRange: {
     fontWeight: '700',
@@ -1422,22 +1417,22 @@ const styles = StyleSheet.create({
     gap: 5,
     paddingHorizontal: 12,
     paddingVertical: 7,
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: colors.border,
   },
   dateChipActive: {
-    backgroundColor: '#7c3aed',
-    borderColor: '#7c3aed',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   dateChipText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#374151',
+    color: colors.textSecondary,
   },
   dateChipTextActive: {
-    color: '#fff',
+    color: colors.textInverse,
   },
   dateChipClear: {
     flexDirection: 'row',
@@ -1449,7 +1444,7 @@ const styles = StyleSheet.create({
   dateChipClearText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#ef4444',
+    color: colors.danger,
   },
 });
 

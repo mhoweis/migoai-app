@@ -2,39 +2,52 @@
   "expo": {
     "name": "Migo AI",
     "slug": "migo-mobile",
+    "scheme": "migo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.migo.eventapp",
+      "buildNumber": "1",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Migo uses your location to show events and venues near you, and to sort them by how far you'd have to travel."
+        "NSLocationWhenInUseUsageDescription": "Migo uses your location to show events and venues near you, and to sort them by how far you'd have to travel.",
+        "NSCameraUsageDescription": "Migo uses the camera to scan attendee tickets at check-in.",
+        "NSPhotoLibraryUsageDescription": "Migo lets you choose photos for your profile, cover and events.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
+      "package": "com.migo.eventapp",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundImage": "./assets/adaptive-icon-background.png",
+        "backgroundColor": "#7A1E6C"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
+        "ACCESS_FINE_LOCATION",
+        "CAMERA"
       ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "./with-camera-permission",
+      "@react-native-community/datetimepicker",
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#F7F5FB"
+        }
+      ],
       [
         "expo-location",
         {
@@ -43,7 +56,28 @@
           "isIosBackgroundLocationEnabled": false,
           "isAndroidBackgroundLocationEnabled": false
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Migo lets you choose photos for your profile, cover and events.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Migo uses the camera to scan attendee tickets at check-in.",
+          "recordAudioAndroid": false
+        }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "645ca729-0461-4425-93a5-2aaef4d427a5"
+      }
+    },
+    "owner": "mh.prg"
   }
 }

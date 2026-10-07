@@ -1,9 +1,11 @@
+import { colors, radius } from '../theme';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Image,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -15,6 +17,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { authService } from '../services/auth.service';
 import { useUserStore } from '../store/userStore';
+import { useLocale } from '../i18n';
+import { useBreakpoint } from '../hooks/useBreakpoint';
+import { LinearGradient } from 'expo-linear-gradient';
+import { gradients, shadow, type } from '../theme';
+import { Ionicons } from '@expo/vector-icons';
+import { LanguageToggle } from '../components/LanguageToggle';
+import { API_BASE_URL } from '../services/api';
+
+const DesktopFormPanel = View as unknown as React.ComponentType<any>;
+const DesktopFormText = Text as unknown as React.ComponentType<any>;
 
 type SignupMode = 'phone' | 'email';
 
@@ -31,10 +43,19 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { setUser, setFirstLogin } = useUserStore();
+  const { isRTL, t } = useLocale();
+  const { isWebDesktop } = useBreakpoint();
 
   const showError = (message: string) => {
     setErrorMessage(message);
-    Alert.alert('Signup failed', message);
+    Alert.alert(t('signup_failed'), message);
+  };
+
+  const openLegalPage = (page: 'privacy' | 'terms') => {
+    const origin = Platform.OS === 'web' && typeof window !== 'undefined'
+      ? window.location.origin
+      : API_BASE_URL;
+    void Linking.openURL(`${origin}/${page}`);
   };
 
   const finishSignup = (response: Awaited<ReturnType<typeof authService.register>>) => {
@@ -50,9 +71,9 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const sendOtp = async () => {
-    if (!name.trim()) return showError('Please enter your full name');
+    if (!name.trim()) return showError(t('full_name'));
     if (!/^\+[1-9]\d{6,14}$/.test(phone.replace(/[\s()-]/g, ''))) {
-      return showError('Enter your phone number with country code, such as +971501234567');
+      return showError(t('phone_number'));
     }
 
     setLoading(true);
@@ -60,7 +81,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     try {
       await authService.sendPhoneSignupOtp({ phone, name: name.trim() });
       setOtpSent(true);
-      Alert.alert('Code sent', 'Enter the 6-digit code sent to your phone.');
+      Alert.alert(t('code_sent'), t('code_sent_help'));
     } catch (error: any) {
       showError(error.message);
     } finally {
@@ -69,7 +90,7 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const verifyOtp = async () => {
-    if (!/^\d{6}$/.test(otp.trim())) return showError('Enter the 6-digit verification code');
+    if (!/^\d{6}$/.test(otp.trim())) return showError(t('verification_code'));
 
     setLoading(true);
     setErrorMessage(null);
@@ -87,12 +108,12 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const registerWithEmail = async () => {
-    if (!name.trim()) return showError('Please enter your full name');
+    if (!name.trim()) return showError(t('full_name'));
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      return showError('Please enter a valid email address');
+      return showError(t('email_address'));
     }
-    if (password.length < 6) return showError('Password must be at least 6 characters');
-    if (password !== confirmPassword) return showError('Passwords do not match');
+    if (password.length < 6) return showError(t('password_too_short'));
+    if (password !== confirmPassword) return showError(t('password_mismatch'));
 
     setLoading(true);
     setErrorMessage(null);
@@ -116,23 +137,52 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         style={styles.keyboardView}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, isWebDesktop && styles.desktopScrollContent]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.header}>
-            <Image source={require('../../assets/icon.png')} style={styles.logo} resizeMode="contain" />
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Join Migo to discover amazing events</Text>
-          </View>
+          <LinearGradient
+            colors={[colors.ink, ...gradients.dusk]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.header, isWebDesktop && styles.desktopBrandPanel]}
+          >
+            <Image source={require('../../assets/logo-mark.png')} style={[styles.logo, isWebDesktop && styles.logoDesktop]} resizeMode="contain" />
+            {isWebDesktop ? (
+              <>
+                <Text style={styles.brandStatement}>{t('login_brand_headline')}</Text>
+                <View style={styles.brandBenefits}>
+                  {(['login_value_1', 'login_value_2', 'login_value_3'] as const).map((key, index) => (
+                    <View key={key} style={styles.brandBenefit}>
+                      <Ionicons name={(['compass-outline', 'ticket-outline', 'people-outline'] as const)[index]} size={22} color={colors.accent} />
+                      <Text style={styles.brandBenefitText}>{t(key)}</Text>
+                    </View>
+                  ))}
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={styles.title}>{t('create_account')}</Text>
+                <Text style={styles.subtitle}>{t('register_subtitle')}</Text>
+              </>
+            )}
+          </LinearGradient>
 
+          <DesktopFormPanel style={isWebDesktop ? styles.desktopFormPanel : undefined}>
+          <View style={isWebDesktop ? styles.desktopForm : undefined}>
+          {isWebDesktop ? (
+            <>
+              <DesktopFormText style={styles.formHeading}>{t('create_account')}</DesktopFormText>
+              <DesktopFormText style={styles.formSubtitle}>{t('register_subtitle')}</DesktopFormText>
+            </>
+          ) : null}
           <View style={styles.modeSelector}>
             <TouchableOpacity
               style={[styles.modeButton, mode === 'phone' && styles.modeButtonActive]}
               onPress={() => switchMode('phone')}
             >
               <Text style={[styles.modeText, mode === 'phone' && styles.modeTextActive]}>
-                Phone & OTP
+                {t('tab_phone')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -140,15 +190,16 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               onPress={() => switchMode('email')}
             >
               <Text style={[styles.modeText, mode === 'email' && styles.modeTextActive]}>
-                Email
+                {t('tab_email')}
               </Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Full name"
+              <TextInput
+                accessibilityLabel={t('full_name')}
+              style={[styles.input, isRTL && styles.inputRtl]}
+              placeholder={t('full_name')}
               value={name}
               onChangeText={setName}
               autoCapitalize="words"
@@ -160,10 +211,11 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <>
               <View style={styles.inputContainer}>
                 <TextInput
-                  style={styles.input}
-                  placeholder="Phone number, e.g. +971501234567"
+                  accessibilityLabel={t('phone_number')}
+                  style={[styles.input, isRTL && styles.inputRtl]}
+                  placeholder={t('phone_number')}
                   value={phone}
-                  onChangeText={(value) => {
+                  onChangeText={(value: string) => {
                     setPhone(value);
                     if (otpSent) {
                       setOtpSent(false);
@@ -178,8 +230,9 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               {otpSent && (
                 <View style={styles.inputContainer}>
                   <TextInput
-                    style={styles.input}
-                    placeholder="6-digit verification code"
+                    accessibilityLabel={t('verification_code')}
+                    style={[styles.input, isRTL && styles.inputRtl]}
+                    placeholder={t('verification_code')}
                     value={otp}
                     onChangeText={setOtp}
                     keyboardType="number-pad"
@@ -191,8 +244,8 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               )}
               <Text style={styles.hint}>
                 {otpSent
-                  ? 'The code expires in 10 minutes.'
-                  : 'No password needed. We will text you a verification code.'}
+                  ? t('code_sent_help')
+                  : t('otp_hint')}
               </Text>
               <TouchableOpacity
                 style={[styles.primaryButton, loading && styles.buttonDisabled]}
@@ -200,16 +253,16 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 disabled={loading}
               >
                 {loading ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color={colors.textInverse} />
                 ) : (
                   <Text style={styles.primaryButtonText}>
-                    {otpSent ? 'Verify & Create Account' : 'Send Verification Code'}
+                    {otpSent ? t('create_account') : t('send_code')}
                   </Text>
                 )}
               </TouchableOpacity>
               {otpSent && (
                 <TouchableOpacity onPress={sendOtp} disabled={loading}>
-                  <Text style={styles.resendText}>Send a new code</Text>
+                  <Text style={styles.resendText}>{t('send_code')}</Text>
                 </TouchableOpacity>
               )}
             </>
@@ -217,8 +270,9 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <>
               <View style={styles.inputContainer}>
                 <TextInput
-                  style={styles.input}
-                  placeholder="Email address"
+                  accessibilityLabel={t('email_address')}
+                  style={[styles.input, isRTL && styles.inputRtl]}
+                  placeholder={t('email_address')}
                   value={email}
                   onChangeText={setEmail}
                   keyboardType="email-address"
@@ -228,15 +282,16 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               </View>
               <View style={styles.inputContainer}>
                 <TextInput
-                  style={styles.input}
-                  placeholder="Password"
+                  accessibilityLabel={t('password')}
+                  style={[styles.input, isRTL && styles.inputRtl]}
+                  placeholder={t('password')}
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
                   autoComplete="password-new"
                 />
-                <TouchableOpacity onPress={() => setShowPassword(value => !value)}>
+                <TouchableOpacity accessibilityRole="button" accessibilityLabel={showPassword ? t('hide_password') : t('show_password')} style={styles.passwordToggle} onPress={() => setShowPassword(value => !value)}>
                   <Image
                     source={require('../../assets/icons/show-password.png')}
                     style={styles.showPassword}
@@ -245,8 +300,9 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               </View>
               <View style={styles.inputContainer}>
                 <TextInput
-                  style={styles.input}
-                  placeholder="Confirm password"
+                  accessibilityLabel={t('confirm_password')}
+                  style={[styles.input, isRTL && styles.inputRtl]}
+                  placeholder={t('confirm_password')}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   secureTextEntry={!showPassword}
@@ -254,16 +310,16 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   autoComplete="password-new"
                 />
               </View>
-              <Text style={styles.hint}>Password must be at least 6 characters.</Text>
+              <Text style={styles.hint}>{t('password_requirements')}</Text>
               <TouchableOpacity
                 style={[styles.primaryButton, loading && styles.buttonDisabled]}
                 onPress={registerWithEmail}
                 disabled={loading}
               >
                 {loading ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color={colors.textInverse} />
                 ) : (
-                  <Text style={styles.primaryButtonText}>Create Account with Email</Text>
+                    <Text style={styles.primaryButtonText}>{t('create_account')}</Text>
                 )}
               </TouchableOpacity>
             </>
@@ -272,16 +328,33 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           {errorMessage && <Text style={styles.errorMessage}>{errorMessage}</Text>}
 
           <Text style={styles.termsText}>
-            By creating an account, you agree to our{' '}
-            <Text style={styles.link}>Terms of Service</Text> and{' '}
-            <Text style={styles.link}>Privacy Policy</Text>
+            {t('terms_note')}
+            <Text
+              style={styles.link}
+              accessibilityRole="link"
+              onPress={() => openLegalPage('terms')}
+            >
+              {t('terms_of_service')}
+            </Text>
+            {t('terms_note_and')}
+            <Text
+              style={styles.link}
+              accessibilityRole="link"
+              onPress={() => openLegalPage('privacy')}
+            >
+              {t('privacy_policy')}
+            </Text>
+            {t('terms_note_end')}
           </Text>
           <View style={styles.loginRow}>
-            <Text style={styles.secondaryText}>Already have an account? </Text>
+            <Text style={styles.secondaryText}>{t('already_have_account')} </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-              <Text style={styles.link}>Sign In</Text>
+              <Text style={styles.link}>{t('sign_in')}</Text>
             </TouchableOpacity>
           </View>
+          </View>
+          <LanguageToggle />
+          </DesktopFormPanel>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -289,53 +362,66 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: colors.textInverse },
   keyboardView: { flex: 1 },
   scrollContent: { flexGrow: 1, padding: 24, paddingBottom: 36 },
-  header: { marginTop: 24, marginBottom: 28, alignItems: 'center' },
+  desktopScrollContent: { flexDirection: 'row', alignItems: 'stretch', justifyContent: 'flex-start', minHeight: '100%', padding: 0, paddingBottom: 0, gap: 0 },
+  header: { marginTop: 24, marginBottom: 28, alignItems: 'center', borderRadius: radius.xl, padding: 24 },
+  desktopBrandPanel: { width: '55%', minHeight: '100%', margin: 0, marginTop: 0, marginBottom: 0, alignItems: 'flex-start', justifyContent: 'center', paddingHorizontal: 64, paddingVertical: 64, borderRadius: 0 },
+  desktopFormPanel: { flex: 1, minWidth: 0, minHeight: '100%', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 64, paddingVertical: 40, backgroundColor: colors.bg },
+  desktopForm: { flexGrow: 0, flexShrink: 0, flexBasis: 'auto', width: '100%', maxWidth: 420, alignSelf: 'center', padding: 32, backgroundColor: colors.surface, borderRadius: radius.xl, ...shadow.card },
+  formHeading: { ...type.h2, color: colors.text, marginBottom: 4 },
+  formSubtitle: { ...type.body, color: colors.textMuted, marginBottom: 24 },
+  brandStatement: { ...type.display, color: colors.textInverse, maxWidth: 440, textAlign: 'left', marginTop: 44 },
+  brandBenefits: { alignSelf: 'stretch', gap: 18, maxWidth: 460, marginTop: 36 },
+  brandBenefit: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  brandBenefitText: { flex: 1, color: 'rgba(255,255,255,0.88)', fontSize: 16, lineHeight: 24 },
   logo: { width: 64, height: 64, marginBottom: 14 },
-  title: { fontSize: 30, fontWeight: 'bold', color: '#1f2937', marginBottom: 8 },
-  subtitle: { fontSize: 15, color: '#6b7280', textAlign: 'center' },
+  logoDesktop: { width: 180, height: 180, marginBottom: 8 },
+  title: { fontSize: 30, fontWeight: 'bold', color: colors.textInverse, marginBottom: 8 },
+  subtitle: { fontSize: 15, color: 'rgba(255,255,255,0.85)', textAlign: 'center' },
   modeSelector: {
     flexDirection: 'row',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceAlt,
     borderRadius: 12,
     padding: 4,
     marginBottom: 20,
   },
   modeButton: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 9 },
-  modeButtonActive: { backgroundColor: '#fff' },
-  modeText: { color: '#6b7280', fontWeight: '600' },
-  modeTextActive: { color: '#2563eb' },
+  modeButtonActive: { backgroundColor: colors.textInverse },
+  modeText: { color: colors.textMuted, fontWeight: '600' },
+  modeTextActive: { color: colors.primary },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.bg,
     borderRadius: 12,
     paddingHorizontal: 16,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
   },
-  input: { flex: 1, height: 56, fontSize: 16, color: '#111827' },
+  input: { flex: 1, minWidth: 0, height: 56, fontSize: 16, color: colors.text },
+  inputRtl: { textAlign: 'right', writingDirection: 'rtl' },
   showPassword: { width: 20, height: 20 },
-  hint: { color: '#6b7280', fontSize: 12, marginBottom: 18 },
+  passwordToggle: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  hint: { color: colors.textMuted, fontSize: 12, marginBottom: 18 },
   primaryButton: {
     height: 56,
     borderRadius: 12,
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
   },
-  buttonDisabled: { backgroundColor: '#93c5fd' },
-  primaryButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  resendText: { color: '#2563eb', textAlign: 'center', fontWeight: '600', marginBottom: 18 },
-  errorMessage: { color: '#dc2626', fontSize: 14, textAlign: 'center', marginBottom: 16 },
-  termsText: { color: '#6b7280', fontSize: 12, textAlign: 'center', lineHeight: 18 },
-  link: { color: '#2563eb', fontWeight: '600' },
+  buttonDisabled: { backgroundColor: colors.primarySoft },
+  primaryButtonText: { color: colors.textInverse, fontSize: 16, fontWeight: 'bold' },
+  resendText: { color: colors.primary, textAlign: 'center', fontWeight: '600', marginBottom: 18 },
+  errorMessage: { color: colors.danger, fontSize: 14, textAlign: 'center', marginBottom: 16 },
+  termsText: { color: colors.textMuted, fontSize: 12, textAlign: 'center', lineHeight: 18 },
+  link: { color: colors.primary, fontWeight: '600' },
   loginRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 28 },
-  secondaryText: { color: '#6b7280', fontSize: 14 },
+  secondaryText: { color: colors.textMuted, fontSize: 14 },
 });
 
 export default RegisterScreen;

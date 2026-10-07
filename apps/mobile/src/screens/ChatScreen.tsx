@@ -1,3 +1,4 @@
+import { colors } from '../theme';
 // migo-mobile/src/screens/ChatScreen.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import {
@@ -13,12 +14,20 @@ import {
   ActivityIndicator,
   Image,
   Alert,
+  Linking,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { navigationRef } from '../navigation/navigationRef';
 import { useUserStore } from '../store/userStore';
-import { chatService } from '../services/chat.service';
+import { chatService, TourismSource } from '../services/chat.service';
 import { api } from '../services/api';
+import { eventService } from '../services/event.service';
+import { useLocale } from '../i18n';
+import Chip from '../components/Chip';
+import { gradients, shadow, type } from '../theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useBreakpoint } from '../hooks/useBreakpoint';
 
 interface Message {
   id: string;
@@ -27,6 +36,9 @@ interface Message {
   timestamp: Date;
   isError?: boolean;
   showUpdateInterestsButton?: boolean;
+  sources?: TourismSource[];
+  grounding?: 'official_sources' | 'not_found';
+  expandedTourismSources?: number[];
 }
 
 interface SuggestedEvent {
@@ -42,17 +54,20 @@ interface SuggestedEvent {
 }
 
 const ChatScreen: React.FC = () => {
+  const { isWebDesktop } = useBreakpoint();
   const navigation = useNavigation<any>();
   const { user } = useUserStore();
+  const { t, isRTL } = useLocale();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: `Hello${user?.name ? ` ${user.name.split(' ')[0]}` : ''}! I'm Migo AI, your personal event assistant. How can I help you find amazing events today?`,
+      text: t('chat_greeting', { name: user?.name ? ` ${user.name.split(' ')[0]}` : '' }),
       sender: 'ai',
       timestamp: new Date(),
     },
   ]);
   const [inputText, setInputText] = useState('');
+  const [quickReplies, setQuickReplies] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [suggestedEvents, setSuggestedEvents] = useState<SuggestedEvent[]>([]);
   const [eventsExpanded, setEventsExpanded] = useState(true);
@@ -96,7 +111,7 @@ const ChatScreen: React.FC = () => {
     if (type === 'self') {
       return {
         id: Date.now().toString(),
-        text: "I'm Migo AI — your personal event discovery assistant! I help you find events tailored to your interests and location, suggest things to do this weekend, compare event options, and plan outings. Just ask me anything about events, venues, or what's happening near you!",
+        text: t('chat_self_reply'),
         sender: 'ai',
         timestamp: new Date(),
       };
@@ -104,8 +119,8 @@ const ChatScreen: React.FC = () => {
     // interests
     const interests = user?.interests ?? [];
     const text = interests.length > 0
-      ? `Your current interests are: ${interests.join(', ')}.\n\nWould you like to update them?`
-      : "I don't see any interests saved for your profile yet. Would you like to set them up?";
+      ? t('chat_interests_reply', { interests: interests.join(', ') })
+      : t('chat_no_interests_reply');
     return {
       id: Date.now().toString(),
       text,
@@ -129,7 +144,7 @@ const ChatScreen: React.FC = () => {
     if (user?.interests && user.interests.length > 0) {
       const interestsMessage: Message = {
         id: 'interests-info',
-        text: `I see you're interested in: ${user.interests.join(', ')}. I'll keep this in mind when suggesting events!`,
+        text: t('chat_interest_notice', { interests: user.interests.join(', ') }),
         sender: 'ai',
         timestamp: new Date(),
       };
@@ -137,10 +152,11 @@ const ChatScreen: React.FC = () => {
     }
   }, [user?.interests]);
 
-  const handleSendMessage = async () => {
-    if (!inputText.trim() || isLoading) return;
+  const handleSendMessage = async (presetText?: string) => {
+    const textToSend = (presetText ?? inputText).trim();
+    if (!textToSend || isLoading) return;
 
-    const userMessage = inputText.trim();
+    const userMessage = textToSend;
     setInputText('');
 
     // Add user message
@@ -180,10 +196,20 @@ const ChatScreen: React.FC = () => {
           text: response.message,
           sender: 'ai',
           timestamp: new Date(),
+          sources: response.tourismSources,
+          grounding: response.grounding,
         };
         
         setMessages(prev => [...prev, aiMessage]);
-        
+
+        // Quick-reply chips: the backend suggests follow-ups the user can tap
+        // to send immediately.
+        const chips = [
+          ...(response.suggestions || []),
+          ...(response.nextQuestions || []),
+        ];
+        setQuickReplies([...new Set(chips)].slice(0, 4));
+
         // Show suggested events if available
         if (response.suggestedEvents && response.suggestedEvents.length > 0) {
           setSuggestedEvents(response.suggestedEvents);
@@ -220,7 +246,7 @@ const ChatScreen: React.FC = () => {
       // Add error message
       const errorMessage: Message = {
         id: (Date.now() + 2).toString(),
-        text: "Sorry, I'm having trouble connecting to the AI service. Please try again.",
+        text: t('chat_offline'),
         sender: 'ai',
         timestamp: new Date(),
         isError: true,
@@ -229,9 +255,9 @@ const ChatScreen: React.FC = () => {
       setMessages(prev => [...prev, errorMessage]);
       
       Alert.alert(
-        'Connection Error',
-        'Unable to connect to AI service. Please check your internet connection and try again.',
-        [{ text: 'OK' }]
+        t('chat_connection_error'),
+        t('chat_connection_help'),
+        [{ text: t('ok') }]
       );
     }
   };
@@ -241,26 +267,48 @@ const ChatScreen: React.FC = () => {
     
     switch (action) {
       case 'events-nearby':
-        quickMessage = "What events are happening near me this weekend?";
+        quickMessage = t('qa_nearby');
         break;
       case 'by-interests':
-        quickMessage = "Suggest events based on my interests";
+        quickMessage = t('qa_interests');
         break;
       case 'free-events':
-        quickMessage = "Show me free events in my area";
+        quickMessage = t('qa_free');
         break;
       case 'popular':
-        quickMessage = "What are the most popular events right now?";
+        quickMessage = t('qa_popular');
         break;
       default:
         quickMessage = action;
     }
     
-    setInputText(quickMessage);
+    void handleSendMessage(quickMessage);
   };
 
   const handleEventPress = (eventId: string) => {
     navigation.navigate('EventDetail', { eventId });
+  };
+
+  const handleSaveEvent = async (eventId: string) => {
+    try {
+      await eventService.bookmarkEvent(eventId);
+      Alert.alert(t('chat_saved'), t('chat_saved_help'));
+    } catch {
+      Alert.alert(t('chat_save_failed'), t('chat_save_failed_help'));
+    }
+  };
+
+  const toggleTourismSource = (messageId: string, sourceId: number): void => {
+    setMessages(previous => previous.map(message => {
+      if (message.id !== messageId) return message;
+      const expanded = message.expandedTourismSources || [];
+      return {
+        ...message,
+        expandedTourismSources: expanded.includes(sourceId)
+          ? expanded.filter(id => id !== sourceId)
+          : [...expanded, sourceId],
+      };
+    }));
   };
 
   const renderMessage = ({ item }: { item: Message }) => {
@@ -270,17 +318,17 @@ const ChatScreen: React.FC = () => {
       <View style={[styles.messageContainer, isUser ? styles.userMessageContainer : styles.aiMessageContainer]}>
         {!isUser && (
           <View style={styles.aiAvatar}>
-            <Ionicons name="sparkles" size={16} color="#3b82f6" />
+            <Ionicons name="sparkles" size={16} color={colors.primary} />
           </View>
         )}
 
         {isUser ? (
-          <View style={[styles.messageBubble, styles.userBubble]}>
+          <LinearGradient colors={gradients.primaryButton} style={[styles.messageBubble, styles.userBubble]}>
             <Text style={[styles.messageText, styles.userMessageText]}>{item.text}</Text>
             <Text style={[styles.timestamp, styles.userTimestamp]}>
               {item.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </Text>
-          </View>
+          </LinearGradient>
         ) : (
           <View style={styles.aiMessageWrapper}>
             <View style={[styles.messageBubble, styles.aiBubble]}>
@@ -289,13 +337,59 @@ const ChatScreen: React.FC = () => {
                 {item.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </Text>
             </View>
+            {item.sources?.length ? (
+              <View style={styles.tourismSourcesContainer}>
+                <Text style={[styles.tourismSourcesLabel, isRTL && styles.rtlText]}>
+                  {t('chat_sources_label')}
+                </Text>
+                {item.sources.map(source => {
+                  const expanded = item.expandedTourismSources?.includes(source.id) || false;
+                  return (
+                    <View key={`${item.id}-${source.id}`} style={styles.tourismSourceCard}>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        onPress={() => toggleTourismSource(item.id, source.id)}
+                        style={styles.tourismSourceDetails}
+                      >
+                        <Text style={[styles.tourismSourceLine, isRTL && styles.rtlText]} numberOfLines={1}>
+                          [{source.id}] {source.siteName} · {source.emirate}
+                        </Text>
+                        <Text style={[styles.tourismSourceTitle, isRTL && styles.rtlText]} numberOfLines={1}>
+                          {source.title}
+                        </Text>
+                        <Text
+                          style={[styles.tourismSourceExcerpt, isRTL && styles.rtlText]}
+                          numberOfLines={expanded ? undefined : 4}
+                        >
+                          “{source.excerpt}”
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        accessibilityRole="link"
+                        style={[styles.tourismSourceOpen, isRTL && styles.rtlRow]}
+                        onPress={() => void Linking.openURL(source.url).catch(() => undefined)}
+                      >
+                        <Ionicons name="open-outline" size={15} color={colors.primary} />
+                        <Text style={[styles.tourismSourceOpenText, isRTL && styles.rtlText]}>
+                          {t('chat_source_open')}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+              </View>
+            ) : item.grounding === 'not_found' ? (
+              <Text style={[styles.noOfficialSource, isRTL && styles.rtlText]}>
+                {t('chat_no_official_source')}
+              </Text>
+            ) : null}
             {item.showUpdateInterestsButton && (
               <TouchableOpacity
                 style={styles.updateInterestsButton}
                 onPress={() => (navigation as any).push('Interests')}
               >
-                <Ionicons name="heart-outline" size={16} color="#fff" />
-                <Text style={styles.updateInterestsButtonText}>Update Interests</Text>
+                <Ionicons name="heart-outline" size={16} color={colors.textInverse} />
+          <Text style={styles.updateInterestsButtonText}>{t('update_interests')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -303,7 +397,7 @@ const ChatScreen: React.FC = () => {
 
         {isUser && (
           <View style={styles.userAvatar}>
-            <Ionicons name="person" size={16} color="#fff" />
+            <Ionicons name="person" size={16} color={colors.textInverse} />
           </View>
         )}
       </View>
@@ -323,7 +417,7 @@ const ChatScreen: React.FC = () => {
         />
       ) : (
         <View style={styles.eventImagePlaceholder}>
-          <Ionicons name="image-outline" size={32} color="#d1d5db" />
+          <Ionicons name="image-outline" size={32} color={colors.border} />
         </View>
       )}
       <View style={styles.eventCardBody}>
@@ -336,13 +430,13 @@ const ChatScreen: React.FC = () => {
         </Text>
         <View style={styles.eventDetails}>
           <View style={styles.eventDetail}>
-            <Ionicons name="calendar-outline" size={12} color="#6b7280" />
+            <Ionicons name="calendar-outline" size={12} color={colors.textMuted} />
             <Text style={styles.eventDetailText}>
               {new Date(item.startDate).toLocaleDateString()}
             </Text>
           </View>
           <View style={styles.eventDetail}>
-            <Ionicons name="location-outline" size={12} color="#6b7280" />
+            <Ionicons name="location-outline" size={12} color={colors.textMuted} />
             <Text style={styles.eventDetailText}>
               {item.venue}, {item.city}
             </Text>
@@ -351,44 +445,78 @@ const ChatScreen: React.FC = () => {
         <Text style={styles.eventDescription} numberOfLines={2}>
           {item.description}
         </Text>
+        <View style={styles.eventCardActions}>
+          <TouchableOpacity
+            style={styles.eventCardActionPrimary}
+            onPress={() => handleEventPress(item.id)}
+          >
+            <Ionicons name="ticket-outline" size={14} color={colors.textInverse} />
+            <Text style={styles.eventCardActionPrimaryText}>{t('view_details')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.eventCardActionSecondary}
+            onPress={() => handleSaveEvent(item.id)}
+          >
+            <Ionicons name="bookmark-outline" size={14} color={colors.primary} />
+            <Text style={styles.eventCardActionSecondaryText}>{t('save')}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </TouchableOpacity>
   );
 
+  const renderQuickReplies = () => {
+    if (quickReplies.length === 0 || isTyping) return null;
+    return (
+      <View style={styles.quickRepliesContainer}>
+        {quickReplies.map((text, idx) => (
+          <Chip
+            key={idx}
+            label={text}
+            onPress={() => {
+              setQuickReplies([]);
+              void handleSendMessage(text);
+            }}
+          />
+        ))}
+      </View>
+    );
+  };
+
   const renderQuickActions = () => (
     <View style={styles.quickActionsContainer}>
-      <Text style={styles.quickActionsTitle}>Quick Actions</Text>
+      <Text style={styles.quickActionsTitle}>{t('quick_actions_title')}</Text>
       <View style={styles.quickActionsGrid}>
         <TouchableOpacity
           style={styles.quickActionButton}
           onPress={() => handleQuickAction('events-nearby')}
         >
-          <Ionicons name="navigate" size={20} color="#3b82f6" />
-          <Text style={styles.quickActionText}>Nearby</Text>
+          <Ionicons name="navigate" size={20} color={colors.primary} />
+          <Text style={styles.quickActionText}>{t('qa_nearby')}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity
           style={styles.quickActionButton}
           onPress={() => handleQuickAction('by-interests')}
         >
-          <Ionicons name="heart" size={20} color="#3b82f6" />
-          <Text style={styles.quickActionText}>For You</Text>
+          <Ionicons name="heart" size={20} color={colors.primary} />
+          <Text style={styles.quickActionText}>{t('qa_interests')}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity
           style={styles.quickActionButton}
           onPress={() => handleQuickAction('free-events')}
         >
-          <Ionicons name="wallet" size={20} color="#3b82f6" />
-          <Text style={styles.quickActionText}>Free</Text>
+          <Ionicons name="wallet" size={20} color={colors.primary} />
+          <Text style={styles.quickActionText}>{t('qa_free')}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity
           style={styles.quickActionButton}
           onPress={() => handleQuickAction('popular')}
         >
-          <Ionicons name="trending-up" size={20} color="#3b82f6" />
-          <Text style={styles.quickActionText}>Popular</Text>
+          <Ionicons name="trending-up" size={20} color={colors.primary} />
+          <Text style={styles.quickActionText}>{t('qa_popular')}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -398,31 +526,43 @@ const ChatScreen: React.FC = () => {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
+        style={[styles.keyboardView, isWebDesktop && styles.desktopKeyboard]}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         {/* Header */}
         <View style={styles.header}>
+          {navigationRef.current?.canGoBack() ? (
+            <TouchableOpacity
+              onPress={() => navigationRef.current?.goBack()}
+              accessibilityRole="button"
+              accessibilityLabel={t('back')}
+              style={styles.backButton}
+            >
+              <Ionicons name="chevron-back" size={24} color={colors.text} />
+            </TouchableOpacity>
+          ) : null}
           <View style={styles.headerContent}>
             <View style={styles.aiHeaderIcon}>
-              <Ionicons name="sparkles" size={24} color="#3b82f6" />
+              <Ionicons name="sparkles" size={24} color={colors.primary} />
             </View>
             <View>
-              <Text style={styles.headerTitle}>Migo AI Assistant</Text>
+              <Text style={styles.headerTitle}>{t('chat_title')}</Text>
               <Text style={styles.headerSubtitle}>
-                {isTyping ? 'AI is typing...' : 'Your personal event guide'}
+                {isTyping ? t('loading') : t('chat_subtitle')}
               </Text>
             </View>
           </View>
           <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={t('chat_title')}
             style={styles.infoButton}
             onPress={() => Alert.alert(
-              'About Migo AI',
-              'Migo AI helps you discover events based on your interests, location, and preferences. All suggestions are personalized and safe.',
-              [{ text: 'Got it' }]
+              t('chat_title'),
+              t('chat_subtitle'),
+              [{ text: t('ok') }]
             )}
           >
-            <Ionicons name="information-circle-outline" size={24} color="#6b7280" />
+            <Ionicons name="information-circle-outline" size={24} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
 
@@ -437,9 +577,9 @@ const ChatScreen: React.FC = () => {
             showsVerticalScrollIndicator={false}
             ListHeaderComponent={
               <View style={styles.welcomeSection}>
-                <Text style={styles.welcomeTitle}>Welcome to Migo AI</Text>
+                <Text style={styles.welcomeTitle}>{t('welcome')}</Text>
                 <Text style={styles.welcomeText}>
-                  Ask me about events, get personalized recommendations, or use quick actions below.
+                  {t('chat_subtitle')}
                 </Text>
                 {renderQuickActions()}
               </View>
@@ -453,7 +593,7 @@ const ChatScreen: React.FC = () => {
                       <View style={styles.typingDot} />
                       <View style={styles.typingDot} />
                     </View>
-                    <Text style={styles.typingText}>Migo AI is thinking...</Text>
+                    <Text style={styles.typingText}>{t('loading')}</Text>
                   </View>
                 )}
                 
@@ -465,12 +605,12 @@ const ChatScreen: React.FC = () => {
                       activeOpacity={0.7}
                     >
                       <Text style={styles.suggestedEventsTitle}>
-                        Suggested Events ({suggestedEvents.length})
+                        {t('top_upcoming_events')} ({suggestedEvents.length})
                       </Text>
                       <Ionicons
                         name={eventsExpanded ? 'chevron-up' : 'chevron-down'}
                         size={18}
-                        color="#6b7280"
+                        color={colors.textMuted}
                       />
                     </TouchableOpacity>
                     {eventsExpanded && (
@@ -495,8 +635,8 @@ const ChatScreen: React.FC = () => {
                             });
                           }}
                         >
-                          <Text style={styles.viewAllButtonText}>View All Events</Text>
-                          <Ionicons name="arrow-forward" size={16} color="#3b82f6" />
+                          <Text style={styles.viewAllButtonText}>{t('events')}</Text>
+                          <Ionicons name="arrow-forward" size={16} color={colors.primary} />
                         </TouchableOpacity>
                       </>
                     )}
@@ -507,15 +647,19 @@ const ChatScreen: React.FC = () => {
           />
         </View>
 
+        {/* Quick-reply chips */}
+        {renderQuickReplies()}
+
         {/* Input Area */}
         <View style={styles.inputContainer}>
           <View style={styles.inputWrapper}>
             <TextInput
+              accessibilityLabel={t('chat_placeholder')}
               style={styles.textInput}
               value={inputText}
               onChangeText={setInputText}
-              placeholder="Ask about events, recommendations, or planning..."
-              placeholderTextColor="#9ca3af"
+              placeholder={t('chat_placeholder')}
+              placeholderTextColor={colors.textMuted}
               multiline
               maxLength={500}
               editable={!isLoading}
@@ -524,18 +668,30 @@ const ChatScreen: React.FC = () => {
               returnKeyType="send"
               textContentType="none"
               blurOnSubmit={false}
-              onSubmitEditing={handleSendMessage}
+              onSubmitEditing={() => void handleSendMessage()}
+              onKeyPress={(e) => {
+                const native = e.nativeEvent as { key: string; shiftKey?: boolean };
+                if (Platform.OS === 'web' && native.key === 'Enter' && !native.shiftKey) {
+                  e.preventDefault();
+                  void handleSendMessage();
+                }
+              }}
             />
             <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={t('send_message')}
+              accessibilityState={{ disabled: !inputText.trim() || isLoading }}
               style={[styles.sendButton, (!inputText.trim() || isLoading) && styles.sendButtonDisabled]}
-              onPress={handleSendMessage}
+              onPress={() => void handleSendMessage()}
               disabled={!inputText.trim() || isLoading}
             >
-              {isLoading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Ionicons name="send" size={20} color="#fff" />
-              )}
+              <LinearGradient colors={gradients.primaryButton} style={styles.sendGradient}>
+                {isLoading ? (
+                  <ActivityIndicator size="small" color={colors.textInverse} />
+                ) : (
+                  <Ionicons name="send" size={20} color={colors.textInverse} />
+                )}
+              </LinearGradient>
             </TouchableOpacity>
           </View>
           
@@ -552,20 +708,26 @@ const ChatScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.bg,
   },
   keyboardView: {
     flex: 1,
   },
+  desktopKeyboard: { width: '100%', maxWidth: 820, alignSelf: 'center' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    backgroundColor: colors.surface,
+  },
+  backButton: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
   },
   headerContent: {
     flexDirection: 'row',
@@ -576,37 +738,38 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primarySoft,
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1f2937',
+    ...type.h3,
   },
   headerSubtitle: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textMuted,
     marginTop: 2,
   },
   infoButton: {
-    padding: 4,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   messagesContainer: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.bg,
   },
   messagesList: {
     paddingHorizontal: 16,
     paddingVertical: 20,
   },
   welcomeSection: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
-    shadowColor: '#000',
+    shadowColor: colors.text,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -615,12 +778,12 @@ const styles = StyleSheet.create({
   welcomeTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: colors.text,
     marginBottom: 8,
   },
   welcomeText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.textMuted,
     lineHeight: 20,
   },
   messageContainer: {
@@ -638,19 +801,17 @@ const styles = StyleSheet.create({
     maxWidth: '80%',
     padding: 12,
     borderRadius: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    ...shadow.card,
   },
   userBubble: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     borderBottomRightRadius: 4,
     marginLeft: 8,
   },
   aiBubble: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderBottomLeftRadius: 4,
     marginRight: 8,
   },
@@ -659,10 +820,10 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   userMessageText: {
-    color: '#fff',
+    color: colors.textInverse,
   },
   aiMessageText: {
-    color: '#1f2937',
+    color: colors.text,
   },
   timestamp: {
     fontSize: 10,
@@ -670,18 +831,18 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   userTimestamp: {
-    color: '#fff',
+    color: colors.textInverse,
     textAlign: 'right',
   },
   aiTimestamp: {
-    color: '#6b7280',
+    color: colors.textMuted,
     textAlign: 'left',
   },
   aiAvatar: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primarySoft,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
@@ -690,7 +851,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
@@ -701,7 +862,7 @@ const styles = StyleSheet.create({
   quickActionsTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: colors.textSecondary,
     marginBottom: 12,
   },
   quickActionsGrid: {
@@ -712,7 +873,7 @@ const styles = StyleSheet.create({
   quickActionButton: {
     flex: 1,
     minWidth: '22%',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceAlt,
     paddingVertical: 12,
     paddingHorizontal: 8,
     borderRadius: 12,
@@ -721,18 +882,72 @@ const styles = StyleSheet.create({
   },
   quickActionText: {
     fontSize: 12,
-    color: '#374151',
+    color: colors.textSecondary,
     fontWeight: '500',
+  },
+  quickRepliesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 16,
+    paddingBottom: 6,
+    gap: 8,
+  },
+  quickReplyChip: {
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: colors.primarySoft,
+    maxWidth: '90%',
+  },
+  quickReplyChipText: {
+    fontSize: 13,
+    color: colors.primaryDark,
+  },
+  eventCardActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  eventCardActionPrimary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  eventCardActionPrimaryText: {
+    color: colors.textInverse,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  eventCardActionSecondary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  eventCardActionSecondaryText: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '600',
   },
   typingIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     padding: 12,
     borderRadius: 18,
     alignSelf: 'flex-start',
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: colors.text,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
@@ -746,12 +961,12 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#d1d5db',
+    backgroundColor: colors.border,
     marginHorizontal: 2,
   },
   typingText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.textMuted,
   },
   suggestedEventsSection: {
     marginTop: 20,
@@ -766,18 +981,18 @@ const styles = StyleSheet.create({
   suggestedEventsTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: colors.text,
   },
   suggestedEventsList: {
     gap: 12,
   },
   eventCard: {
     width: 260,
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     borderRadius: 12,
     marginRight: 12,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: colors.text,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 6,
@@ -790,7 +1005,7 @@ const styles = StyleSheet.create({
   eventImagePlaceholder: {
     width: '100%',
     height: 130,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceAlt,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -805,19 +1020,19 @@ const styles = StyleSheet.create({
   },
   eventCategory: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textMuted,
     fontWeight: '600',
     textTransform: 'uppercase',
   },
   eventPrice: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#3b82f6',
+    color: colors.primary,
   },
   eventTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: colors.text,
     marginBottom: 8,
     lineHeight: 22,
   },
@@ -831,12 +1046,12 @@ const styles = StyleSheet.create({
   },
   eventDetailText: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textMuted,
     marginLeft: 6,
   },
   eventDescription: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textMuted,
     lineHeight: 16,
   },
   viewAllButton: {
@@ -848,21 +1063,21 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: '#3b82f6',
-    backgroundColor: '#eff6ff',
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoft,
   },
   viewAllButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#3b82f6',
+    color: colors.primary,
   },
   inputContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: Platform.OS === 'ios' ? 34 : 12,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: colors.border,
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -871,31 +1086,31 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.bg,
     borderRadius: 24,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 15,
-    color: '#1f2937',
+    color: colors.text,
     maxHeight: 120,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
   },
   sendButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#3b82f6',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 4,
   },
   sendButtonDisabled: {
-    backgroundColor: '#93c5fd',
+    backgroundColor: colors.primarySoft,
   },
+  sendGradient: { flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center', borderRadius: 24 },
   charCount: {
     fontSize: 11,
-    color: '#9ca3af',
+    color: colors.textMuted,
     textAlign: 'right',
     marginTop: 4,
   },
@@ -904,6 +1119,72 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     alignItems: 'flex-start',
     marginRight: 8,
+    minWidth: 0,
+  },
+  tourismSourcesContainer: {
+    width: '100%',
+    minWidth: 0,
+    marginTop: 10,
+    gap: 8,
+  },
+  tourismSourcesLabel: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  tourismSourceCard: {
+    width: '100%',
+    minWidth: 0,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  tourismSourceDetails: {
+    minWidth: 0,
+  },
+  tourismSourceLine: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  tourismSourceTitle: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  tourismSourceExcerpt: {
+    color: colors.textMuted,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  tourismSourceOpen: {
+    minHeight: 36,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+  },
+  tourismSourceOpenText: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: '600',
+    flexShrink: 1,
+  },
+  noOfficialSource: {
+    color: colors.textMuted,
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 8,
+  },
+  rtlText: {
+    textAlign: 'right',
+  },
+  rtlRow: {
+    flexDirection: 'row-reverse',
   },
   updateInterestsButton: {
     flexDirection: 'row',
@@ -912,13 +1193,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     borderRadius: 20,
   },
   updateInterestsButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
+    color: colors.textInverse,
   },
 });
 
