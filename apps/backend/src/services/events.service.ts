@@ -9,6 +9,7 @@ export interface EventFilters {
   category?: string;
   subcategory?: string;
   city?: string;
+  source?: string;
   country?: string;
   dateFrom?: Date | string;
   dateTo?: Date | string;
@@ -81,6 +82,10 @@ export class EventService {
     
     if (filters.city) {
       where.city = filters.city;
+    }
+
+    if (filters.source) {
+      where.externalSource = filters.source;
     }
     
     if (filters.country) {

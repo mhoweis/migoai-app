@@ -3,6 +3,9 @@ import en from './en';
 const ar: Record<keyof typeof en, string> = {
   home: 'الرئيسية',
   events: 'الفعاليات',
+  communities: 'المجتمعات',
+  communities_subtitle: 'الفعاليات القادمة من مجتمعات دبي',
+  communities_empty: 'لا توجد فعاليات مجتمعية قادمة حالياً.',
   discover: 'استكشف',
   chat: 'محادثة Migo',
   wallet: 'المحفظة',

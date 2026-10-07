@@ -1,6 +1,9 @@
 const en = {
   home: 'Home',
   events: 'Events',
+  communities: 'Communities',
+  communities_subtitle: 'Upcoming events from Dubai communities',
+  communities_empty: 'No upcoming community events right now.',
   discover: 'Discover',
   chat: 'AI Chat',
   wallet: 'Wallet',

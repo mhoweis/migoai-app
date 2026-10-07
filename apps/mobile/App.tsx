@@ -17,6 +17,7 @@ import RegisterScreen from "./src/screens/RegisterScreen";
 import InterestsScreen from "./src/screens/InterestsScreen";
 import HomeScreen from "./src/screens/HomeScreen";
 import EventsScreen from "./src/screens/EventsScreen";
+import CommunitiesScreen from "./src/screens/CommunitiesScreen";
 import EventDetailScreen from "./src/screens/EventsDetailScreen";
 import ChatScreen from "./src/screens/ChatScreen";
 import AIEventsScreen from "./src/screens/AIEventsScreen";
@@ -68,6 +69,9 @@ const CustomTabIcon = ({ routeName, focused }: { routeName: string, focused: boo
       break;
     case "EventsTab":
       iconName = focused ? 'compass' : 'compass-outline';
+      break;
+    case "CommunitiesTab":
+      iconName = focused ? 'people' : 'people-outline';
       break;
     case "WalletTab":
       iconName = focused ? 'wallet' : 'wallet-outline';
@@ -122,6 +126,11 @@ function MainTabs() {
         name="EventsTab"
         component={EventsScreen}
         options={{ title: t('events') }}
+      />
+      <Tab.Screen
+        name="CommunitiesTab"
+        component={CommunitiesScreen}
+        options={{ title: t('communities') }}
       />
       <Tab.Screen
         name="WalletTab"
@@ -262,6 +271,11 @@ function MainTabsWithProfileStack() {
         options={{ title: t('events') }}
       />
       <Tab.Screen
+        name="CommunitiesTab"
+        component={CommunitiesScreen}
+        options={{ title: t('communities') }}
+      />
+      <Tab.Screen
         name="WalletTab"
         component={WalletScreen}
         options={{ title: t('wallet') }}
@@ -284,7 +298,7 @@ function getActiveTab(state: any = navigationRef.getRootState()): string | undef
       break;
     }
   }
-  const tabRoutes = ['HomeTab', 'EventsTab', 'WalletTab', 'ProfileTab'];
+  const tabRoutes = ['HomeTab', 'EventsTab', 'CommunitiesTab', 'WalletTab', 'ProfileTab'];
 
   while (nestedState?.routes?.length) {
     const focusedRoute: any = nestedState.routes[nestedState.index ?? 0];
@@ -303,7 +317,7 @@ function AppFrame({ children, showChatFab, currentRoute, activeTab }: {
   activeTab?: string;
 }) {
   const { isWebDesktop } = useBreakpoint();
-  const showFabOnRoute = ['Main', 'HomeTab', 'EventsTab', 'WalletTab', 'ProfileTab'].includes(currentRoute || 'Main');
+  const showFabOnRoute = ['Main', 'HomeTab', 'EventsTab', 'CommunitiesTab', 'WalletTab', 'ProfileTab'].includes(currentRoute || 'Main');
   const centeredDesktopRoutes = new Set([
     'Interests',
     'ConnectionTest',

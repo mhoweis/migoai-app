@@ -14,6 +14,7 @@ const FlexSpacer = View as unknown as React.ComponentType<any>;
 const links = [
   { route: 'HomeTab', label: 'home', icon: 'home-outline' as const },
   { route: 'EventsTab', label: 'discover', icon: 'compass-outline' as const },
+  { route: 'CommunitiesTab', label: 'communities', icon: 'people-outline' as const },
   { route: 'WalletTab', label: 'wallet', icon: 'wallet-outline' as const },
   { route: 'ProfileTab', label: 'profile', icon: 'person-outline' as const },
 ];

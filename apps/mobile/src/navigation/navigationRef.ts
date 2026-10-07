@@ -77,6 +77,7 @@ export function navigateToMainStack(screenName: string, params?: Record<string, 
 const TAB_ROUTE_MAP: Record<string, string> = {
   Home: 'HomeTab',
   Events: 'EventsTab',
+  Communities: 'CommunitiesTab',
   Profile: 'ProfileTab',
   Wallet: 'WalletTab',
 };

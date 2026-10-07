@@ -68,6 +68,7 @@ router.get("/", asyncHandler(async (req: Request, res: Response) => {
     category: parseQueryParam<string>(req.query.category),
     subcategory: parseQueryParam<string>(req.query.subcategory),
     city: parseQueryParam<string>(req.query.city),
+    source: parseQueryParam<string>(req.query.source),
     country: parseQueryParam<string>(req.query.country),
     dateFrom: parseDateParam(req.query.dateFrom),
     dateTo: parseDateParam(req.query.dateTo),
