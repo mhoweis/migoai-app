@@ -26,13 +26,64 @@ import {
 } from '../services/supplier-analytics.service';
 import { setSupplierCampaignStatus } from '../services/supplier-campaigns.service';
 import { updateSupplierSourceCache } from '../services/providers/source-registry';
+import { crawlAll } from '../services/tourism/crawler';
+import { tourismSites } from '../services/tourism/sources';
+import logger from '../utils/logger';
 
 const router = Router();
+let tourismRefreshInFlight: Promise<void> | null = null;
 
 router.use(authenticate, requireAdmin);
 
 router.get('/', (_req, res) => {
   res.json({ success: true, data: { message: 'Admin endpoint' } });
+});
+
+router.get('/tourism/status', asyncHandler(async (_req: AuthRequest, res: Response) => {
+  const [latestRuns, passageCounts] = await Promise.all([
+    Promise.all(tourismSites.map(site => prisma.tourismCrawlRun.findFirst({
+      where: { site: site.key },
+      orderBy: { startedAt: 'desc' },
+    }))),
+    prisma.tourismPassage.groupBy({
+      by: ['site', 'language'],
+      _count: { _all: true },
+    }),
+  ]);
+  res.json({
+    success: true,
+    data: {
+      sites: tourismSites.map((site, index) => ({
+        site: site.key,
+        siteName: site.name,
+        latestRun: latestRuns[index],
+        passageCounts: passageCounts
+          .filter(row => row.site === site.key)
+          .map(row => ({ language: row.language, count: row._count._all })),
+      })),
+    },
+  });
+}));
+
+router.post('/tourism/refresh', (_req: AuthRequest, res: Response) => {
+  const alreadyRunning = Boolean(tourismRefreshInFlight);
+  if (!tourismRefreshInFlight) {
+    const run: Promise<void> = crawlAll()
+      .then(results => {
+        logger.info('[tourism] manual refresh completed', { results });
+      })
+      .catch(error => {
+        logger.error('[tourism] manual refresh failed', { error });
+      })
+      .finally(() => {
+        if (tourismRefreshInFlight === run) tourismRefreshInFlight = null;
+      });
+    tourismRefreshInFlight = run;
+  }
+  res.status(202).json({
+    success: true,
+    data: { status: alreadyRunning ? 'already_running' : 'started' },
+  });
 });
 
 router.get('/users', asyncHandler(async (req: AuthRequest, res: Response) => {

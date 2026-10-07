@@ -7,6 +7,17 @@ export interface ChatMessage {
   timestamp: Date;
 }
 
+export interface TourismSource {
+  id: number;
+  site: string;
+  siteName: string;
+  emirate: string;
+  title: string;
+  url: string;
+  excerpt: string;
+  fetchedAt: string;
+}
+
 export interface ChatResponse {
   message: string;
   suggestedEvents?: Array<{
@@ -22,6 +33,8 @@ export interface ChatResponse {
   }>;
   suggestions?: string[];
   nextQuestions?: string[];
+  tourismSources?: TourismSource[];
+  grounding?: 'official_sources' | 'not_found';
   timestamp: Date;
 }
 
@@ -70,6 +83,8 @@ class ChatService {
         message: data?.response || "I'm here to help you find great events!",
         suggestions: data?.suggestions,
         nextQuestions: data?.nextQuestions,
+        tourismSources: data?.tourismSources,
+        grounding: data?.grounding,
         timestamp: new Date(),
       };
 

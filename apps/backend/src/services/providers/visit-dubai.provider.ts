@@ -16,7 +16,7 @@ const indexDefault = 'prod104_vd_en';
 const execFileAsync = promisify(execFile);
 let discovered: { appId: string; apiKey: string } | undefined;
 
-class VisitDubaiProvider implements EventProvider {
+export class VisitDubaiProvider implements EventProvider {
   readonly name = 'visit-dubai';
 
   isConfigured(): boolean {
@@ -58,7 +58,7 @@ class VisitDubaiProvider implements EventProvider {
     }
   }
 
-  private async getCredentials(): Promise<{ appId: string; apiKey: string }> {
+  async getCredentials(): Promise<{ appId: string; apiKey: string }> {
     if (config.VISIT_DUBAI_ALGOLIA_APP_ID && config.VISIT_DUBAI_ALGOLIA_API_KEY) {
       return { appId: config.VISIT_DUBAI_ALGOLIA_APP_ID, apiKey: config.VISIT_DUBAI_ALGOLIA_API_KEY };
     }
@@ -88,7 +88,7 @@ class VisitDubaiProvider implements EventProvider {
     return discovered;
   }
 
-  private async fetchHtml(url: string): Promise<string> {
+  async fetchHtml(url: string): Promise<string> {
     try {
       const response = await http.get(url, { headers: htmlHeaders });
       return response.data;

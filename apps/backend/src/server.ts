@@ -4,6 +4,7 @@ import prisma from './config/database';
 import config from './config/env';
 import { startPlaceWorker, stopPlaceWorker } from './services/places/place-worker';
 import * as eventSyncScheduler from './services/event-sync.scheduler';
+import * as tourismScheduler from './services/tourism/tourism.scheduler';
 import { refreshSupplierSourceCache } from './services/providers/source-registry';
 
 const PORT = config.PORT || 5000;
@@ -92,6 +93,7 @@ async function bootstrap() {
     // PLACES_WORKER_ENABLED=false on instances that should not scrape.
     startPlaceWorker();
     eventSyncScheduler.start();
+    tourismScheduler.start();
   });
 
   // Handle unhandled promise rejections
@@ -107,6 +109,7 @@ async function bootstrap() {
 
     stopPlaceWorker();
     eventSyncScheduler.stop();
+    tourismScheduler.stop();
 
     server.close(async () => {
       console.log('🛑 Server closed');

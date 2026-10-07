@@ -815,6 +815,42 @@ model AiUsageDaily {
   @@map("ai_usage_daily")
 }
 
+model TourismPassage {
+  id          String   @id @default(cuid())
+  site        String   @db.VarChar(40)
+  emirate     String   @db.VarChar(40)
+  region      String?  @db.VarChar(40)
+  language    String   @db.VarChar(5)
+  url         String   @db.Text
+  pageTitle   String   @map("page_title") @db.Text
+  heading     String?  @db.Text
+  text        String   @db.Text
+  contentHash String   @map("content_hash") @db.VarChar(64)
+  position    Int
+  fetchedAt   DateTime @map("fetched_at")
+  search      Unsupported("tsvector")?
+
+  @@unique([site, contentHash])
+  @@index([site])
+  @@index([emirate, language])
+  @@map("tourism_passages")
+}
+
+model TourismCrawlRun {
+  id           String    @id @default(cuid())
+  site         String    @db.VarChar(40)
+  status       String    @db.VarChar(20)
+  pagesFetched Int       @default(0) @map("pages_fetched")
+  pagesFailed  Int       @default(0) @map("pages_failed")
+  passages     Int       @default(0)
+  error        String?   @db.Text
+  startedAt    DateTime  @default(now()) @map("started_at")
+  finishedAt   DateTime? @map("finished_at")
+
+  @@index([site, startedAt])
+  @@map("tourism_crawl_runs")
+}
+
 /// Global daily LLM spend, plus the kill switch. One row per UTC day.
 /// When `killed` is true the agent degrades to plain search for everyone.
 model AiSpendDaily {

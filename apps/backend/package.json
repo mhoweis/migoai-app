@@ -21,6 +21,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "collect:events": "ts-node src/scripts/collect-events.ts",
+    "tourism:crawl": "ts-node src/scripts/crawl-tourism.ts",
     "import:platinumlist": "node scripts/import-platinumlist.js",
     "docker:build": "docker build -t migo-backend .",
     "docker:run": "docker-compose up -d"

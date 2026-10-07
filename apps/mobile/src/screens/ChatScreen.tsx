@@ -14,12 +14,13 @@ import {
   ActivityIndicator,
   Image,
   Alert,
+  Linking,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { navigationRef } from '../navigation/navigationRef';
 import { useUserStore } from '../store/userStore';
-import { chatService } from '../services/chat.service';
+import { chatService, TourismSource } from '../services/chat.service';
 import { api } from '../services/api';
 import { eventService } from '../services/event.service';
 import { useLocale } from '../i18n';
@@ -35,6 +36,9 @@ interface Message {
   timestamp: Date;
   isError?: boolean;
   showUpdateInterestsButton?: boolean;
+  sources?: TourismSource[];
+  grounding?: 'official_sources' | 'not_found';
+  expandedTourismSources?: number[];
 }
 
 interface SuggestedEvent {
@@ -53,7 +57,7 @@ const ChatScreen: React.FC = () => {
   const { isWebDesktop } = useBreakpoint();
   const navigation = useNavigation<any>();
   const { user } = useUserStore();
-  const { t } = useLocale();
+  const { t, isRTL } = useLocale();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -192,6 +196,8 @@ const ChatScreen: React.FC = () => {
           text: response.message,
           sender: 'ai',
           timestamp: new Date(),
+          sources: response.tourismSources,
+          grounding: response.grounding,
         };
         
         setMessages(prev => [...prev, aiMessage]);
@@ -292,6 +298,19 @@ const ChatScreen: React.FC = () => {
     }
   };
 
+  const toggleTourismSource = (messageId: string, sourceId: number): void => {
+    setMessages(previous => previous.map(message => {
+      if (message.id !== messageId) return message;
+      const expanded = message.expandedTourismSources || [];
+      return {
+        ...message,
+        expandedTourismSources: expanded.includes(sourceId)
+          ? expanded.filter(id => id !== sourceId)
+          : [...expanded, sourceId],
+      };
+    }));
+  };
+
   const renderMessage = ({ item }: { item: Message }) => {
     const isUser = item.sender === 'user';
 
@@ -318,6 +337,52 @@ const ChatScreen: React.FC = () => {
                 {item.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </Text>
             </View>
+            {item.sources?.length ? (
+              <View style={styles.tourismSourcesContainer}>
+                <Text style={[styles.tourismSourcesLabel, isRTL && styles.rtlText]}>
+                  {t('chat_sources_label')}
+                </Text>
+                {item.sources.map(source => {
+                  const expanded = item.expandedTourismSources?.includes(source.id) || false;
+                  return (
+                    <View key={`${item.id}-${source.id}`} style={styles.tourismSourceCard}>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        onPress={() => toggleTourismSource(item.id, source.id)}
+                        style={styles.tourismSourceDetails}
+                      >
+                        <Text style={[styles.tourismSourceLine, isRTL && styles.rtlText]} numberOfLines={1}>
+                          [{source.id}] {source.siteName} · {source.emirate}
+                        </Text>
+                        <Text style={[styles.tourismSourceTitle, isRTL && styles.rtlText]} numberOfLines={1}>
+                          {source.title}
+                        </Text>
+                        <Text
+                          style={[styles.tourismSourceExcerpt, isRTL && styles.rtlText]}
+                          numberOfLines={expanded ? undefined : 4}
+                        >
+                          “{source.excerpt}”
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        accessibilityRole="link"
+                        style={[styles.tourismSourceOpen, isRTL && styles.rtlRow]}
+                        onPress={() => void Linking.openURL(source.url).catch(() => undefined)}
+                      >
+                        <Ionicons name="open-outline" size={15} color={colors.primary} />
+                        <Text style={[styles.tourismSourceOpenText, isRTL && styles.rtlText]}>
+                          {t('chat_source_open')}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+              </View>
+            ) : item.grounding === 'not_found' ? (
+              <Text style={[styles.noOfficialSource, isRTL && styles.rtlText]}>
+                {t('chat_no_official_source')}
+              </Text>
+            ) : null}
             {item.showUpdateInterestsButton && (
               <TouchableOpacity
                 style={styles.updateInterestsButton}
@@ -1054,6 +1119,72 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     alignItems: 'flex-start',
     marginRight: 8,
+    minWidth: 0,
+  },
+  tourismSourcesContainer: {
+    width: '100%',
+    minWidth: 0,
+    marginTop: 10,
+    gap: 8,
+  },
+  tourismSourcesLabel: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  tourismSourceCard: {
+    width: '100%',
+    minWidth: 0,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  tourismSourceDetails: {
+    minWidth: 0,
+  },
+  tourismSourceLine: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  tourismSourceTitle: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  tourismSourceExcerpt: {
+    color: colors.textMuted,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  tourismSourceOpen: {
+    minHeight: 36,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+  },
+  tourismSourceOpenText: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: '600',
+    flexShrink: 1,
+  },
+  noOfficialSource: {
+    color: colors.textMuted,
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 8,
+  },
+  rtlText: {
+    textAlign: 'right',
+  },
+  rtlRow: {
+    flexDirection: 'row-reverse',
   },
   updateInterestsButton: {
     flexDirection: 'row',
