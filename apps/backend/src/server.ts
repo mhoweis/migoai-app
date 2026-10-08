@@ -25,11 +25,21 @@ async function isOllamaRunning(): Promise<boolean> {
   }
 }
 
+// Set when the `ollama` binary is missing (e.g. on a hosted server), so the
+// API starts without waiting for an AI provider that can never come up.
+let ollamaSpawnFailed = false;
+
 /** Spawns `ollama serve` in the background (detached so it survives nodemon reloads). */
 function startOllamaProcess(): void {
   const proc = spawn('ollama', ['serve'], {
     detached: true,
     stdio:    'ignore',
+  });
+  // Without this handler a missing binary emits an unhandled 'error' event
+  // and crashes the whole server.
+  proc.on('error', (err) => {
+    ollamaSpawnFailed = true;
+    console.warn(`⚠️  Could not start Ollama (${err.message}) — AI features may be unavailable`);
   });
   proc.unref(); // allow the Node process to exit independently
   console.log('🦙 Ollama process started (PID may be detached)');
@@ -38,7 +48,7 @@ function startOllamaProcess(): void {
 /** Waits up to `maxWaitMs` for Ollama to become ready, polling every `intervalMs`. */
 async function waitForOllama(maxWaitMs = 30_000, intervalMs = 1_000): Promise<boolean> {
   const deadline = Date.now() + maxWaitMs;
-  while (Date.now() < deadline) {
+  while (Date.now() < deadline && !ollamaSpawnFailed) {
     if (await isOllamaRunning()) return true;
     await new Promise(r => setTimeout(r, intervalMs));
   }
@@ -66,7 +76,7 @@ async function ensureOllama(): Promise<void> {
   const ready = await waitForOllama();
   if (ready) {
     console.log('✅ Ollama is ready');
-  } else {
+  } else if (!ollamaSpawnFailed) {
     console.warn('⚠️  Ollama did not become ready within 30 s — AI features may be unavailable');
   }
 }

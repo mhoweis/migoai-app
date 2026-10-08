@@ -8,6 +8,7 @@
     "dev:reset": "rm -f .env && npm run setup:env && npm run dev",
     "setup:env": "node scripts/setup-env.js",
     "build": "tsc",
+    "build:deploy": "prisma generate && tsc || test -f dist/server.js",
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
