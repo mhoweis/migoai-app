@@ -11,11 +11,18 @@ const configuredApiBaseUrl = process.env.EXPO_PUBLIC_API_URL?.replace(
   "",
 );
 
+// Static web hosts (e.g. Vercel) have no /api proxy, so they point the web
+// build at the deployed backend instead.
+const configuredWebApiBaseUrl = process.env.EXPO_PUBLIC_WEB_API_URL?.replace(
+  /\/+$/,
+  "",
+);
+
 // Platform-specific base URL configuration
 const getApiBaseUrl = (): string => {
   // Expo web proxies /api to the backend so browser requests stay same-origin.
   if (Platform.OS === "web") {
-    return "";
+    return configuredWebApiBaseUrl || "";
   }
 
   // Replit and other hosted previews inject the API URL at build time.

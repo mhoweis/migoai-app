@@ -30,7 +30,8 @@
     "test": "npm run test --workspaces --if-present",
     "prepare": "npm run build:shared",
     "predev": "npm run build:shared",
-    "predev:backend": "npm run build:shared"
+    "predev:backend": "npm run build:shared",
+    "build:web": "npm run build:web --workspace=@migo/mobile"
   },
   "keywords": [
     "events",
