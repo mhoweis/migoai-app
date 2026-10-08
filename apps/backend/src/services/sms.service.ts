@@ -1,47 +1,32 @@
-import { ReplitConnectors } from '@replit/connectors-sdk';
-import type { ProxyOptions } from '@replit/connectors-sdk';
+import twilio from 'twilio';
 import config from '../config/env';
 
 class SmsService {
-  private connectors = new ReplitConnectors();
+  private client: ReturnType<typeof twilio> | null = null;
 
-  private async twilioRequest<T>(path: string, options?: ProxyOptions): Promise<T> {
-    const response = await this.connectors.proxy('twilio', path, options);
-    const body = await response.text();
-
-    if (!response.ok) {
-      let message = 'Twilio request failed';
-      try {
-        const parsed = JSON.parse(body);
-        message = parsed.message || message;
-      } catch {
-        // Keep the safe generic message when Twilio did not return JSON.
-      }
-      throw new Error(message);
+  private getClient(): ReturnType<typeof twilio> {
+    if (!config.TWILIO_ACCOUNT_SID || !config.TWILIO_AUTH_TOKEN) {
+      throw new Error('Twilio SMS sender configuration is incomplete');
     }
-
-    return JSON.parse(body) as T;
+    this.client ??= twilio(config.TWILIO_ACCOUNT_SID, config.TWILIO_AUTH_TOKEN);
+    return this.client;
   }
 
   async sendVerificationCode(to: string, code: string): Promise<void> {
-    if (!config.TWILIO_ACCOUNT_SID || !config.TWILIO_PHONE_NUMBER) {
+    if (!config.TWILIO_PHONE_NUMBER) {
       throw new Error('Twilio SMS sender configuration is incomplete');
     }
 
-    const form = new URLSearchParams({
-      To: to,
-      From: config.TWILIO_PHONE_NUMBER,
-      Body: `Your Migo verification code is ${code}. It expires in 10 minutes.`,
-    });
-
-    await this.twilioRequest(
-      `/2010-04-01/Accounts/${config.TWILIO_ACCOUNT_SID}/Messages.json`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: form.toString(),
-      }
-    );
+    try {
+      await this.getClient().messages.create({
+        to,
+        from: config.TWILIO_PHONE_NUMBER,
+        body: `Your Migo verification code is ${code}. It expires in 10 minutes.`,
+      });
+    } catch (error) {
+      const message = (error as { message?: string })?.message;
+      throw new Error(message || 'Twilio request failed');
+    }
   }
 }
 

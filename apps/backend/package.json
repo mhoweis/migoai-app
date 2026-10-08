@@ -40,7 +40,6 @@
     "@migo/shared": "*",
     "@prisma/adapter-mariadb": "^7.2.0",
     "@prisma/client": "6.19.1",
-    "@replit/connectors-sdk": "^0.4.3",
     "@sendgrid/mail": "^8.1.6",
     "@simplewebauthn/browser": "^13.2.2",
     "@simplewebauthn/server": "^13.2.2",

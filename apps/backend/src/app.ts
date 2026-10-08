@@ -31,11 +31,11 @@ import prisma from './config/database';
 
 // Initialize express app
 const app = express();
-// Replit terminates HTTPS at one proxy before forwarding requests to Express.
+// The host (e.g. Render) terminates HTTPS at one proxy before forwarding to Express.
 // Trust only that first hop so rate limiting uses the real client IP.
 app.set('trust proxy', 1);
 
-// The web client is served from a separate Replit port, so API responses must
+// The web client is served from a separate origin, so API responses must
 // be readable cross-origin after the CORS middleware approves the request.
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },

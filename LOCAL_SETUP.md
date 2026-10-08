@@ -2,10 +2,10 @@
 
 Everything on one machine: the API, the Expo app, and the Google Maps scraper.
 
-Your Supabase database is shared with Replit, so **anything you scrape locally
-shows up in the Replit app immediately**. That is the whole reason this works —
-the scraper needs Docker, Replit has none, but they both talk to the same
-Postgres.
+Your Supabase database is shared with the deployed API on Render, so **anything
+you scrape locally shows up in the live app immediately**. That is the whole
+reason this works — the scraper needs Docker, Render has none, but they both
+talk to the same Postgres.
 
 ---
 
@@ -66,7 +66,7 @@ Two separate strings, differing by port. **Prisma migrations fail against the
 pooler** — that's why both exist. Don't forget `?pgbouncer=true&connection_limit=1`
 on the pooled one, or you'll get prepared-statement errors under load.
 
-> You'll need to add `DIRECT_URL` to your **Replit Secrets** too. Prisma resolves
+> You'll need to add `DIRECT_URL` to the **Render environment variables** too. Prisma resolves
 > it at generate time, so the app won't start without it even though only
 > migrations use it.
 
@@ -79,7 +79,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 Run it three times, one each for `JWT_SECRET`, `JWT_REFRESH_SECRET`,
 `COOKIE_SECRET`. Set `IP_HASH_SALT` to any random string.
 
-**Use different secrets locally than in Replit.** If they match, a token minted
+**Use different secrets locally than in production (Render).** If they match, a token minted
 on your laptop works against production.
 
 ### Gemini
@@ -108,7 +108,7 @@ That applies both new migrations — the Phase 0 tables (`ai_usage_daily`,
 `ai_spend_daily`, `user_signals`, `affiliate_clicks`) and the Places tables
 (`places`, `place_searches`, `place_search_hits`).
 
-**This writes to your real Supabase**, the same one Replit uses. The migrations
+**This writes to your real Supabase**, the same one the live app uses. The migrations
 only add tables, so nothing existing is touched — but that's why you run it once,
 from one place.
 
@@ -287,7 +287,7 @@ Scraped data persists in Supabase, so you don't re-seed.
 ## When things break
 
 **`Environment variable not found: DIRECT_URL`**
-Add `DIRECT_URL` to `.env` (and Replit Secrets). Prisma needs it even when not
+Add `DIRECT_URL` to `.env` (and Render's environment variables). Prisma needs it even when not
 migrating.
 
 **`prepared statement "s0" already exists`**

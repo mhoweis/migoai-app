@@ -7,7 +7,6 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "web:replit": "expo start --web --port 5000",
     "build:web": "expo export --platform web",
     "build:android": "eas build --platform android",
     "build:ios": "eas build --platform ios",

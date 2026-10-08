@@ -7,9 +7,7 @@ const monorepoRoot = path.resolve(projectRoot, '../..');
 
 const config = getDefaultConfig(projectRoot);
 
-// Watch only shared source used by the mobile app. Watching the whole Replit
-// workspace includes temporary .local directories that can disappear and
-// crash Metro's file watcher.
+// Watch only shared source used by the mobile app, not the whole monorepo.
 config.watchFolders = [
   path.resolve(monorepoRoot, 'node_modules'),
   path.resolve(monorepoRoot, 'packages/shared'),
@@ -21,8 +19,8 @@ config.resolver.nodeModulesPaths = [
   path.resolve(monorepoRoot, 'node_modules'),
 ];
 
-// Keep browser API calls on the same origin as Expo web. Replit's forwarded
-// secondary ports are not consistently reachable from embedded previews.
+// In local web development, proxy /api to the backend so browser calls stay
+// same-origin and need no CORS setup.
 config.server.enhanceMiddleware = (metroMiddleware) => {
   return (req, res, next) => {
     if (!req.url?.startsWith('/api')) {

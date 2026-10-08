@@ -25,7 +25,7 @@ const getApiBaseUrl = (): string => {
     return configuredWebApiBaseUrl || "";
   }
 
-  // Replit and other hosted previews inject the API URL at build time.
+  // Hosted builds inject the API URL at build time.
   if (configuredApiBaseUrl) {
     return configuredApiBaseUrl;
   }
