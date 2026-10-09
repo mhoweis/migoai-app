@@ -7,7 +7,7 @@ services:
     plan: free
     region: frankfurt
     buildCommand: npm ci --include=dev && npm run build:deploy --workspace=@migo/backend
-    startCommand: npm run start --workspace=@migo/backend
+    startCommand: npm run start:deploy --workspace=@migo/backend
     healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION
