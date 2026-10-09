@@ -66,16 +66,19 @@ export class AuthService {
     }
 
     const name = user.name || 'there';
-    try {
-      await emailService.send({
+    // Not awaited: the response must not depend on (or reveal) email delivery.
+    void emailService.send({
         to: user.email,
         subject: 'Reset your Migo password',
         text: `Hi ${name},\n\nUse this link to choose a new Migo password. It expires in 30 minutes:\n${link}\n\nIf you didn't ask for this, you can ignore this email.`,
         html: `<p>Hi ${name.replace(/[<>&"]/g, '')},</p><p>Use the button below to choose a new Migo password. The link expires in 30 minutes.</p><p><a href="${link}" style="display:inline-block;padding:12px 20px;background:#D81B60;color:#fff;border-radius:10px;text-decoration:none;font-weight:600">Reset password</a></p><p>If you didn't ask for this, you can ignore this email.</p>`,
+      })
+      .then(sent => {
+        if (sent) logger.info('[auth] Password reset email sent');
+      })
+      .catch(error => {
+        logger.error(`[auth] Failed to send password reset email: ${error?.message || error}`);
       });
-    } catch (error) {
-      logger.error('[auth] Failed to send password reset email', error);
-    }
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {

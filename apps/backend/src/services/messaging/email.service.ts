@@ -42,6 +42,11 @@ export const emailService = {
       auth: config.SMTP_USER && config.SMTP_PASS
         ? { user: config.SMTP_USER, pass: config.SMTP_PASS }
         : undefined,
+      // Fail fast instead of nodemailer's 2-minute defaults: some hosts
+      // (e.g. Render's free plan) block outbound SMTP and the connection hangs.
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 15_000,
     });
     await transporter.sendMail({
       from: config.EMAIL_FROM,

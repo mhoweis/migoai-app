@@ -23,6 +23,10 @@ if (config.NODE_ENV === 'development') {
       winston.format.simple()
     )
   }));
+} else {
+  // Hosts like Render only show stdout/stderr (and wipe local files on each
+  // deploy), so production logs must also go to the console.
+  logger.add(new winston.transports.Console());
 }
 
 export default logger;
