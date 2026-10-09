@@ -109,8 +109,19 @@ app.use(morgan(process.env.NODE_ENV === 'development' ? 'dev' : 'combined'));
 // Set Prisma instance on the app for use in routes
 app.set('prisma', prisma);
 
-// Health check endpoint with more details
-app.get('/api/health', (_req, res) => {
+// Health check endpoint with more details. Always 200 so the host's health
+// check keeps the server up; `database` reports whether Postgres answers.
+app.get('/api/health', async (_req, res) => {
+  let database = 'connected';
+  try {
+    await Promise.race([
+      prisma.$queryRaw`SELECT 1`,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
+    ]);
+  } catch {
+    database = 'unreachable';
+  }
+
   res.status(200).json({
     success: true,
     data: {
@@ -121,7 +132,7 @@ app.get('/api/health', (_req, res) => {
       nodeVersion: process.version,
       corsAllowed: true,
       platform: process.platform,
-      database: 'connected', // Add database connection check
+      database,
     },
   });
 });
