@@ -130,6 +130,11 @@ export async function createSubscriptionCheckout(
   });
   if (!user) throw serviceError('User not found', 404, 'USER_NOT_FOUND');
 
+  const provider = getPaymentProvider();
+  if (!provider.isConfigured()) {
+    throw serviceError('Payments are not available yet', 503, 'PAYMENTS_UNAVAILABLE');
+  }
+
   const subscription = await prisma.subscription.create({
     data: {
       userId,
@@ -140,7 +145,6 @@ export async function createSubscriptionCheckout(
       website: input.website,
     },
   });
-  const provider = getPaymentProvider();
 
   try {
     const checkout = await provider.createCheckout({

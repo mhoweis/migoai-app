@@ -46,7 +46,7 @@ const mockCheckout = async (reference: string, token: string | undefined) => {
 
 publicRouter.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   try {
-    if (getPaymentProvider().name === 'mock') {
+    if (getPaymentProvider().name !== 'stripe') {
       res.status(400).json({ success: false, error: 'Invalid payment webhook' });
       return;
     }

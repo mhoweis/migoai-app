@@ -189,6 +189,9 @@ class TicketsService {
     }
 
     const provider = getPaymentProvider();
+    if (!provider.isConfigured()) {
+      throw serviceError('Payments are not available yet', 503, 'PAYMENTS_UNAVAILABLE');
+    }
     const invite = await findInviteForEvent(eventId, input.inviteCode);
     const amount = Number(event.priceFrom) * input.ticketCount;
     const successUrl = this.appendCheckoutParams(input.returnUrl, {

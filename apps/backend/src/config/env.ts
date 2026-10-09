@@ -174,7 +174,7 @@ if (env.NODE_ENV === 'production') {
     throw new Error('ALLOW_DEV_AUTH must not be enabled in production');
   }
   if (!env.STRIPE_SECRET_KEY?.trim()) {
-    throw new Error('STRIPE_SECRET_KEY is required in production');
+    console.warn('⚠️  STRIPE_SECRET_KEY is not set — paid checkouts are disabled until it is');
   }
   let publicUrl: URL;
   try {
