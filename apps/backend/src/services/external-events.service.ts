@@ -117,29 +117,8 @@ class ExternalEventsService {
     'start_date.range_start'?: string;
     expand?: string;
   } = {}): Promise<ExternalEvent[]> {
-    if (!config.EVENTBRITE_API_KEY) {
-      logger.warn('Eventbrite API key not configured');
-      return [];
-    }
-
-    try {
-      const response = await this.eventbriteClient.get('/events/search/', {
-        params: {
-          'location.address': params.location || 'Dubai',
-          q: params.q,
-          'start_date.range_start': params['start_date.range_start'] || new Date().toISOString(),
-          expand: 'venue,category',
-          sort_by: 'date',
-        },
-      });
-
-      const events = response.data.events || [];
-
-      return events.map((event: any) => this.transformEventbriteEvent(event));
-    } catch (error: any) {
-      logger.error('Error fetching Eventbrite events:', error.message);
-      return [];
-    }
+    logger.warn('Eventbrite public search API was retired in 2019; use EVENTBRITE_ORGANIZATION_IDS');
+    return [];
   }
 
   /**

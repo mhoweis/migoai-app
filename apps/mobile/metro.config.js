@@ -23,7 +23,7 @@ config.resolver.nodeModulesPaths = [
 // same-origin and need no CORS setup.
 config.server.enhanceMiddleware = (metroMiddleware) => {
   return (req, res, next) => {
-    if (!req.url?.startsWith('/api')) {
+    if (!req.url?.startsWith('/api') && !req.url?.startsWith('/go/')) {
       return metroMiddleware(req, res, next);
     }
 

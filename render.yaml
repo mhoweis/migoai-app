@@ -26,7 +26,15 @@ services:
         generateValue: true
       - key: IP_HASH_SALT
         generateValue: true
+      - key: TICKET_SIGNING_SECRET
+        generateValue: true
+      # Public address of the website, used in links the API sends out.
+      - key: APP_PUBLIC_URL
+        value: https://migoai-app.vercel.app
       # Values below are entered in the Render dashboard when the Blueprint is created.
+      # Required in production; a test key (sk_test_...) works.
+      - key: STRIPE_SECRET_KEY
+        sync: false
       - key: SUPABASE_DATABASE_URL
         sync: false
       - key: DIRECT_URL

@@ -1,0 +1,16 @@
+.git
+.agents
+node_modules
+**/node_modules
+**/.expo
+**/dist
+**/web-build
+**/coverage
+**/.env
+**/.env.*
+!.env.example
+*.log
+uploads
+**/uploads
+shots
+.DS_Store

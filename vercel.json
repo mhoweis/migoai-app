@@ -1,8 +1,13 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "npm ci",
-  "buildCommand": "npm run build:web --workspace=@migo/mobile",
+  "installCommand": "PUPPETEER_SKIP_DOWNLOAD=true npm ci",
+  "buildCommand": "EXPO_PUBLIC_APP_ENV=production npm run build:web --workspace=@migo/mobile",
   "outputDirectory": "apps/mobile/dist",
   "framework": null,
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    {
+      "source": "/((?!_expo/|assets/|favicon).*)",
+      "destination": "/index.html"
+    }
+  ]
 }

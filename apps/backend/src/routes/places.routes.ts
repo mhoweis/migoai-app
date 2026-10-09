@@ -21,7 +21,7 @@ import {
   findCachedPlaces,
   haversineKm,
 } from '../services/places/places.service';
-import { geocode, nearestKnownPlace } from '../services/places/geocode.service';
+import { geocode, geocodeVenue, nearestKnownPlace } from '../services/places/geocode.service';
 import logger from '../utils/logger';
 
 const router = Router();
@@ -198,6 +198,20 @@ router.get('/nearby', async (req: AuthRequest, res: Response) => {
     logger.error('places: nearby failed', { error });
     res.status(500).json({ success: false, error: error.message });
   }
+});
+
+router.get('/geocode', searchLimit, async (req: AuthRequest, res: Response) => {
+  const venue = typeof req.query.venue === 'string' ? req.query.venue : undefined;
+  const address = typeof req.query.address === 'string' ? req.query.address : undefined;
+  const city = typeof req.query.city === 'string' ? req.query.city : undefined;
+  if (!venue && !address && !city) {
+    return res.status(400).json({ success: false, error: 'Venue, address, or city is required' });
+  }
+  const coordinates = await geocodeVenue(venue, address, city);
+  res.json({
+    success: true,
+    data: coordinates ? { latitude: coordinates.latitude, longitude: coordinates.longitude } : null,
+  });
 });
 
 /** One place, with any Migo events we already hold at that venue. */

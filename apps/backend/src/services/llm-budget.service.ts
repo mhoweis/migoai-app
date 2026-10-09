@@ -63,6 +63,7 @@ export function tierForRole(role?: string | null): UserTier {
       return 'PLUS';
     case 'USER':
     case 'ORGANIZER':
+    case 'SUPPLIER':
       return 'FREE';
     default:
       return 'ANONYMOUS';

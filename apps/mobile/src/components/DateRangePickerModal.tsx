@@ -1,3 +1,4 @@
+import { colors } from '../theme';
 // src/components/DateRangePickerModal.tsx
 import React, { useState, useEffect } from 'react';
 import {
@@ -144,7 +145,7 @@ const DateRangePickerModal: React.FC<Props> = ({
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>Select Date Range</Text>
             <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="close" size={24} color="#374151" />
+              <Ionicons name="close" size={24} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -156,7 +157,7 @@ const DateRangePickerModal: React.FC<Props> = ({
                 {formatDate(startDate)}
               </Text>
             </View>
-            <Ionicons name="arrow-forward" size={18} color="#9ca3af" style={styles.rangeArrow} />
+            <Ionicons name="arrow-forward" size={18} color={colors.textMuted} style={styles.rangeArrow} />
             <View style={styles.rangeItem}>
               <Text style={styles.rangeLabel}>TO</Text>
               <Text style={[styles.rangeValue, !endDate && styles.rangeValueEmpty]}>
@@ -168,13 +169,13 @@ const DateRangePickerModal: React.FC<Props> = ({
           {/* Month navigation */}
           <View style={styles.monthNav}>
             <TouchableOpacity onPress={prevMonth} style={styles.monthNavBtn}>
-              <Ionicons name="chevron-back" size={22} color="#374151" />
+              <Ionicons name="chevron-back" size={22} color={colors.textSecondary} />
             </TouchableOpacity>
             <Text style={styles.monthTitle}>
               {MONTHS[viewMonth]} {viewYear}
             </Text>
             <TouchableOpacity onPress={nextMonth} style={styles.monthNavBtn}>
-              <Ionicons name="chevron-forward" size={22} color="#374151" />
+              <Ionicons name="chevron-forward" size={22} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -249,11 +250,11 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.45)',
   },
   sheet: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.textInverse,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 20,
@@ -269,18 +270,18 @@ const styles = StyleSheet.create({
   sheetTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1f2937',
+    color: colors.text,
   },
   rangeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f5f3ff',
+    backgroundColor: colors.primarySoft,
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#ddd6fe',
+    borderColor: colors.primarySoft,
   },
   rangeItem: {
     flex: 1,
@@ -288,17 +289,17 @@ const styles = StyleSheet.create({
   rangeLabel: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#7c3aed',
+    color: colors.primary,
     letterSpacing: 0.8,
     marginBottom: 2,
   },
   rangeValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1f2937',
+    color: colors.text,
   },
   rangeValueEmpty: {
-    color: '#9ca3af',
+    color: colors.textMuted,
     fontWeight: '400',
   },
   rangeArrow: {
@@ -313,12 +314,12 @@ const styles = StyleSheet.create({
   monthNavBtn: {
     padding: 8,
     borderRadius: 8,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceAlt,
   },
   monthTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1f2937',
+    color: colors.text,
   },
   weekRow: {
     flexDirection: 'row',
@@ -329,7 +330,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 12,
     fontWeight: '600',
-    color: '#9ca3af',
+    color: colors.textMuted,
   },
   gridRow: {
     flexDirection: 'row',
@@ -343,35 +344,35 @@ const styles = StyleSheet.create({
     borderRadius: CELL_SIZE / 2,
   },
   cellStart: {
-    backgroundColor: '#7c3aed',
+    backgroundColor: colors.primary,
     borderTopRightRadius: 0,
     borderBottomRightRadius: 0,
   },
   cellEnd: {
-    backgroundColor: '#7c3aed',
+    backgroundColor: colors.primary,
     borderTopLeftRadius: 0,
     borderBottomLeftRadius: 0,
   },
   cellInRange: {
-    backgroundColor: '#ede9fe',
+    backgroundColor: colors.primarySoft,
     borderRadius: 0,
   },
   dayText: {
     fontSize: 14,
-    color: '#374151',
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   dayTextSelected: {
-    color: '#fff',
+    color: colors.textInverse,
     fontWeight: '700',
   },
   dayTextInRange: {
-    color: '#7c3aed',
+    color: colors.primary,
     fontWeight: '500',
   },
   hint: {
     fontSize: 12,
-    color: '#9ca3af',
+    color: colors.textMuted,
     textAlign: 'center',
     marginTop: 8,
     marginBottom: 16,
@@ -385,28 +386,28 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: '#d1d5db',
+    borderColor: colors.border,
     alignItems: 'center',
   },
   clearBtnText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#6b7280',
+    color: colors.textMuted,
   },
   applyBtn: {
     flex: 2,
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: '#7c3aed',
+    backgroundColor: colors.primary,
     alignItems: 'center',
   },
   applyBtnDisabled: {
-    backgroundColor: '#c4b5fd',
+    backgroundColor: colors.primarySoft,
   },
   applyBtnText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.textInverse,
   },
 });
 

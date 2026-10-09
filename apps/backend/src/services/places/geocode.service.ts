@@ -47,15 +47,119 @@ const UAE_PLACES: Record<string, Coordinates> = {
   'al maryah island': { latitude: 24.5001, longitude: 54.3887, label: 'Al Maryah Island' },
   'expo city': { latitude: 24.9628, longitude: 55.1500, label: 'Expo City Dubai' },
   'global village': { latitude: 25.0700, longitude: 55.3070, label: 'Global Village' },
+  'dubai world trade centre': { latitude: 25.2257, longitude: 55.2870, label: 'Dubai World Trade Centre' },
+  dwtc: { latitude: 25.2257, longitude: 55.2870, label: 'Dubai World Trade Centre' },
+  'dubai exhibition centre': { latitude: 24.9645, longitude: 55.1425, label: 'Dubai Exhibition Centre' },
+  'coca-cola arena': { latitude: 25.2036, longitude: 55.2612, label: 'Coca-Cola Arena' },
+  'etihad arena': { latitude: 24.4949, longitude: 54.6068, label: 'Etihad Arena' },
+  'expo centre sharjah': { latitude: 25.3277, longitude: 55.3778, label: 'Expo Centre Sharjah' },
+  'dubai opera': { latitude: 25.1947, longitude: 55.2733, label: 'Dubai Opera' },
+  'madinat jumeirah': { latitude: 25.1329, longitude: 55.1852, label: 'Madinat Jumeirah' },
+  'dubai festival city': { latitude: 25.2223, longitude: 55.3520, label: 'Dubai Festival City' },
+  'jumeirah beach': { latitude: 25.1412, longitude: 55.1852, label: 'Jumeirah Beach' },
+  'kite beach': { latitude: 25.1740, longitude: 55.2054, label: 'Kite Beach' },
+  'mall of the emirates': { latitude: 25.1181, longitude: 55.2004, label: 'Mall of the Emirates' },
+  'dubai mall': { latitude: 25.1975, longitude: 55.2796, label: 'Dubai Mall' },
+  'louvre abu dhabi': { latitude: 24.5336, longitude: 54.3984, label: 'Louvre Abu Dhabi' },
+  'manarat al saadiyat': { latitude: 24.5438, longitude: 54.4382, label: 'Manarat Al Saadiyat' },
+  'emirates palace': { latitude: 24.4615, longitude: 54.3173, label: 'Emirates Palace' },
+  'abu dhabi national exhibition centre': { latitude: 24.4184, longitude: 54.4340, label: 'Abu Dhabi National Exhibition Centre' },
+  adnec: { latitude: 24.4184, longitude: 54.4340, label: 'Abu Dhabi National Exhibition Centre' },
+  'qasr al watan': { latitude: 24.4630, longitude: 54.3080, label: 'Qasr Al Watan' },
+  'sharjah art foundation': { latitude: 25.3592, longitude: 55.3865, label: 'Sharjah Art Foundation' },
 };
 
 const cache = new Map<string, Coordinates>();
+const negativeVenueCache = new Map<string, number>();
 const UA = 'MigoAI/1.0 (events discovery; contact: support@migo.ai)';
+const UAE_CITY_CENTERS = [
+  { latitude: 25.2048, longitude: 55.2708 },
+  { latitude: 24.4539, longitude: 54.3773 },
+  { latitude: 25.3463, longitude: 55.4209 },
+];
+const VENUE_CLUSTER_KEYS = [
+  'dubai world trade centre',
+  'dwtc',
+  'dubai exhibition centre',
+  'coca-cola arena',
+  'etihad arena',
+  'expo centre sharjah',
+  'dubai opera',
+  'madinat jumeirah',
+  'dubai festival city',
+  'jumeirah beach',
+  'kite beach',
+  'mall of the emirates',
+  'dubai mall',
+  'louvre abu dhabi',
+  'manarat al saadiyat',
+  'emirates palace',
+  'abu dhabi national exhibition centre',
+  'adnec',
+  'qasr al watan',
+  'sharjah art foundation',
+  'expo city',
+  'yas island',
+  'alserkal avenue',
+  'global village',
+  'saadiyat island',
+  'al maryah island',
+  'dubai marina',
+  'downtown dubai',
+  'jbr',
+  'difc',
+  'city walk',
+  'la mer',
+  'palm jumeirah',
+  'dubai hills',
+  'jlt',
+];
 
 let lastNominatimCall = 0;
 
 function normalize(input: string): string {
   return input.trim().toLowerCase().replace(/[.,]/g, '').replace(/\s+/g, ' ');
+}
+
+async function nominatim(query: string): Promise<Coordinates | null> {
+  try {
+    const sinceLast = Date.now() - lastNominatimCall;
+    if (sinceLast < 1100) await new Promise((r) => setTimeout(r, 1100 - sinceLast));
+    lastNominatimCall = Date.now();
+
+    const params = new URLSearchParams({
+      format: 'json',
+      limit: '1',
+      q: query,
+      countrycodes: process.env.GEOCODE_COUNTRY_CODES || 'ae',
+    });
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
+      headers: { 'User-Agent': UA },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) return null;
+
+    const hits = (await res.json()) as Array<{ lat: string; lon: string; display_name: string }>;
+    if (!hits.length) return null;
+    return {
+      latitude: Number(hits[0].lat),
+      longitude: Number(hits[0].lon),
+      label: hits[0].display_name.split(',')[0] || query,
+    };
+  } catch (error) {
+    logger.warn('geocode: lookup failed', { query, error });
+    return null;
+  }
+}
+
+function isCityCentroid(coordinates: Coordinates): boolean {
+  return UAE_CITY_CENTERS.some((center) => {
+    const latitudeMeters = (coordinates.latitude - center.latitude) * 111_000;
+    const longitudeMeters = (coordinates.longitude - center.longitude)
+      * 111_000
+      * Math.cos(center.latitude * Math.PI / 180);
+    return Math.sqrt(latitudeMeters ** 2 + longitudeMeters ** 2) < 200;
+  });
 }
 
 /** Local table first, then Nominatim. Returns null if nothing resolves. */
@@ -70,42 +174,52 @@ export async function geocode(place: string): Promise<Coordinates | null> {
   const partial = Object.keys(UAE_PLACES).find((k) => key.includes(k));
   if (partial) return UAE_PLACES[partial];
 
-  try {
-    // Respect Nominatim's ~1 req/sec policy.
-    const sinceLast = Date.now() - lastNominatimCall;
-    if (sinceLast < 1100) await new Promise((r) => setTimeout(r, 1100 - sinceLast));
-    lastNominatimCall = Date.now();
-
-    const params = new URLSearchParams({
-      format: 'json',
-      limit: '1',
-      q: place,
-      // Bias toward the launch market without hard-restricting it.
-      countrycodes: process.env.GEOCODE_COUNTRY_CODES || 'ae',
-    });
-
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
-      headers: { 'User-Agent': UA },
-      signal: AbortSignal.timeout(15_000),
-    });
-
-    if (!res.ok) return null;
-
-    const hits = (await res.json()) as Array<{ lat: string; lon: string; display_name: string }>;
-    if (!hits.length) return null;
-
-    const resolved: Coordinates = {
-      latitude: Number(hits[0].lat),
-      longitude: Number(hits[0].lon),
-      label: hits[0].display_name.split(',')[0] || place,
-    };
-
+  const resolved = await nominatim(place);
+  if (resolved) {
     cache.set(key, resolved);
     return resolved;
-  } catch (error) {
-    logger.warn('geocode: lookup failed', { place, error });
-    return null;
   }
+  return null;
+}
+
+export async function geocodeVenue(
+  venueName?: string | null,
+  address?: string | null,
+  city?: string | null,
+): Promise<Coordinates | null> {
+  const values = [venueName, address, city].filter(Boolean) as string[];
+  const key = normalize(values.join(', '));
+  if (!key) return null;
+
+  const negativeExpiry = negativeVenueCache.get(key);
+  if (negativeExpiry && negativeExpiry > Date.now()) return null;
+  if (negativeExpiry) negativeVenueCache.delete(key);
+
+  const fullQuery = [...values, 'United Arab Emirates'].join(', ');
+  const fullMatch = await nominatim(fullQuery);
+  const shortMatch = venueName && city
+    ? await nominatim([venueName, city, 'United Arab Emirates'].join(', '))
+    : null;
+  const resolved = [fullMatch, shortMatch].find((match) => match && !isCityCentroid(match));
+  if (resolved) {
+    cache.set(key, resolved);
+    return resolved;
+  }
+
+  const searchable = normalize([venueName, address].filter(Boolean).join(', '));
+  const cluster = [...VENUE_CLUSTER_KEYS]
+    .sort((a, b) => b.length - a.length)
+    .find((candidate) => searchable.includes(candidate));
+  if (cluster) {
+    const fallback = UAE_PLACES[cluster];
+    if (fallback) {
+      cache.set(key, fallback);
+      return fallback;
+    }
+  }
+
+  negativeVenueCache.set(key, Date.now() + 24 * 60 * 60 * 1000);
+  return null;
 }
 
 /** Nearest known UAE label for a coordinate pair — used for display. */

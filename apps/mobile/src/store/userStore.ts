@@ -1,23 +1,30 @@
 // migo-mobile/src/store/userStore.ts - UPDATED
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { tokenStorage } from '../services/tokenStorage';
 import { authService, User } from '../services/auth.service';
+import { HomeLayout } from '../config/homeSections';
+import { registerAccountPausedHandler } from '../services/accountPause';
 
 interface UserStore {
   user: User | null;
   isLoading: boolean;
   error: string | null;
   firstLogin: boolean;
+  accountPaused: boolean;
   userLocation: string | null; // User's preferred city for filtering events
 
   // Actions
   setUser: (user: User | null) => Promise<void>;
   setFirstLogin: (value: boolean) => Promise<void>;
   updateInterests: (interests: string[]) => Promise<void>;
+  updateHomeLayout: (homeLayout: HomeLayout) => Promise<void>;
+  updateReminders: (phone: string | null, reminders: { email: boolean; whatsapp: boolean; saved: boolean }) => Promise<void>;
   setUserLocation: (city: string) => Promise<void>;
   logout: () => Promise<void>;
   loadUserFromStorage: () => Promise<void>;
   clearError: () => void;
+  clearAccountPaused: () => void;
   updateProfile: (data: Partial<User>) => Promise<void>;
 }
 
@@ -26,12 +33,22 @@ export const useUserStore = create<UserStore>((set, get) => ({
   isLoading: false,
   error: null,
   firstLogin: false,
+  accountPaused: false,
   userLocation: null, // Will be set from storage or default to 'New York'
   
   setUser: async (user) => {
-    set({ user, error: null });
-    if (user) {
-      await AsyncStorage.setItem('user', JSON.stringify(user));
+    const currentUser = get().user;
+    const nextUser = user && currentUser?.id === user.id
+      ? {
+          ...currentUser,
+          ...user,
+          interests: user.interests ?? currentUser.interests,
+          preferences: { ...currentUser.preferences, ...user.preferences },
+        }
+      : user;
+    set({ user: nextUser, error: null, ...(nextUser ? { accountPaused: false } : {}) });
+    if (nextUser) {
+      await AsyncStorage.setItem('user', JSON.stringify(nextUser));
     } else {
       await AsyncStorage.removeItem('user');
     }
@@ -66,6 +83,61 @@ export const useUserStore = create<UserStore>((set, get) => ({
     }
   },
 
+  updateHomeLayout: async (homeLayout) => {
+    const previousUser = get().user;
+    if (!previousUser) return;
+    const optimisticUser: User = {
+      ...previousUser,
+      preferences: {
+        ...previousUser.preferences,
+        homeLayout,
+      },
+    };
+    set({ user: optimisticUser, isLoading: true, error: null });
+    try {
+      const updatedUser = await authService.updateHomeLayout(homeLayout);
+      const mergedUser = {
+        ...previousUser,
+        ...updatedUser,
+        interests: updatedUser.interests ?? previousUser.interests,
+        preferences: { ...previousUser.preferences, ...updatedUser.preferences },
+      };
+      set({ user: mergedUser, isLoading: false });
+      await AsyncStorage.setItem('user', JSON.stringify(mergedUser));
+    } catch (error: any) {
+      set({ user: previousUser, isLoading: false, error: error.message });
+      throw error;
+    }
+  },
+
+  updateReminders: async (phone, reminders) => {
+    const previousUser = get().user;
+    if (!previousUser) return;
+    set({ isLoading: true, error: null });
+    try {
+      const updatedUser = await authService.updateReminders(phone, reminders);
+      const mergedUser: User = {
+        ...previousUser,
+        ...updatedUser,
+        phone: updatedUser.phone === undefined ? previousUser.phone : updatedUser.phone,
+        interests: updatedUser.interests ?? previousUser.interests,
+        preferences: {
+          ...previousUser.preferences,
+          ...updatedUser.preferences,
+          reminders: {
+            ...previousUser.preferences?.reminders,
+            ...updatedUser.preferences?.reminders,
+          },
+        },
+      };
+      set({ user: mergedUser, isLoading: false });
+      await AsyncStorage.setItem('user', JSON.stringify(mergedUser));
+    } catch (error: any) {
+      set({ isLoading: false, error: error.message });
+      throw error;
+    }
+  },
+
   setUserLocation: async (city: string) => {
     set({ userLocation: city });
     await AsyncStorage.setItem('userLocation', city);
@@ -85,7 +157,10 @@ export const useUserStore = create<UserStore>((set, get) => ({
       });
       
       // Clear all storage
-      await AsyncStorage.multiRemove(['user', 'firstLogin', 'accessToken', 'refreshToken']);
+      await Promise.all([
+        tokenStorage.clear(),
+        AsyncStorage.multiRemove(['user', 'firstLogin']),
+      ]);
       
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
@@ -96,13 +171,11 @@ export const useUserStore = create<UserStore>((set, get) => ({
     try {
       set({ isLoading: true });
 
-      // Load all data atomically — localProfileAvatar / localProfileName survive logout
-      const [userString, firstLoginString, accessToken, userLocation, localAvatar, localName] = await Promise.all([
+      const [userString, firstLoginString, accessToken, userLocation, localName] = await Promise.all([
         AsyncStorage.getItem('user'),
         AsyncStorage.getItem('firstLogin'),
-        AsyncStorage.getItem('accessToken'),
+        tokenStorage.get('accessToken'),
         AsyncStorage.getItem('userLocation'),
-        AsyncStorage.getItem('localProfileAvatar'),
         AsyncStorage.getItem('localProfileName'),
       ]);
 
@@ -127,17 +200,20 @@ export const useUserStore = create<UserStore>((set, get) => ({
           updates.user = user;
           await AsyncStorage.setItem('user', JSON.stringify(user));
         } catch (error) {
+          if ((error as any)?.response?.data?.code === 'ACCOUNT_PAUSED') {
+            await tokenStorage.clear();
+            await AsyncStorage.multiRemove(['user', 'firstLogin']);
+            set({ user: null, firstLogin: false, isLoading: false, accountPaused: true });
+            return;
+          }
           console.warn('Failed to fetch user with token:', error);
           // Clear invalid token
-          await AsyncStorage.multiRemove(['accessToken', 'refreshToken']);
+          await tokenStorage.clear();
         }
       }
 
-      // Merge local profile overrides that survive logout/re-login.
-      // localProfileAvatar: always local (no server upload in MVP).
-      // localProfileName: set only when the API update failed.
+      // Keep names from older offline profile edits when the API was unavailable.
       if (updates.user) {
-        if (localAvatar) updates.user = { ...updates.user, avatar: localAvatar };
         if (localName)  updates.user = { ...updates.user, name: localName };
       }
 
@@ -150,6 +226,7 @@ export const useUserStore = create<UserStore>((set, get) => ({
   },
   
   clearError: () => set({ error: null }),
+  clearAccountPaused: () => set({ accountPaused: false }),
   
   updateProfile: async (data) => {
     try {
@@ -170,3 +247,17 @@ export const useUserStore = create<UserStore>((set, get) => ({
     }
   },
 }));
+
+registerAccountPausedHandler(async () => {
+  await Promise.all([
+    tokenStorage.clear(),
+    AsyncStorage.multiRemove(['user', 'firstLogin']),
+  ]);
+  useUserStore.setState({
+    user: null,
+    firstLogin: false,
+    isLoading: false,
+    error: null,
+    accountPaused: true,
+  });
+});

@@ -1,8 +1,10 @@
+import { colors } from '../theme';
 // src/navigation/MainTabNavigator.tsx - CUSTOM TAB BAR SOLUTION
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { setMainStackNavigation, setTabNavigation } from './navigationRef';
 
@@ -18,11 +20,23 @@ import ConnectionTestScreen from '../screens/ConnectionTestScreen';
 import WalletScreen from '../screens/WalletScreen';
 import PlacesScreen from '../screens/PlacesScreen';
 import PlaceDetailScreen, { PlaceDetailParams } from '../screens/PlaceDetailScreen';
+import CreateEventScreen from '../screens/CreateEventScreen';
+import MyEventsScreen from '../screens/MyEventsScreen';
+import CheckInScreen from '../screens/CheckInScreen';
+import PlansScreen from '../screens/PlansScreen';
+import SupplierPortalScreen from '../screens/SupplierPortalScreen';
+import SupplierPageScreen from '../screens/SupplierPageScreen';
+import AdminModerationScreen from '../screens/AdminModerationScreen';
+import UserProfileScreen from '../screens/UserProfileScreen';
+import FollowListScreen from '../screens/FollowListScreen';
+import FindFriendsScreen from '../screens/FindFriendsScreen';
 
 // Param list types — exported so screens can type their navigation props
 export type HomeStackParamList = {
   HomeMain: undefined;
   EventDetail: { eventId: string };
+  UserProfile: { userId: string };
+  FollowList: { userId: string; tab: 'followers' | 'following' };
   ConnectionTest: undefined;
   Interests: undefined;
 };
@@ -30,6 +44,8 @@ export type HomeStackParamList = {
 export type EventsStackParamList = {
   EventsMain: { venueFilter?: string; dateFrom?: string; dateTo?: string } | undefined;
   EventDetail: { eventId: string };
+  UserProfile: { userId: string };
+  FollowList: { userId: string; tab: 'followers' | 'following' };
 };
 
 export type ChatStackParamList = {
@@ -40,9 +56,20 @@ export type ChatStackParamList = {
 };
 
 export type ProfileStackParamList = {
+  MyProfile: undefined;
   ProfileMain: undefined;
   Interests: undefined;
   ConnectionTest: undefined;
+  CreateEvent: undefined;
+  MyEvents: undefined;
+  CheckIn: { eventId?: string };
+  FindFriends: undefined;
+  UserProfile: { userId: string };
+  FollowList: { userId: string; tab: 'followers' | 'following' | 'requests' };
+  Plans: { selectedPlan?: 'HOST' | 'SUPPLIER' } | undefined;
+  SupplierPortal: { supplierId?: string } | undefined;
+  SupplierPage: { slug: string };
+  AdminModeration: undefined;
 };
 
 export type WalletStackParamList = {
@@ -80,6 +107,8 @@ function HomeStackNavigator() {
           headerBackTitle: 'Back',
         }}
       />
+      <HomeStack.Screen name="UserProfile" component={UserProfileScreen} options={{ headerShown: false }} />
+      <HomeStack.Screen name="FollowList" component={FollowListScreen} options={{ headerShown: false }} />
       <HomeStack.Screen
         name="ConnectionTest"
         component={ConnectionTestScreen}
@@ -111,6 +140,8 @@ function EventsStackNavigator() {
           headerBackTitle: 'Back',
         }}
       />
+      <EventsStack.Screen name="UserProfile" component={UserProfileScreen} options={{ headerShown: false }} />
+      <EventsStack.Screen name="FollowList" component={FollowListScreen} options={{ headerShown: false }} />
     </EventsStack.Navigator>
   );
 }
@@ -147,7 +178,12 @@ function ChatStackNavigator() {
 // Profile Stack Navigator
 function ProfileStackNavigator() {
   return (
-    <ProfileStack.Navigator>
+    <ProfileStack.Navigator initialRouteName="MyProfile">
+      <ProfileStack.Screen
+        name="MyProfile"
+        component={UserProfileScreen}
+        options={{ headerShown: false }}
+      />
       <ProfileStack.Screen
         name="ProfileMain"
         component={ProfileScreen}
@@ -166,6 +202,32 @@ function ProfileStackNavigator() {
         component={ConnectionTestScreen}
         options={{ title: 'Connection Test', headerBackTitle: 'Back' }}
       />
+      <ProfileStack.Screen
+        name="CreateEvent"
+        component={CreateEventScreen}
+        options={{ title: 'Create an event', headerBackTitle: 'Back' }}
+      />
+      <ProfileStack.Screen
+        name="MyEvents"
+        component={MyEventsScreen}
+        options={{ title: 'My events', headerBackTitle: 'Back' }}
+      />
+      <ProfileStack.Screen
+        name="CheckIn"
+        component={CheckInScreen}
+        options={{ title: 'Check in', headerBackTitle: 'Back' }}
+      />
+      <ProfileStack.Screen
+        name="FindFriends"
+        component={FindFriendsScreen}
+        options={{ title: 'Find friends', headerBackTitle: 'Back' }}
+      />
+      <ProfileStack.Screen name="Plans" component={PlansScreen} options={{ headerShown: false }} />
+      <ProfileStack.Screen name="SupplierPortal" component={SupplierPortalScreen} options={{ headerShown: false }} />
+      <ProfileStack.Screen name="SupplierPage" component={SupplierPageScreen} options={{ headerShown: false }} />
+      <ProfileStack.Screen name="AdminModeration" component={AdminModerationScreen} options={{ headerShown: false }} />
+      <ProfileStack.Screen name="UserProfile" component={UserProfileScreen} options={{ headerShown: false }} />
+      <ProfileStack.Screen name="FollowList" component={FollowListScreen} options={{ headerShown: false }} />
     </ProfileStack.Navigator>
   );
 }
@@ -183,9 +245,10 @@ function WalletStackNavigator() {
 function CustomTabBar({ state, descriptors, navigation }: any) {
   // Keep the legacy ref in sync (used by navigateToMainStack elsewhere).
   setTabNavigation(navigation);
+  const insets = useSafeAreaInsets();
 
   return (
-    <View style={styles.tabBar}>
+    <View style={[styles.tabBar, { height: 62 + insets.bottom, paddingBottom: 8 + insets.bottom }]}>
       {state.routes.map((route: any, index: number) => {
         const { options } = descriptors[route.key];
         const label = options.tabBarLabel || options.title || route.name;
@@ -204,7 +267,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
         };
 
         // Get icon based on route name
-        const iconColor = isFocused ? '#3b82f6' : '#6b7280';
+        const iconColor = isFocused ? colors.primary : colors.textMuted;
         let iconSource: any = null;
         let walletIcon = false;
         // Tabs without a bundled PNG fall back to an Ionicon.
@@ -316,10 +379,9 @@ function MainTabNavigator({ navigation }: { navigation: any }) {
 const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
-    height: 70,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.textInverse,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: colors.border,
     paddingBottom: 8,
     paddingTop: 8,
   },
