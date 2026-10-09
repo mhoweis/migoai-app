@@ -168,6 +168,22 @@ export const authService = {
     }
   },
 
+  async requestPasswordReset(email: string): Promise<void> {
+    try {
+      await api.post('/auth/forgot-password', { email });
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || error.message || 'Could not send the reset link');
+    }
+  },
+
+  async resetPassword(token: string, password: string): Promise<void> {
+    try {
+      await api.post('/auth/reset-password', { token, password });
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || error.message || 'Could not reset the password');
+    }
+  },
+
   async deleteAccount(password?: string): Promise<void> {
     try {
       await api.delete('/users/me', { data: { password } });

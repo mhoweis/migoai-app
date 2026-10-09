@@ -6,6 +6,8 @@ import prisma from '../config/database';
 import { User, UserRole } from '@prisma/client';
 import crypto from 'crypto';
 import { smsService } from './sms.service';
+import { emailService } from './messaging/email.service';
+import logger from '../utils/logger';
 
 export interface JwtPayload {
   userId: string;
@@ -29,6 +31,77 @@ export class AuthService {
   private jwtRefreshSecret = config.JWT_REFRESH_SECRET;
   private static readonly REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
   private static readonly REUSE_GRACE_MS = 60_000;
+
+  private static readonly PASSWORD_RESET_TTL = '30m';
+
+  // Reset links are signed with a key derived from JWT_SECRET so they can never
+  // be used as access tokens, and they embed a fingerprint of the current
+  // password hash so a link stops working once the password has changed.
+  private passwordResetSecret(): string {
+    return crypto.createHash('sha256').update(`password-reset:${this.jwtSecret}`).digest('hex');
+  }
+
+  private passwordFingerprint(user: Pick<User, 'id' | 'password'>): string {
+    return crypto.createHash('sha256').update(`${user.id}:${user.password || ''}`).digest('hex').slice(0, 32);
+  }
+
+  // Always resolves without revealing whether the email has an account.
+  async requestPasswordReset(email: string): Promise<void> {
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await prisma.user.findFirst({ where: { email: normalizedEmail } });
+    if (!user || user.status === 'DELETED' || !user.email) return;
+
+    const token = jwt.sign(
+      { sub: user.id, fp: this.passwordFingerprint(user), purpose: 'password_reset' },
+      this.passwordResetSecret(),
+      { expiresIn: AuthService.PASSWORD_RESET_TTL },
+    );
+    const base = (config.APP_PUBLIC_URL || config.CLIENT_URL).replace(/\/+$/, '');
+    const link = `${base}/reset-password?token=${encodeURIComponent(token)}`;
+
+    if (!emailService.isConfigured()) {
+      logger.warn('[auth] Password reset requested but email is not configured (set SENDGRID_API_KEY or SMTP_HOST)');
+      if (config.NODE_ENV !== 'production') logger.info(`[auth] Password reset link for ${user.email}: ${link}`);
+      return;
+    }
+
+    const name = user.name || 'there';
+    try {
+      await emailService.send({
+        to: user.email,
+        subject: 'Reset your Migo password',
+        text: `Hi ${name},\n\nUse this link to choose a new Migo password. It expires in 30 minutes:\n${link}\n\nIf you didn't ask for this, you can ignore this email.`,
+        html: `<p>Hi ${name.replace(/[<>&"]/g, '')},</p><p>Use the button below to choose a new Migo password. The link expires in 30 minutes.</p><p><a href="${link}" style="display:inline-block;padding:12px 20px;background:#D81B60;color:#fff;border-radius:10px;text-decoration:none;font-weight:600">Reset password</a></p><p>If you didn't ask for this, you can ignore this email.</p>`,
+      });
+    } catch (error) {
+      logger.error('[auth] Failed to send password reset email', error);
+    }
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const invalid = () => new Error('This reset link is invalid or has expired');
+    let payload: { sub?: string; fp?: string; purpose?: string };
+    try {
+      payload = jwt.verify(token, this.passwordResetSecret()) as typeof payload;
+    } catch {
+      throw invalid();
+    }
+    if (payload.purpose !== 'password_reset' || !payload.sub || !payload.fp) throw invalid();
+
+    const user = await prisma.user.findUnique({ where: { id: payload.sub } });
+    if (!user || user.status === 'DELETED' || this.passwordFingerprint(user) !== payload.fp) {
+      throw invalid();
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await prisma.$transaction([
+      prisma.user.update({ where: { id: user.id }, data: { password: hashedPassword } }),
+      prisma.refreshToken.updateMany({
+        where: { userId: user.id, revoked: false },
+        data: { revoked: true, expiresAt: new Date() },
+      }),
+    ]);
+  }
 
   private hashRefreshToken(token: string): string {
     return crypto.createHash('sha256').update(token).digest('hex');

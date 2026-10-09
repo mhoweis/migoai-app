@@ -144,7 +144,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleForgotPassword = () => {
-    Alert.alert(t('forgot_password'), t('forgot_password_help'), [{ text: t('ok') }]);
+    navigation.navigate('ForgotPassword');
   };
 
   return (

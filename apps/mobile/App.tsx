@@ -1,3 +1,4 @@
+import './src/utils/webAlert';
 import { colors } from './src/theme';
 import React, { useEffect, useState } from "react";
 import { NavigationContainer } from "@react-navigation/native";
@@ -14,6 +15,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Import Screens
 import LoginScreen from "./src/screens/LoginScreen";
 import RegisterScreen from "./src/screens/RegisterScreen";
+import ForgotPasswordScreen from "./src/screens/ForgotPasswordScreen";
+import ResetPasswordScreen from "./src/screens/ResetPasswordScreen";
 import InterestsScreen from "./src/screens/InterestsScreen";
 import HomeScreen from "./src/screens/HomeScreen";
 import EventsScreen from "./src/screens/EventsScreen";
@@ -59,6 +62,18 @@ const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 const CHECKOUT_SUCCESS_QUERY = 'checkout=success';
 const CHECKOUT_CANCEL_QUERY = 'checkout=cancel';
+
+// Password reset emails link to <site>/reset-password?token=…; read the token
+// once on load and drop it from the address bar so it isn't left in history.
+const readPasswordResetToken = (): string | undefined => {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return undefined;
+  const { pathname, search } = window.location;
+  if (!pathname.replace(/\/+$/, '').endsWith('/reset-password')) return undefined;
+  const token = new URLSearchParams(search).get('token') || undefined;
+  window.history.replaceState({}, '', '/');
+  return token;
+};
+const passwordResetToken = readPasswordResetToken();
 
 // Custom Tab Icon Component
 const CustomTabIcon = ({ routeName, focused }: { routeName: string, focused: boolean }) => {
@@ -564,7 +579,7 @@ export default function App() {
         }}
       >
         <AppFrame showChatFab={Boolean(user && !firstLogin)} currentRoute={currentRoute} activeTab={activeTab}>
-          <Stack.Navigator initialRouteName={!user ? "Register" : undefined}>
+          <Stack.Navigator initialRouteName={!user ? (passwordResetToken ? "ResetPassword" : "Register") : undefined}>
             {!user ? (
               // Auth Screens
               <>
@@ -577,6 +592,17 @@ export default function App() {
                   name="Login"
                   component={LoginScreen}
                   options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="ForgotPassword"
+                  component={ForgotPasswordScreen}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="ResetPassword"
+                  component={ResetPasswordScreen}
+                  options={{ headerShown: false }}
+                  initialParams={{ token: passwordResetToken }}
                 />
 
               </>

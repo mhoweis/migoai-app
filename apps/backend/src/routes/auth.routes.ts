@@ -121,6 +121,46 @@ router.post('/register', credentialLimiter, async (req: Request, res: Response) 
   }
 });
 
+// Forgot password: emails a reset link. Always answers the same way so it
+// can't be used to find out which emails have accounts.
+router.post('/forgot-password', sendOtpLimiter, async (req: Request, res: Response) => {
+  const { email } = req.body;
+  if (typeof email !== 'string' || email.length > 254 || !EMAIL_PATTERN.test(email.trim())) {
+    res.status(400).json({ error: 'Enter a valid email address' });
+    return;
+  }
+  try {
+    await authService.requestPasswordReset(email);
+  } catch (error) {
+    console.error('Password reset request failed:', error);
+  }
+  res.json({ success: true, data: { message: 'If an account exists for that email, a reset link is on its way.' } });
+});
+
+router.post('/reset-password', verifyOtpLimiter, async (req: Request, res: Response) => {
+  const { token, password } = req.body;
+  if (typeof token !== 'string' || !token || token.length > 2048) {
+    res.status(400).json({ error: 'This reset link is invalid or has expired' });
+    return;
+  }
+  if (
+    typeof password !== 'string'
+    || password.length < MIN_PASSWORD_LENGTH
+    || password.length > MAX_PASSWORD_LENGTH
+  ) {
+    res.status(400).json({
+      error: `Password must be between ${MIN_PASSWORD_LENGTH} and ${MAX_PASSWORD_LENGTH} characters`,
+    });
+    return;
+  }
+  try {
+    await authService.resetPassword(token, password);
+    res.json({ success: true, data: { message: 'Password updated' } });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message || 'This reset link is invalid or has expired' });
+  }
+});
+
 // Login
 router.post('/login', credentialLimiter, async (req: Request, res: Response) => {
   try {
