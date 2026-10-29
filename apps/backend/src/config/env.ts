@@ -103,6 +103,8 @@ const envSchema = z.object({
   APPLE_PASS_CERT_PEM: z.string().optional(),
   APPLE_PASS_KEY_PEM: z.string().optional(),
   APPLE_WWDR_PEM: z.string().optional(),
+  // OAuth client ID (Web application) used to verify Google sign-in tokens.
+  GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_WALLET_ISSUER_ID: z.string().optional(),
   GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL: z.string().optional(),
   GOOGLE_WALLET_PRIVATE_KEY: z.string().optional(),
@@ -132,6 +134,8 @@ const envSchema = z.object({
   TWILIO_AUTH_TOKEN: z.string().optional(),
   TWILIO_PHONE_NUMBER: z.string().optional(),
   SENDGRID_API_KEY: z.string().optional(),
+  // Brevo transactional email API key (HTTPS, works where SMTP ports are blocked).
+  BREVO_API_KEY: z.string().optional(),
   FROM_EMAIL: z.string().optional(),
   EMAIL_SERVER_HOST: z.string().optional(),
   EMAIL_SERVER_PORT: z.string().optional(),
@@ -284,6 +288,7 @@ export default {
   APPLE_PASS_CERT_PEM: env.APPLE_PASS_CERT_PEM || '',
   APPLE_PASS_KEY_PEM: env.APPLE_PASS_KEY_PEM || '',
   APPLE_WWDR_PEM: env.APPLE_WWDR_PEM || '',
+  GOOGLE_CLIENT_ID: env.GOOGLE_CLIENT_ID || '',
   GOOGLE_WALLET_ISSUER_ID: env.GOOGLE_WALLET_ISSUER_ID || '',
   GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL: env.GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL || '',
   GOOGLE_WALLET_PRIVATE_KEY: env.GOOGLE_WALLET_PRIVATE_KEY || '',
@@ -307,6 +312,7 @@ export default {
   TWILIO_AUTH_TOKEN: env.TWILIO_AUTH_TOKEN || '',
   TWILIO_PHONE_NUMBER: env.TWILIO_PHONE_NUMBER || '',
   SENDGRID_API_KEY: env.SENDGRID_API_KEY || '',
+  BREVO_API_KEY: env.BREVO_API_KEY || '',
   FROM_EMAIL: env.FROM_EMAIL || 'noreply@migo-events.com',
   EMAIL_SERVER_HOST: env.EMAIL_SERVER_HOST || '',
   EMAIL_SERVER_PORT: env.EMAIL_SERVER_PORT || '',

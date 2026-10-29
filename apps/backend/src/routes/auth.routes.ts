@@ -3,6 +3,7 @@ import { Router, Request, Response } from 'express';
 import { authService } from '../services/auth.service';
 import { authenticate } from '../middlewares/auth.middleware';
 import { rateLimit } from 'express-rate-limit';
+import config from '../config/env';
 
 const router = Router();
 const sendOtpLimiter = rateLimit({
@@ -198,6 +199,38 @@ router.post('/login', credentialLimiter, async (req: Request, res: Response) => 
     }
     res.status(401).json({ error: 'Invalid credentials' });
   }
+});
+
+// Google sign-in (web): exchanges a Google Identity Services ID token for a session.
+router.post('/google', credentialLimiter, async (req: Request, res: Response) => {
+  const { credential } = req.body;
+  if (typeof credential !== 'string' || !credential || credential.length > 4096) {
+    res.status(400).json({ error: 'Google sign-in failed. Please try again.' });
+    return;
+  }
+  try {
+    const result = await authService.loginWithGoogle(credential);
+    const hasInterests = Array.isArray(result.user.interests) && result.user.interests.length > 0;
+    res.json({
+      success: true,
+      data: {
+        user: result.user,
+        tokens: result.tokens,
+        isFirstLogin: result.isNewUser || !hasInterests,
+      },
+    });
+  } catch (error: any) {
+    if (error?.code === 'ACCOUNT_PAUSED') {
+      res.status(403).json({ success: false, error: 'Account paused', code: 'ACCOUNT_PAUSED' });
+      return;
+    }
+    res.status(error?.statusCode || 401).json({ error: error?.message || 'Google sign-in failed' });
+  }
+});
+
+// Public config the sign-in screens need (no secrets).
+router.get('/providers', (_req: Request, res: Response) => {
+  res.json({ success: true, data: { googleClientId: config.GOOGLE_CLIENT_ID || null } });
 });
 
 // Refresh token

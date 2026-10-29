@@ -41,6 +41,7 @@ import { authenticate } from './middlewares/auth.middleware';
 
 // Import Prisma instance
 import prisma from './config/database';
+import { emailProvider } from './services/messaging/email.service';
 
 // Initialize express app
 const app = express();
@@ -145,6 +146,7 @@ app.get('/api/health', async (_req, res) => {
       message: 'Migo Backend Server is running',
       timestamp: new Date().toISOString(),
       database,
+      email: emailProvider(),
     },
   });
 });

@@ -5,6 +5,7 @@ import config from '../config/env';
 import prisma from '../config/database';
 import { User, UserRole } from '@prisma/client';
 import crypto from 'crypto';
+import { OAuth2Client } from 'google-auth-library';
 import { smsService } from './sms.service';
 import { emailService } from './messaging/email.service';
 import logger from '../utils/logger';
@@ -49,7 +50,16 @@ export class AuthService {
   async requestPasswordReset(email: string): Promise<void> {
     const normalizedEmail = email.trim().toLowerCase();
     const user = await prisma.user.findFirst({ where: { email: normalizedEmail } });
-    if (!user || user.status === 'DELETED' || !user.email) return;
+    // Server-side only: these explain in the logs why no email went out,
+    // while the API response stays identical in every case.
+    if (!user) {
+      logger.info('[auth] Password reset requested: no account with that email');
+      return;
+    }
+    if (user.status === 'DELETED' || !user.email) {
+      logger.info('[auth] Password reset requested: account is deleted or has no email');
+      return;
+    }
 
     const token = jwt.sign(
       { sub: user.id, fp: this.passwordFingerprint(user), purpose: 'password_reset' },
@@ -60,7 +70,7 @@ export class AuthService {
     const link = `${base}/reset-password?token=${encodeURIComponent(token)}`;
 
     if (!emailService.isConfigured()) {
-      logger.warn('[auth] Password reset requested but email is not configured (set SENDGRID_API_KEY or SMTP_HOST)');
+      logger.warn('[auth] Password reset requested but email is not configured (set BREVO_API_KEY, SENDGRID_API_KEY or SMTP_HOST)');
       if (config.NODE_ENV !== 'production') logger.info(`[auth] Password reset link for ${user.email}: ${link}`);
       return;
     }
@@ -74,10 +84,17 @@ export class AuthService {
         html: `<p>Hi ${name.replace(/[<>&"]/g, '')},</p><p>Use the button below to choose a new Migo password. The link expires in 30 minutes.</p><p><a href="${link}" style="display:inline-block;padding:12px 20px;background:#D81B60;color:#fff;border-radius:10px;text-decoration:none;font-weight:600">Reset password</a></p><p>If you didn't ask for this, you can ignore this email.</p>`,
       })
       .then(sent => {
-        if (sent) logger.info('[auth] Password reset email sent');
+        if (sent) logger.info(`[auth] Password reset email sent (from ${config.EMAIL_FROM})`);
       })
       .catch(error => {
-        logger.error(`[auth] Failed to send password reset email: ${error?.message || error}`);
+        // SendGrid puts the actual reason (e.g. unverified sender) in the body.
+        const details = error?.response?.body?.errors
+          ?.map((e: { message?: string }) => e.message)
+          .filter(Boolean)
+          .join('; ');
+        logger.error(
+          `[auth] Failed to send password reset email from ${config.EMAIL_FROM}: ${error?.message || error}${details ? ` — ${details}` : ''}`,
+        );
       });
   }
 
@@ -295,6 +312,79 @@ export class AuthService {
       user: this.sanitizeUser(updatedUser),
       tokens,
     };
+  }
+
+  private googleClient = new OAuth2Client();
+
+  // Signs in with a Google ID token from Google Identity Services. Matches an
+  // existing account by Google ID, then by verified email (linking Google to
+  // it), and otherwise creates a new account.
+  async loginWithGoogle(credential: string): Promise<AuthResponse & { isNewUser: boolean }> {
+    if (!config.GOOGLE_CLIENT_ID) {
+      throw Object.assign(new Error('Google sign-in is not configured'), { statusCode: 503 });
+    }
+
+    let payload;
+    try {
+      const ticket = await this.googleClient.verifyIdToken({
+        idToken: credential,
+        audience: config.GOOGLE_CLIENT_ID,
+      });
+      payload = ticket.getPayload();
+    } catch {
+      throw Object.assign(new Error('Google sign-in failed. Please try again.'), { statusCode: 401 });
+    }
+    if (!payload?.sub || !payload.email || !payload.email_verified) {
+      throw Object.assign(new Error('Your Google account has no verified email'), { statusCode: 401 });
+    }
+
+    const email = payload.email.toLowerCase();
+    let user = await prisma.user.findUnique({ where: { googleId: payload.sub } });
+    let isNewUser = false;
+
+    if (!user) {
+      const byEmail = await prisma.user.findUnique({ where: { email } });
+      if (byEmail) {
+        if (byEmail.googleId && byEmail.googleId !== payload.sub) {
+          throw Object.assign(new Error('This email is linked to a different Google account'), { statusCode: 409 });
+        }
+        user = await prisma.user.update({
+          where: { id: byEmail.id },
+          data: {
+            googleId: payload.sub,
+            emailVerified: true,
+            avatar: byEmail.avatar || payload.picture || null,
+          },
+        });
+      } else {
+        user = await prisma.user.create({
+          data: {
+            email,
+            googleId: payload.sub,
+            name: payload.name || email.split('@')[0],
+            avatar: payload.picture || null,
+            emailVerified: true,
+            authMethod: 'google',
+            role: UserRole.USER,
+          },
+        });
+        isNewUser = true;
+      }
+    }
+
+    if (user.status === 'DELETED') {
+      throw Object.assign(new Error('Invalid credentials'), { statusCode: 401 });
+    }
+    if (user.status === 'PAUSED') {
+      throw Object.assign(new Error('Account paused'), { code: 'ACCOUNT_PAUSED', statusCode: 403 });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+    const tokens = await this.generateTokens(updatedUser);
+    return { user: this.sanitizeUser(updatedUser), tokens, isNewUser };
   }
 
   async loginWithEmail(email: string, password: string): Promise<AuthResponse> {

@@ -24,6 +24,7 @@ import { gradients, shadow, type } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { LanguageToggle } from '../components/LanguageToggle';
 import { API_BASE_URL } from '../services/api';
+import GoogleSignInButton from '../components/GoogleSignInButton';
 
 const DesktopFormPanel = View as unknown as React.ComponentType<any>;
 const DesktopFormText = Text as unknown as React.ComponentType<any>;
@@ -326,6 +327,8 @@ const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           )}
 
           {errorMessage && <Text style={styles.errorMessage}>{errorMessage}</Text>}
+
+          <GoogleSignInButton text="signup_with" onError={setErrorMessage} />
 
           <Text style={styles.termsText}>
             {t('terms_note')}

@@ -168,6 +168,36 @@ export const authService = {
     }
   },
 
+  async getGoogleClientId(): Promise<string | null> {
+    try {
+      const response = await api.get<ApiResponse<{ googleClientId: string | null }>>('/auth/providers');
+      return response.data.data?.googleClientId || null;
+    } catch {
+      return null;
+    }
+  },
+
+  async loginWithGoogle(credential: string): Promise<AuthResponse> {
+    try {
+      const response = await api.post<ApiResponse<AuthResponse>>('/auth/google', { credential });
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Google sign-in failed');
+      }
+      const { user, tokens, isFirstLogin } = response.data.data;
+      await tokenStorage.setTokens(tokens);
+      await AsyncStorage.setItem('user', JSON.stringify(user));
+      await AsyncStorage.setItem('firstLogin', JSON.stringify(isFirstLogin));
+      api.defaults.headers.common['Authorization'] = `Bearer ${tokens.accessToken}`;
+      return response.data.data;
+    } catch (error: any) {
+      const googleError = new Error(
+        error.response?.data?.error || error.message || 'Google sign-in failed'
+      ) as Error & { code?: string };
+      googleError.code = error.response?.data?.code;
+      throw googleError;
+    }
+  },
+
   async requestPasswordReset(email: string): Promise<void> {
     try {
       await api.post('/auth/forgot-password', { email });
