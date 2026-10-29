@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocale } from '../i18n';
-import { navigateToTab, navigationRef } from '../navigation/navigationRef';
+import { navigateToTab, navigationRef, openDiscoverSearch } from '../navigation/navigationRef';
 import { colors, radius, spacing, type } from '../theme';
 import Container from './Container';
 import { useUserStore } from '../store/userStore';
@@ -23,6 +23,7 @@ export default function WebTopNav({ activeTab }: { activeTab?: string }) {
   const { t, locale, setLocale } = useLocale();
   const { user } = useUserStore();
   const [hoveredLink, setHoveredLink] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
   return (
     <View style={styles.bar}>
       <Container style={styles.inner}>
@@ -40,10 +41,22 @@ export default function WebTopNav({ activeTab }: { activeTab?: string }) {
             );
           })}
         </View>
-        <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('search_events')} onPress={() => navigateToTab('Events')} style={styles.search}>
-          <Ionicons name="search" size={17} color={colors.textMuted} />
-          <Text numberOfLines={1} style={styles.searchText}>{t('search_events')}</Text>
-        </TouchableOpacity>
+        <View style={styles.search}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('search_events')} onPress={() => openDiscoverSearch(query)} hitSlop={8}>
+            <Ionicons name="search" size={17} color={colors.textMuted} />
+          </TouchableOpacity>
+          <TextInput
+            accessibilityLabel={t('search_events')}
+            style={styles.searchText}
+            placeholder={t('search_events')}
+            placeholderTextColor={colors.textMuted}
+            value={query}
+            onChangeText={setQuery}
+            onSubmitEditing={() => openDiscoverSearch(query)}
+            returnKeyType="search"
+            autoCorrect={false}
+          />
+        </View>
         <FlexSpacer style={styles.spacer} />
         <TouchableOpacity accessibilityRole="button" accessibilityLabel={locale === 'ar' ? t('english') : t('arabic')} onPress={() => void setLocale(locale === 'ar' ? 'en' : 'ar')} style={styles.localeButton}>
           <Ionicons name="globe-outline" size={17} color={colors.ink} />
@@ -85,7 +98,7 @@ const styles = StyleSheet.create({
   linkText: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
   activeLinkText: { color: colors.ink, fontWeight: '700' },
   search: { flex: 1, minWidth: 90, maxWidth: 280, height: 44, flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: radius.pill, paddingHorizontal: 12, backgroundColor: colors.surfaceAlt },
-  searchText: { flex: 1, color: colors.textMuted, fontSize: 13 },
+  searchText: { flex: 1, minWidth: 0, height: '100%', color: colors.text, fontSize: 13, outlineStyle: 'none' } as any,
   spacer: { flex: 1, minWidth: spacing.sm },
   avatarButton: { width: 44, height: 44, borderRadius: 22, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primarySoft },
   avatarImage: { width: 36, height: 36, borderRadius: 18 },

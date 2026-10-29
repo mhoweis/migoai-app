@@ -13,6 +13,7 @@ import {
   Platform,
   Modal,
   Share,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,7 +23,7 @@ import { useWalletStore } from '../store/walletStore';
 import { Event } from '@migo/shared';
 import { api } from '../services/api';
 import { socialService, SocialUser } from '../services/social.service';
-import { navigateToTab, navigationRef } from '../navigation/navigationRef';
+import { navigateToTab, navigationRef, openDiscoverSearch } from '../navigation/navigationRef';
 import { categoryLabel, formatEventDate, formatEventWhen, formatPrice, useLocale } from '../i18n';
 import { sourceBadge } from '../utils/trust';
 import { matchesEventDateRange } from '../utils/eventDateRange';
@@ -279,6 +280,37 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const navigateToEvents = () => {
     navigateToTab('Events');
   };
+
+  // Home search: type here, then Enter / the search icon opens Discover with
+  // the query applied; the filter button opens Discover's filters.
+  const [homeQuery, setHomeQuery] = useState('');
+  const submitHomeSearch = () => openDiscoverSearch(homeQuery);
+  const renderHomeSearch = (extraStyle?: object) => (
+    <View style={[styles.homeSearch, extraStyle]}>
+      <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('search_events')} onPress={submitHomeSearch} hitSlop={8}>
+        <Ionicons name="search" size={20} color={colors.primary} />
+      </TouchableOpacity>
+      <TextInput
+        accessibilityLabel={t('search_events')}
+        style={[styles.homeSearchText, styles.homeSearchInput]}
+        placeholder={t('search_events')}
+        placeholderTextColor={colors.textMuted}
+        value={homeQuery}
+        onChangeText={setHomeQuery}
+        onSubmitEditing={submitHomeSearch}
+        returnKeyType="search"
+        autoCorrect={false}
+      />
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel={t('show_filters')}
+        style={styles.homeSearchAction}
+        onPress={() => openDiscoverSearch(homeQuery, { openFilters: true })}
+      >
+        <Ionicons name="options-outline" size={16} color={colors.textInverse} />
+      </TouchableOpacity>
+    </View>
+  );
 
   // Handle interest pill selection — filters all event sections on HomeScreen
   const handleInterestSelect = (interest: string) => {
@@ -945,11 +977,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
                 </TouchableOpacity>
               </View>
               {isWebDesktop ? (
-                <PressableScale style={[styles.homeSearch, styles.desktopHeroSearch]} onPress={navigateToEvents} accessibilityRole="button" scaleTo={0.98}>
-                  <Ionicons name="search" size={20} color={colors.primary} />
-                  <Text style={styles.homeSearchText} numberOfLines={1}>{t('search_events')}</Text>
-                  <View style={styles.homeSearchAction}><Ionicons name="options-outline" size={16} color={colors.textInverse} /></View>
-                </PressableScale>
+                renderHomeSearch(styles.desktopHeroSearch)
               ) : null}
             </View>
             {isWebDesktop ? (
@@ -974,11 +1002,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         </LinearGradient>
         </Container>
         {!isWebDesktop ? (
-          <PressableScale style={styles.homeSearch} onPress={navigateToEvents} accessibilityRole="button" scaleTo={0.98}>
-            <Ionicons name="search" size={20} color={colors.primary} />
-            <Text style={styles.homeSearchText} numberOfLines={1}>{t('search_events')}</Text>
-            <View style={styles.homeSearchAction}><Ionicons name="options-outline" size={16} color={colors.textInverse} /></View>
-          </PressableScale>
+          renderHomeSearch()
         ) : null}
 
         <Container style={styles.pageContent}>
@@ -1130,6 +1154,7 @@ const styles = StyleSheet.create({
   locationTextHero: { fontSize: 14, fontWeight: '600', color: colors.textInverse, marginLeft: 4 },
   homeSearch: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginHorizontal: 20, marginTop: -28, paddingLeft: 18, paddingRight: 6, height: 56, borderRadius: radius.pill, backgroundColor: colors.surface, ...shadow.card },
   homeSearchText: { ...type.body, color: colors.textMuted, flex: 1 },
+  homeSearchInput: { color: colors.text, minWidth: 0, height: '100%', ...(Platform.OS === 'web' ? { outlineStyle: 'none' } as object : {}) },
   homeSearchAction: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   locationText: {
     fontSize: 14,

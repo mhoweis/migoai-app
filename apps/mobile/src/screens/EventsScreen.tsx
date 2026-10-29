@@ -247,6 +247,17 @@ const EventsScreen = () => {
     }
   };
 
+  // Search text / open-filters request from the Home and top-bar search fields.
+  // searchRequestId changes on every submit, so repeating a search re-applies it.
+  useEffect(() => {
+    if (typeof route.params?.searchQuery === 'string') {
+      setSearchQuery(route.params.searchQuery);
+    }
+    if (route.params?.openFilters) {
+      setFiltersVisible(true);
+    }
+  }, [route.params?.searchQuery, route.params?.openFilters, route.params?.searchRequestId]);
+
   // Sync venueFilter from route params whenever navigation passes new params
   useEffect(() => {
     if (route.params?.venueFilter !== undefined) {

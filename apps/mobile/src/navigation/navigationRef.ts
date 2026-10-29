@@ -139,3 +139,12 @@ export function navigateToTab(
     console.warn('[navigationRef] Tab navigation not ready');
   }
 }
+
+/** Opens Discover with a search already typed (and optionally its filters open). */
+export function openDiscoverSearch(query: string, options: { openFilters?: boolean } = {}) {
+  navigateToTab('Events', 'EventsMain', {
+    searchQuery: query.trim(),
+    openFilters: Boolean(options.openFilters),
+    searchRequestId: Date.now(),
+  });
+}
