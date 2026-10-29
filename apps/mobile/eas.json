@@ -10,14 +10,14 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://migoapp.com"
+        "EXPO_PUBLIC_API_URL": "https://migo-api-uvea.onrender.com"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_APP_ENV": "production",
-        "EXPO_PUBLIC_API_URL": "https://migoapp.com"
+        "EXPO_PUBLIC_API_URL": "https://migo-api-uvea.onrender.com"
       }
     }
   },
