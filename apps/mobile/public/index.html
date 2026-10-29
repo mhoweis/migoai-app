@@ -30,6 +30,15 @@
       body {
         overflow: hidden;
       }
+      /* App-like: no browser swipe-to-go-back while dragging cards etc. */
+      html,
+      body {
+        overscroll-behavior-x: none;
+      }
+      /* Event card deck: horizontal swipes drag the card, vertical ones scroll. */
+      [data-deck-card] {
+        touch-action: pan-y !important;
+      }
       /* These styles make the root element full-height */
       #root {
         display: flex;

@@ -39,7 +39,7 @@ import Container from '../components/Container';
 import SectionHeader from '../components/SectionHeader';
 import EventCard from '../components/EventCard';
 import WebFooter from '../components/WebFooter';
-import DateBadge from '../components/DateBadge';
+import EventCardDeck from '../components/EventCardDeck';
 
 const RankedEventView = View as unknown as React.ComponentType<any>;
 const RankedEventText = Text as unknown as React.ComponentType<any>;
@@ -105,7 +105,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
       covers.add(key);
       events.push(event);
     });
-    return events.slice(0, 3);
+    return events.slice(0, 5);
   }, [filteredTopEvents]);
 
   useEffect(() => {
@@ -982,18 +982,10 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             </View>
             {isWebDesktop ? (
               <View style={styles.heroFan}>
-                {heroFanEvents.map((event, index) => (
-                  <PressableScale
-                    key={event.id}
-                    accessibilityRole="button"
-                    accessibilityLabel={event.title}
-                    onPress={() => navigation.navigate('EventDetail', { eventId: event.id })}
-                    style={[styles.heroFanImage, { zIndex: index === 1 ? 3 : 1, transform: [{ translateX: (index - 1) * 40 }, { rotate: `${(index - 1) * 8}deg` }] }]}
-                  >
-                    <Image source={{ uri: event.coverImage || event.thumbnail }} style={styles.heroFanCover} />
-                    {index === 1 ? <View style={styles.heroFanDateBadge}><DateBadge date={event.startDate} /></View> : null}
-                  </PressableScale>
-                ))}
+                <EventCardDeck
+                  events={heroFanEvents}
+                  onOpen={event => navigation.navigate('EventDetail', { eventId: event.id })}
+                />
               </View>
             ) : null}
           </View>
@@ -1110,10 +1102,7 @@ const styles = StyleSheet.create({
   heroLeft: { flex: 1, maxWidth: 560, zIndex: 1 },
   heroLeftFull: { maxWidth: '100%', width: '100%' },
   desktopHeroSearch: { marginHorizontal: 0, marginTop: 20, maxWidth: 500 },
-  heroFan: { flex: 1, minWidth: 300, height: 320, alignItems: 'center', justifyContent: 'center' },
-  heroFanImage: { position: 'absolute', width: '52%', height: 270, borderRadius: radius.lg, borderWidth: 3, borderColor: colors.surface, overflow: 'hidden', ...shadow.float },
-  heroFanCover: { width: '100%', height: '100%' },
-  heroFanDateBadge: { position: 'absolute', top: 12, left: 12 },
+  heroFan: { flex: 1, minWidth: 300, height: 360, alignItems: 'center', justifyContent: 'center' },
   heroOrb: { position: 'absolute', right: -80, top: -120, width: 380, height: 380, borderRadius: 190, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' },
   heroOrbSmall: { position: 'absolute', right: 120, bottom: -220, width: 320, height: 320, borderRadius: 160, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
   pageContent: {},
