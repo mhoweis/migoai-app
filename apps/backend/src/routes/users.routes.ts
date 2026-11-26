@@ -18,6 +18,7 @@ import { recordSignal, SignalType } from "../services/recommendation.service";
 import { getHostDashboard } from "../services/host-dashboard.service";
 import { getUserProfile, listUserConnections, listUserEvents, ProfileEventType } from "../services/user-profile.service";
 import { listUserReviews } from "../services/reviews.service";
+import { httpUrl } from '../utils/http-url';
 
 const router = Router();
 
@@ -370,9 +371,9 @@ const publicUserSelect = {
 const updateUserSchema = z
   .object({
     name: z.string().trim().min(1).max(100).optional(),
-    avatar: z.string().url().max(2048).nullable().optional(),
+    avatar: httpUrl().nullable().optional(),
     bio: z.string().trim().max(500).nullable().optional(),
-    coverImage: z.string().url().max(2048).nullable().optional(),
+    coverImage: httpUrl().nullable().optional(),
     isPrivate: z.boolean().optional(),
     phone: z.string().regex(/^\+[1-9]\d{7,14}$/).nullable().optional(),
     preferences: z.record(z.string(), z.unknown()).optional(),

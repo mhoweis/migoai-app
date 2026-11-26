@@ -9,6 +9,7 @@ import { createEventInvite, getEventSocial, getFriendsGoingEvents } from "../ser
 import { getWebBase } from "./share.routes";
 import { recommendEvents } from "../services/recommendation.service";
 import { createEventReview, listEventReviews } from "../services/reviews.service";
+import { httpUrl } from '../utils/http-url';
 
 const router = Router();
 
@@ -280,10 +281,10 @@ router.post("/", authenticate, requireHost, asyncHandler(async (req: AuthRequest
     priceTo: z.number().optional(),
     currency: z.string().default("AED"),
     isFree: z.boolean().default(false),
-    ticketUrl: z.string().url().optional(),
+    ticketUrl: httpUrl().optional(),
     capacity: z.number().int().min(0).optional(),
-    coverImage: z.string().url().optional(),
-    images: z.array(z.string().url()).optional().default([]),
+    coverImage: httpUrl().optional(),
+    images: z.array(httpUrl()).optional().default([]),
     ageRestriction: z.number().optional(),
     dressCode: z.enum(['formal', 'semi_formal', 'smart_casual', 'casual', 'themed', 'sportswear', 'none']).optional(),
     notes: z.string().max(2000).optional(),
@@ -333,10 +334,10 @@ router.put("/:id", authenticate, requireHost, asyncHandler(async (req: AuthReque
     priceTo: z.number().optional(),
     currency: z.string().optional(),
     isFree: z.boolean().optional(),
-    ticketUrl: z.string().url().optional(),
+    ticketUrl: httpUrl().optional(),
     capacity: z.number().int().min(0).optional(),
-    coverImage: z.string().url().optional(),
-    images: z.array(z.string().url()).optional(),
+    coverImage: httpUrl().optional(),
+    images: z.array(httpUrl()).optional(),
     ageRestriction: z.number().optional(),
     dressCode: z.enum(['formal', 'semi_formal', 'smart_casual', 'casual', 'themed', 'sportswear', 'none']).optional(),
     notes: z.string().max(2000).optional(),

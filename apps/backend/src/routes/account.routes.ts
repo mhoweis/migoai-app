@@ -8,6 +8,7 @@ import {
   createSubscriptionCheckout,
   getAccountPlans,
 } from '../services/plans.service';
+import { httpUrl } from '../utils/http-url';
 
 const router = Router();
 router.use(authenticate);
@@ -29,7 +30,7 @@ router.post('/subscribe', asyncHandler(async (req: AuthRequest, res: Response) =
       return protocol === 'http:' || protocol === 'https:' || protocol === 'migo:';
     }, 'Return URL must use http, https, or migo'),
     businessName: z.string().trim().min(2).max(120).optional(),
-    website: z.string().url().optional(),
+    website: httpUrl().optional(),
   }).parse(req.body || {});
   if (input.plan === PlanKey.SUPPLIER && !input.businessName) {
     const error = Object.assign(new Error('Business name is required for Supplier plans'), {

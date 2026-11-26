@@ -17,6 +17,7 @@ import {
 } from '../services/affiliate.service';
 import logger from '../utils/logger';
 import { recordSignal } from '../services/recommendation.service';
+import { isHttpUrl } from '../utils/http-url';
 
 const router = Router();
 
@@ -48,6 +49,16 @@ router.get('/:eventId', optionalAuthenticate, async (req: AuthRequest, res: Resp
 
     const token = newClickToken();
     const resolved = buildClickOut(event, token);
+
+    // Only ever send people to ordinary web pages. Links entered before
+    // validation existed (or by a feed) could hold any scheme.
+    if (resolved && !isHttpUrl(resolved.targetUrl)) {
+      logger.warn('go: refused non-http outbound URL', { eventId });
+      return res.status(404).json({
+        success: false,
+        error: 'No booking link available for this event',
+      });
+    }
 
     if (!resolved) {
       logger.warn('go: no outbound URL for event', { eventId });

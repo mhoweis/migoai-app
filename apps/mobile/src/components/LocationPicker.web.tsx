@@ -10,9 +10,9 @@ function loadLeaflet() {
   leafletPromise = new Promise((resolve, reject) => {
     if ((window as any).L) return resolve((window as any).L);
     if (!document.querySelector('link[data-migo-leaflet]')) {
-      const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; link.dataset.migoLeaflet = 'true'; document.head.appendChild(link);
+      const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY='; link.crossOrigin = ''; link.dataset.migoLeaflet = 'true'; document.head.appendChild(link);
     }
-    const script = document.createElement('script'); script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; script.onload = () => resolve((window as any).L); script.onerror = reject; document.head.appendChild(script);
+    const script = document.createElement('script'); script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; script.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo='; script.crossOrigin = ''; script.onload = () => resolve((window as any).L); script.onerror = reject; document.head.appendChild(script);
   });
   return leafletPromise;
 }

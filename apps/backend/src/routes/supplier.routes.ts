@@ -17,6 +17,7 @@ import {
 } from '../services/supplier-analytics.service';
 import { updateSupplierSourceCache } from '../services/providers/source-registry';
 import { validateSupplierFeedUrl } from '../services/providers/supplier-feed.provider';
+import { httpUrl } from '../utils/http-url';
 
 const router = Router();
 router.use(authenticate, requireSupplier);
@@ -84,7 +85,7 @@ router.put('/me', asyncHandler(async (req: AuthRequest, res: Response) => {
     description: z.string().max(20_000).nullable().optional(),
     logo: z.string().max(5_000).nullable().optional(),
     banner: z.string().max(5_000).nullable().optional(),
-    website: z.string().url().nullable().optional(),
+    website: httpUrl().nullable().optional(),
     contactName: z.string().max(255).nullable().optional(),
     contactEmail: z.string().email().nullable().optional(),
     contactPhone: z.string().max(30).nullable().optional(),
