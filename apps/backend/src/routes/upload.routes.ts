@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import multer from 'multer';
+import sharp from 'sharp';
 import { authenticate, AuthRequest } from '../middlewares/auth.middleware';
 import config from '../config/env';
 
@@ -27,9 +28,32 @@ router.post('/image', authenticate, upload.single('image'), async (req: AuthRequ
     res.status(400).json({ success: false, error: 'Image file is required' });
     return;
   }
-  const extension = `.${req.file.mimetype.split('/')[1].replace('jpeg', 'jpg')}`;
-  const filename = `${crypto.randomUUID()}${extension}`;
-  await fs.promises.writeFile(path.join(uploadsDir, filename), req.file.buffer);
+  // Re-encode every upload. This (1) proves the file really is an image, whatever
+  // type the browser claimed, and (2) drops all metadata (EXIF), including the GPS
+  // position phones embed in photos, so a profile picture can't reveal where
+  // someone lives. Orientation is applied first so photos stay the right way up.
+  let output: { data: Buffer; extension: string };
+  try {
+    const animated = req.file.mimetype === 'image/gif';
+    const image = sharp(req.file.buffer, { animated, limitInputPixels: 40_000_000 }).rotate();
+    const format = (await image.metadata()).format;
+    if (format === 'png') {
+      output = { data: await image.png().toBuffer(), extension: '.png' };
+    } else if (format === 'gif') {
+      output = { data: await image.gif().toBuffer(), extension: '.gif' };
+    } else if (format === 'webp') {
+      output = { data: await image.webp({ quality: 85 }).toBuffer(), extension: '.webp' };
+    } else if (format === 'jpeg') {
+      output = { data: await image.jpeg({ quality: 85, mozjpeg: true }).toBuffer(), extension: '.jpg' };
+    } else {
+      throw new Error(`unsupported format ${format}`);
+    }
+  } catch {
+    res.status(400).json({ success: false, error: 'That file is not a supported image' });
+    return;
+  }
+  const filename = `${crypto.randomUUID()}${output.extension}`;
+  await fs.promises.writeFile(path.join(uploadsDir, filename), output.data);
   const protocol = String(req.get('x-forwarded-proto') || req.protocol).split(',')[0].trim();
   const host = String(req.get('x-forwarded-host') || req.get('host'));
   const uploadPath = `/api/uploads/${filename}`;
