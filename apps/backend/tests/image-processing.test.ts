@@ -47,3 +47,21 @@ describe('processUploadedImage orientation', () => {
     expect(meta.orientation).toBeUndefined();
   });
 });
+
+describe('processUploadedImage refuses formats we never accept', () => {
+  it.each([
+    ['TIFF', () => solid(4, 4).tiff().toBuffer()],
+    ['SVG', async () => Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"/>')],
+  ])('%s is refused before decoding', async (_name, make) => {
+    const file = await make();
+    // The decoder itself must refuse (importing the service installs the block),
+    // not just our format check after the file has already been decoded.
+    await expect(sharp(file).metadata()).rejects.toThrow(/unsupported image format/);
+    await expect(processUploadedImage(file)).rejects.toBeInstanceOf(UnsupportedImageError);
+  });
+
+  it('recognises an iPhone HEIC photo from its header', async () => {
+    const heicHeader = Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from('ftypheic'), Buffer.alloc(32)]);
+    await expect(processUploadedImage(heicHeader)).rejects.toThrow('heif');
+  });
+});

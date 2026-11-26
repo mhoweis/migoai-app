@@ -2,6 +2,26 @@
 // Turns an uploaded file into a clean image that is safe to publish.
 import sharp from 'sharp';
 
+// Uploads come from strangers, so only the four image decoders we accept are
+// left enabled. libvips has had several security bugs in decoders we never
+// need (TIFF, VIPS, SVG, PDF, HEIF...); with these blocked, a crafted file in
+// one of those formats is refused before any decoding happens.
+sharp.block({
+  operation: [
+    'VipsForeignLoadTiff', 'VipsForeignLoadVips', 'VipsForeignLoadSvg', 'VipsForeignLoadPdf',
+    'VipsForeignLoadHeif', 'VipsForeignLoadMagick', 'VipsForeignLoadJp2k', 'VipsForeignLoadJxl',
+    'VipsForeignLoadFits', 'VipsForeignLoadOpenexr', 'VipsForeignLoadOpenslide', 'VipsForeignLoadMatrix',
+    'VipsForeignLoadCsv', 'VipsForeignLoadPpm', 'VipsForeignLoadRad', 'VipsForeignLoadAnalyze',
+    'VipsForeignLoadRaw',
+  ],
+});
+
+// HEIC/HEIF (iPhone camera default) is recognised from its header so people get
+// a specific message, without handing the file to the (blocked) HEIF decoder.
+const isHeif = (input: Buffer): boolean =>
+  input.length > 12 && input.toString('latin1', 4, 8) === 'ftyp'
+  && ['heic', 'heix', 'hevc', 'hevx', 'mif1', 'msf1', 'heim', 'heis'].includes(input.toString('latin1', 8, 12));
+
 /** Largest side kept, in pixels. Phone photos are often 4000+ px; profile and
  *  event pictures never display that large, and smaller files load faster. */
 export const MAX_IMAGE_SIDE = 2048;
@@ -18,14 +38,14 @@ export type ProcessedImage = { data: Buffer; extension: '.jpg' | '.png' | '.gif'
  *  3. shrinks very large photos to MAX_IMAGE_SIDE.
  */
 export async function processUploadedImage(input: Buffer): Promise<ProcessedImage> {
+  if (isHeif(input)) {
+    throw new UnsupportedImageError('heif');
+  }
   let format: string | undefined;
   try {
     format = (await sharp(input).metadata()).format;
   } catch {
     throw new UnsupportedImageError('not an image');
-  }
-  if (format === 'heif') {
-    throw new UnsupportedImageError('heif');
   }
 
   const image = sharp(input, { animated: format === 'gif', limitInputPixels: 40_000_000 })
