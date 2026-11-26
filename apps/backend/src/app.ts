@@ -38,6 +38,7 @@ import config from './config/env';
 // Import middleware
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
 import { authenticate } from './middlewares/auth.middleware';
+import { clientIpMiddleware } from './middlewares/client-ip.middleware';
 
 // Import Prisma instance
 import prisma from './config/database';
@@ -45,9 +46,12 @@ import { emailProvider } from './services/messaging/email.service';
 
 // Initialize express app
 const app = express();
-// The host (e.g. Render) terminates HTTPS at one proxy before forwarding to Express.
-// Trust only that first hop so rate limiting uses the real client IP.
+// The host (e.g. Render) terminates HTTPS at a proxy before forwarding to Express.
+// Trusting one hop keeps X-Forwarded-For from being spoofed; on Render the real
+// visitor IP then comes from Cloudflare's CF-Connecting-IP (see client-ip.middleware).
 app.set('trust proxy', 1);
+// Must run before the rate limiters and the request logger.
+app.use(clientIpMiddleware);
 
 // The web client is served from a separate origin, so API responses must
 // be readable cross-origin after the CORS middleware approves the request.

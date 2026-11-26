@@ -29,6 +29,7 @@ import { updateSupplierSourceCache } from '../services/providers/source-registry
 import { crawlAll } from '../services/tourism/crawler';
 import { tourismSites } from '../services/tourism/sources';
 import logger from '../utils/logger';
+import { describeClientIp } from '../middlewares/client-ip.middleware';
 
 const router = Router();
 let tourismRefreshInFlight: Promise<void> | null = null;
@@ -37,6 +38,13 @@ router.use(authenticate, requireAdmin);
 
 router.get('/', (_req, res) => {
   res.json({ success: true, data: { message: 'Admin endpoint' } });
+});
+
+// Check that rate limits see each visitor's real IP: open this from two different
+// networks (e.g. Wi-Fi and mobile data) and the `ip` values should differ and match
+// what https://api.ipify.org shows on each.
+router.get('/debug/client-ip', (req: AuthRequest, res: Response) => {
+  res.json({ success: true, data: describeClientIp(req) });
 });
 
 router.get('/tourism/status', asyncHandler(async (_req: AuthRequest, res: Response) => {
