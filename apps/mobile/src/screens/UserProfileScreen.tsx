@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Platform,
   Image,
   Modal,
   ScrollView,
@@ -63,11 +62,7 @@ export default function UserProfileScreen() {
   // Which picture is uploading, so the spinner shows on that picture's button.
   const [uploadingTarget, setUploadingTarget] = useState<'avatar' | 'cover' | null>(null);
   const uploadingImage = uploadingTarget !== null;
-  // Alert.alert does nothing in a web browser, so show errors with window.alert there.
-  const showError = (message: string) => {
-    if (Platform.OS === 'web' && typeof window !== 'undefined') window.alert(message);
-    else Alert.alert(t('error'), message);
-  };
+  const showError = (message: string) => Alert.alert(t('error'), message);
   const [savingProfile, setSavingProfile] = useState(false);
 
   const loadProfile = useCallback(async () => {

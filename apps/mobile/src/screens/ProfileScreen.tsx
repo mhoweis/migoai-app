@@ -80,12 +80,9 @@ const ProfileScreen = () => {
   ]);
 
   // ── Avatar ────────────────────────────────────────────────────────────────
-  // Show the server's reason when there is one. Alert.alert does nothing in a
-  // web browser, so use window.alert there.
+  // Show the server's reason (e.g. "photo too large") when it gives one.
   const showUploadError = (error: any) => {
-    const message = error?.response?.data?.error || t('profile_image_upload_failed');
-    if (Platform.OS === 'web' && typeof window !== 'undefined') window.alert(message);
-    else Alert.alert(t('error'), message);
+    Alert.alert(t('error'), error?.response?.data?.error || t('profile_image_upload_failed'));
   };
 
   const handlePickAvatar = async () => {
