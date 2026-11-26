@@ -38,7 +38,7 @@ import config from './config/env';
 // Import middleware
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
 import { authenticate } from './middlewares/auth.middleware';
-import { clientIpMiddleware } from './middlewares/client-ip.middleware';
+import { clientIpMiddleware, describeClientIp } from './middlewares/client-ip.middleware';
 
 // Import Prisma instance
 import prisma from './config/database';
@@ -132,6 +132,12 @@ app.set('prisma', prisma);
 
 // Health check endpoint with more details. Always 200 so the host's health
 // check keeps the server up; `database` reports whether Postgres answers.
+// Shows callers only their own IP as the server sees it, to confirm rate limits are
+// per visitor: open it on Wi-Fi and on mobile data and compare with api.ipify.org.
+app.get('/api/whoami-ip', (req, res) => {
+  res.json({ success: true, data: describeClientIp(req) });
+});
+
 app.get('/api/health', async (_req, res) => {
   let database = 'connected';
   try {

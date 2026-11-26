@@ -38,7 +38,7 @@ export function clientIpMiddleware(req: Request, _res: Response, next: NextFunct
   next();
 }
 
-/** What the server sees, for the admin check endpoint. No other visitor data. */
+/** What the server sees for the caller's own request (GET /api/whoami-ip). */
 export function describeClientIp(req: Request) {
   const forwarded = req.headers['x-forwarded-for'];
   return {
