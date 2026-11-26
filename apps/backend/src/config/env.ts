@@ -147,6 +147,11 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_SECURE: z.enum(['true', 'false']).optional(),
+  // Supabase Storage for uploaded images. Without these, uploads go to the
+  // server's disk, which Render wipes on every deploy.
+  SUPABASE_URL: z.string().url().optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
+  SUPABASE_STORAGE_BUCKET: z.string().default('uploads'),
 });
 
 // Parse and export
@@ -209,6 +214,9 @@ export default {
   APP_PUBLIC_URL: env.APP_PUBLIC_URL,
   WEB_DIST_DIR: env.WEB_DIST_DIR ? path.resolve(env.WEB_DIST_DIR) : '',
   UPLOADS_DIR: path.resolve(env.UPLOADS_DIR),
+  SUPABASE_URL: (env.SUPABASE_URL || '').replace(/\/+$/, ''),
+  SUPABASE_SERVICE_ROLE_KEY: env.SUPABASE_SERVICE_ROLE_KEY || '',
+  SUPABASE_STORAGE_BUCKET: env.SUPABASE_STORAGE_BUCKET,
   SUPPORT_EMAIL: env.SUPPORT_EMAIL,
   APP_STORE_URL: env.APP_STORE_URL,
   PLAY_STORE_URL: env.PLAY_STORE_URL,
