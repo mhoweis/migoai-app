@@ -4,6 +4,7 @@ import fs from 'fs';
 import crypto from 'crypto';
 import multer from 'multer';
 import sharp from 'sharp';
+import { storageConfigured, uploadPublicImage } from '../services/storage.service';
 import { authenticate, AuthRequest } from '../middlewares/auth.middleware';
 import config from '../config/env';
 
@@ -53,6 +54,19 @@ router.post('/image', authenticate, upload.single('image'), async (req: AuthRequ
     return;
   }
   const filename = `${crypto.randomUUID()}${output.extension}`;
+
+  if (storageConfigured()) {
+    const contentType = { '.jpg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp' }[output.extension]!;
+    try {
+      const url = await uploadPublicImage(filename, output.data, contentType);
+      res.json({ success: true, data: { url } });
+    } catch {
+      res.status(502).json({ success: false, error: 'Could not save the image. Please try again.' });
+    }
+    return;
+  }
+
+  // Fallback without Supabase Storage: the server's own disk (lost on redeploy).
   await fs.promises.writeFile(path.join(uploadsDir, filename), output.data);
   const protocol = String(req.get('x-forwarded-proto') || req.protocol).split(',')[0].trim();
   const host = String(req.get('x-forwarded-host') || req.get('host'));
