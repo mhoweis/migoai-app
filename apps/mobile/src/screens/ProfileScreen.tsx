@@ -80,6 +80,14 @@ const ProfileScreen = () => {
   ]);
 
   // ── Avatar ────────────────────────────────────────────────────────────────
+  // Show the server's reason when there is one. Alert.alert does nothing in a
+  // web browser, so use window.alert there.
+  const showUploadError = (error: any) => {
+    const message = error?.response?.data?.error || t('profile_image_upload_failed');
+    if (Platform.OS === 'web' && typeof window !== 'undefined') window.alert(message);
+    else Alert.alert(t('error'), message);
+  };
+
   const handlePickAvatar = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -104,8 +112,8 @@ const ProfileScreen = () => {
         });
         const updated = await authService.updateProfile({ avatar });
         await setUser(updated);
-      } catch {
-        Alert.alert(t('error'), t('profile_image_upload_failed'));
+      } catch (error: any) {
+        showUploadError(error);
       } finally {
         setIsSaving(false);
       }
@@ -134,8 +142,8 @@ const ProfileScreen = () => {
       });
       const updated = await authService.updateProfile({ coverImage });
       await setUser(updated);
-    } catch {
-      Alert.alert(t('error'), t('profile_image_upload_failed'));
+    } catch (error: any) {
+      showUploadError(error);
     } finally {
       setIsSaving(false);
     }

@@ -60,13 +60,14 @@ router.post('/image', authenticate, upload.single('image'), async (req: AuthRequ
     try {
       const url = await uploadPublicImage(filename, output.data, contentType);
       res.json({ success: true, data: { url } });
+      return;
     } catch {
-      res.status(502).json({ success: false, error: 'Could not save the image. Please try again.' });
+      // Already logged with the reason (and shown in /api/health). Keep the
+      // upload working by saving to disk below rather than failing the user.
     }
-    return;
   }
 
-  // Fallback without Supabase Storage: the server's own disk (lost on redeploy).
+  // Fallback without (working) Supabase Storage: the server's own disk, lost on redeploy.
   await fs.promises.writeFile(path.join(uploadsDir, filename), output.data);
   const protocol = String(req.get('x-forwarded-proto') || req.protocol).split(',')[0].trim();
   const host = String(req.get('x-forwarded-host') || req.get('host'));

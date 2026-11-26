@@ -149,7 +149,8 @@ const envSchema = z.object({
   SMTP_SECURE: z.enum(['true', 'false']).optional(),
   // Supabase Storage for uploaded images. Without these, uploads go to the
   // server's disk, which Render wipes on every deploy.
-  SUPABASE_URL: z.string().url().optional(),
+  // Any form is accepted and normalised in storage.service (a bad value must not stop the server).
+  SUPABASE_URL: z.string().optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
   SUPABASE_STORAGE_BUCKET: z.string().default('uploads'),
 });

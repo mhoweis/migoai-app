@@ -39,6 +39,7 @@ import config from './config/env';
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
 import { authenticate } from './middlewares/auth.middleware';
 import { clientIpMiddleware, describeClientIp } from './middlewares/client-ip.middleware';
+import { storageStatus } from './services/storage.service';
 
 // Import Prisma instance
 import prisma from './config/database';
@@ -157,6 +158,7 @@ app.get('/api/health', async (_req, res) => {
       timestamp: new Date().toISOString(),
       database,
       email: emailProvider(),
+      imageStorage: storageStatus(),
     },
   });
 });

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Image,
   Modal,
   ScrollView,
@@ -59,7 +60,14 @@ export default function UserProfileScreen() {
   const [editPrivate, setEditPrivate] = useState(false);
   const [editAvatar, setEditAvatar] = useState<string | null>(null);
   const [editCover, setEditCover] = useState<string | null>(null);
-  const [uploadingImage, setUploadingImage] = useState(false);
+  // Which picture is uploading, so the spinner shows on that picture's button.
+  const [uploadingTarget, setUploadingTarget] = useState<'avatar' | 'cover' | null>(null);
+  const uploadingImage = uploadingTarget !== null;
+  // Alert.alert does nothing in a web browser, so show errors with window.alert there.
+  const showError = (message: string) => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') window.alert(message);
+    else Alert.alert(t('error'), message);
+  };
   const [savingProfile, setSavingProfile] = useState(false);
 
   const loadProfile = useCallback(async () => {
@@ -168,17 +176,17 @@ export default function UserProfileScreen() {
     });
     if (result.canceled || !result.assets[0]) return null;
     const asset = result.assets[0];
-    setUploadingImage(true);
+    setUploadingTarget(target);
     try {
       return await uploadService.uploadImage(asset.uri, {
         name: asset.fileName || (target === 'cover' ? 'profile-cover.jpg' : 'avatar.jpg'),
         type: asset.mimeType || 'image/jpeg',
       });
-    } catch {
-      Alert.alert(t('error'), t('profile_image_upload_failed'));
+    } catch (error: any) {
+      showError(error?.response?.data?.error || t('profile_image_upload_failed'));
       return null;
     } finally {
-      setUploadingImage(false);
+      setUploadingTarget(null);
     }
   };
 
@@ -192,15 +200,15 @@ export default function UserProfileScreen() {
   const changeProfileImage = async (target: 'avatar' | 'cover') => {
     const url = await pickAndUploadImage(target);
     if (!url) return;
-    setUploadingImage(true);
+    setUploadingTarget(target);
     try {
       const updated = await authService.updateProfile(target === 'cover' ? { coverImage: url } : { avatar: url });
       await setUser(updated);
       setProfile(await profileService.profile(userId));
     } catch {
-      Alert.alert(t('error'), t('profile_save_failed'));
+      showError(t('profile_save_failed'));
     } finally {
-      setUploadingImage(false);
+      setUploadingTarget(null);
     }
   };
 
@@ -266,7 +274,7 @@ export default function UserProfileScreen() {
                 onPress={() => void changeProfileImage('cover')}
                 style={[styles.coverEditButton, isRTL ? styles.coverEditButtonRtl : null]}
               >
-                {uploadingImage ? <ActivityIndicator size="small" color={colors.textInverse} /> : (
+                {uploadingTarget === 'cover' ? <ActivityIndicator size="small" color={colors.textInverse} /> : (
                   <Ionicons name="camera-outline" size={16} color={colors.textInverse} />
                 )}
                 <Text style={styles.coverEditText}>{t('profile_change_cover')}</Text>
@@ -292,7 +300,9 @@ export default function UserProfileScreen() {
                       onPress={() => void changeProfileImage('avatar')}
                       style={[styles.avatarEditButton, isRTL ? styles.avatarEditButtonRtl : null]}
                     >
-                      <Ionicons name="camera" size={15} color={colors.textInverse} />
+                      {uploadingTarget === 'avatar' ? <ActivityIndicator size="small" color={colors.textInverse} /> : (
+                        <Ionicons name="camera" size={15} color={colors.textInverse} />
+                      )}
                     </TouchableOpacity>
                   ) : null}
                 </View>
