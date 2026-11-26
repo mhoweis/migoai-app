@@ -17,6 +17,11 @@ router.get('/plans', asyncHandler(async (req: AuthRequest, res: Response) => {
 }));
 
 router.post('/subscribe', asyncHandler(async (req: AuthRequest, res: Response) => {
+  // Paid plans are off for this release. Set PLANS_ENABLED=true on the server to turn them on.
+  if (process.env.PLANS_ENABLED !== 'true') {
+    res.status(403).json({ success: false, error: 'Paid plans are not available yet' });
+    return;
+  }
   const input = z.object({
     plan: z.nativeEnum(PlanKey),
     returnUrl: z.string().url().refine(value => {

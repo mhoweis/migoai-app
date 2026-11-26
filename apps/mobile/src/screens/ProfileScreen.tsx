@@ -32,7 +32,7 @@ import { gradients, radius, shadow, type } from '../theme';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import Container from '../components/Container';
 import { AdminBackButton } from '../components/AdminAnalyticsUI';
-import { canPurchasePlansInApp, isProductionApp } from '../config/appEnv';
+import { canPurchasePlansInApp, isProductionApp, plansEnabled } from '../config/appEnv';
 import { API_BASE_URL } from '../services/api';
 
 type ProfileScreenNavigationProp = NavigationProp<ProfileStackParamList, 'ProfileMain'>;
@@ -427,6 +427,19 @@ const ProfileScreen = () => {
               >
                 <Text style={styles.accountPlanButtonText}>{accountPlanButtonText}</Text>
               </TouchableOpacity>
+            ) : !plansEnabled && Platform.OS === 'web' ? (
+              // Plans are off for this release: show the button greyed out, not tappable.
+              // Native store builds hide it instead (Apple rejects "coming soon" buttons).
+              <View
+                accessibilityRole="button"
+                accessibilityLabel={`${accountPlanButtonText}, ${t('coming_soon')}`}
+                accessibilityState={{ disabled: true }}
+                style={[styles.accountPlanButton, styles.accountPlanButtonDisabled]}
+              >
+                <Text style={[styles.accountPlanButtonText, styles.accountPlanButtonTextDisabled]}>
+                  {t('coming_soon')}
+                </Text>
+              </View>
             ) : null}
           </View>
         </View>
@@ -910,6 +923,8 @@ const styles = StyleSheet.create({
   accountPlanCopy: { flex: 1, minWidth: 0 },
   accountPlanName: { color: colors.text, fontSize: 16, fontWeight: '700' },
   accountPlanHelp: { ...type.caption, color: colors.textMuted, marginTop: 4, flexShrink: 1, flexWrap: 'wrap' },
+  accountPlanButtonDisabled: { backgroundColor: colors.border, opacity: 0.8 },
+  accountPlanButtonTextDisabled: { color: colors.textMuted },
   accountPlanButton: {
     minHeight: 36,
     borderRadius: 999,
