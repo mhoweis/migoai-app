@@ -80,6 +80,11 @@ const ProfileScreen = () => {
   ]);
 
   // ── Avatar ────────────────────────────────────────────────────────────────
+  // Show the server's reason (e.g. "photo too large") when it gives one.
+  const showUploadError = (error: any) => {
+    Alert.alert(t('error'), error?.response?.data?.error || t('profile_image_upload_failed'));
+  };
+
   const handlePickAvatar = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -104,8 +109,8 @@ const ProfileScreen = () => {
         });
         const updated = await authService.updateProfile({ avatar });
         await setUser(updated);
-      } catch {
-        Alert.alert(t('error'), t('profile_image_upload_failed'));
+      } catch (error: any) {
+        showUploadError(error);
       } finally {
         setIsSaving(false);
       }
@@ -134,8 +139,8 @@ const ProfileScreen = () => {
       });
       const updated = await authService.updateProfile({ coverImage });
       await setUser(updated);
-    } catch {
-      Alert.alert(t('error'), t('profile_image_upload_failed'));
+    } catch (error: any) {
+      showUploadError(error);
     } finally {
       setIsSaving(false);
     }
