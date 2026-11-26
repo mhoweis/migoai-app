@@ -17,3 +17,8 @@ logs/
 *.log
 apps/backend/uploads/*
 !apps/backend/uploads/.gitkeep
+
+# Private keys and certificates (e.g. Apple Wallet pass signing)
+*.pem
+*.p12
+*.key
